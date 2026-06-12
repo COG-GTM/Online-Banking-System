@@ -18,7 +18,10 @@ COPY userfront-service/src userfront-service/src
 RUN mvn clean package -pl common,userfront-service -am -DskipTests -B
 
 # --- Runtime stage ---
-FROM openjdk:8-jre-slim
+FROM eclipse-temurin:8-jre
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/userfront-service/target/*.jar app.jar
 EXPOSE 8080

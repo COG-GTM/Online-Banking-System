@@ -14,7 +14,7 @@ COPY admin-service/src admin-service/src
 RUN mvn clean package -pl common,admin-service -am -DskipTests -B
 
 # --- Runtime stage ---
-FROM openjdk:8-jre-slim
+FROM eclipse-temurin:8-jre
 WORKDIR /app
 COPY --from=build /app/admin-service/target/*.jar app.jar
 EXPOSE 8081
