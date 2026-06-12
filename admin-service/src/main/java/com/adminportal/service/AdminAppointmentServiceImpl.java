@@ -28,6 +28,9 @@ public class AdminAppointmentServiceImpl implements AppointmentService {
     @Override
     public void confirmAppointment(Long id) {
         Appointment appointment = findAppointment(id);
+        if (appointment == null) {
+            throw new IllegalArgumentException("Appointment not found: " + id);
+        }
         appointment.setConfirmed(true);
         appointmentDao.save(appointment);
     }
