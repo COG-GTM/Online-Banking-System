@@ -1,4 +1,4 @@
-package com.userfront.resource;
+package com.adminportal.resource;
 
 import java.util.List;
 
