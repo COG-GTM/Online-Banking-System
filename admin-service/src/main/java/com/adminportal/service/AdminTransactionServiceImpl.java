@@ -24,12 +24,24 @@ public class AdminTransactionServiceImpl implements TransactionService {
     @Override
     public List<PrimaryTransaction> findPrimaryTransactionList(String username) {
         User user = userService.findByUsername(username);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found: " + username);
+        }
+        if (user.getPrimaryAccount() == null) {
+            throw new IllegalArgumentException("Primary account not found for user: " + username);
+        }
         return user.getPrimaryAccount().getPrimaryTransactionList();
     }
 
     @Override
     public List<SavingsTransaction> findSavingsTransactionList(String username) {
         User user = userService.findByUsername(username);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found: " + username);
+        }
+        if (user.getSavingsAccount() == null) {
+            throw new IllegalArgumentException("Savings account not found for user: " + username);
+        }
         return user.getSavingsAccount().getSavingsTransactionList();
     }
 

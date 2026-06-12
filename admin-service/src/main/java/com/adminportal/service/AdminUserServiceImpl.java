@@ -32,6 +32,9 @@ public class AdminUserServiceImpl implements UserService {
     @Override
     public void enableUser(String username) {
         User user = findByUsername(username);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found: " + username);
+        }
         user.setEnabled(true);
         userDao.save(user);
     }
@@ -39,6 +42,9 @@ public class AdminUserServiceImpl implements UserService {
     @Override
     public void disableUser(String username) {
         User user = findByUsername(username);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found: " + username);
+        }
         user.setEnabled(false);
         userDao.save(user);
     }
