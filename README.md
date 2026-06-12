@@ -66,6 +66,40 @@ cd admin-service && mvn spring-boot:run
 
 Both can run simultaneously against the same MySQL database.
 
+## Running with Docker Compose
+
+### Prerequisites
+- Docker and Docker Compose installed
+
+### Start all services
+
+```bash
+docker-compose up --build
+```
+
+This builds the `userfront-service` and `admin-service` images (multi-stage Maven
+builds with the build context set to the repo root) and starts them alongside a
+MySQL 5.7 container. The services connect to MySQL over the Compose network using
+the `mysql` hostname; the datasource settings are supplied via the
+`SPRING_DATASOURCE_*` environment variables, which override the `localhost`
+defaults in each service's `application.properties`.
+
+### Access
+- **User-Front:** http://localhost:8080
+- **Admin API:** http://localhost:8081/api/
+
+### Stop
+
+```bash
+docker-compose down
+```
+
+### Reset database
+
+```bash
+docker-compose down -v
+```
+
 ### Admin API endpoints (admin-service, port 8081)
 
 All endpoints require a user with `ROLE_ADMIN` (HTTP Basic):
