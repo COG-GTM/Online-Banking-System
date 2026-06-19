@@ -4,12 +4,11 @@ import java.security.Principal;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.PostMapping;
 
 import com.userfront.dao.RoleDao;
 import com.userfront.domain.PrimaryAccount;
@@ -18,26 +17,27 @@ import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.UserService;
 
+import lombok.RequiredArgsConstructor;
+
 @Controller
+@RequiredArgsConstructor
 public class HomeController {
+
+	private final UserService userService;
+
+	private final RoleDao roleDao;
 	
-	@Autowired
-	private UserService userService;
-	
-	@Autowired
-    private RoleDao roleDao;
-	
-	@RequestMapping("/")
+	@GetMapping("/")
 	public String home() {
 		return "redirect:/index";
 	}
 	
-	@RequestMapping("/index")
+	@GetMapping("/index")
     public String index() {
         return "index";
     }
 	
-	@RequestMapping(value = "/signup", method = RequestMethod.GET)
+	@GetMapping("/signup")
     public String signup(Model model) {
         User user = new User();
 
@@ -46,7 +46,7 @@ public class HomeController {
         return "signup";
     }
 	
-	@RequestMapping(value = "/signup", method = RequestMethod.POST)
+	@PostMapping("/signup")
     public String signupPost(@ModelAttribute("user") User user,  Model model) {
 
         if(userService.checkUserExists(user.getUsername(), user.getEmail()))  {
@@ -70,7 +70,7 @@ public class HomeController {
         }
     }
 	
-	@RequestMapping("/userFront")
+	@GetMapping("/userFront")
 	public String userFront(Principal principal, Model model) {
         User user = userService.findByUsername(principal.getName());
         PrimaryAccount primaryAccount = user.getPrimaryAccount();

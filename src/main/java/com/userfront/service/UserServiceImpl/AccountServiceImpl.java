@@ -2,9 +2,8 @@ package com.userfront.service.UserServiceImpl;
 
 import java.math.BigDecimal;
 import java.security.Principal;
-import java.util.Date;
+import java.time.LocalDateTime;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -18,22 +17,21 @@ import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
+@RequiredArgsConstructor
 public class AccountServiceImpl implements AccountService {
 	
 	private static int nextAccountNumber = 11223145;
 
-    @Autowired
-    private PrimaryAccountDao primaryAccountDao;
+    private final PrimaryAccountDao primaryAccountDao;
 
-    @Autowired
-    private SavingsAccountDao savingsAccountDao;
+    private final SavingsAccountDao savingsAccountDao;
 
-    @Autowired
-    private UserService userService;
-    
-    @Autowired
-    private TransactionService transactionService;
+    private final UserService userService;
+
+    private final TransactionService transactionService;
 
     public PrimaryAccount createPrimaryAccount() {
         PrimaryAccount primaryAccount = new PrimaryAccount();
@@ -63,7 +61,7 @@ public class AccountServiceImpl implements AccountService {
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(new BigDecimal(amount)));
             primaryAccountDao.save(primaryAccount);
 
-            Date date = new Date();
+            LocalDateTime date = LocalDateTime.now();
 
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Deposit to Primary Account", "Account", "Finished", amount, primaryAccount.getAccountBalance(), primaryAccount);
             transactionService.savePrimaryDepositTransaction(primaryTransaction);
@@ -73,7 +71,7 @@ public class AccountServiceImpl implements AccountService {
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(new BigDecimal(amount)));
             savingsAccountDao.save(savingsAccount);
 
-            Date date = new Date();
+            LocalDateTime date = LocalDateTime.now();
             SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Deposit to savings Account", "Account", "Finished", amount, savingsAccount.getAccountBalance(), savingsAccount);
             transactionService.saveSavingsDepositTransaction(savingsTransaction);
         }
@@ -87,7 +85,7 @@ public class AccountServiceImpl implements AccountService {
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
             primaryAccountDao.save(primaryAccount);
 
-            Date date = new Date();
+            LocalDateTime date = LocalDateTime.now();
 
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Withdraw from Primary Account", "Account", "Finished", amount, primaryAccount.getAccountBalance(), primaryAccount);
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
@@ -96,7 +94,7 @@ public class AccountServiceImpl implements AccountService {
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
             savingsAccountDao.save(savingsAccount);
 
-            Date date = new Date();
+            LocalDateTime date = LocalDateTime.now();
             SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Withdraw from savings Account", "Account", "Finished", amount, savingsAccount.getAccountBalance(), savingsAccount);
             transactionService.saveSavingsWithdrawTransaction(savingsTransaction);
         }
