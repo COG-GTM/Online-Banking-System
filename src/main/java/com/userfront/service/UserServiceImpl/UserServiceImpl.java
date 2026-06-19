@@ -5,7 +5,6 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,23 +16,22 @@ import com.userfront.domain.security.UserRole;
 import com.userfront.service.AccountService;
 import com.userfront.service.UserService;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService{
 	
 	private static final Logger LOG = LoggerFactory.getLogger(UserService.class);
-	
-	@Autowired
-	private UserDao userDao;
-	
-	@Autowired
-    private RoleDao roleDao;
 
-    @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
-    
-    @Autowired
-    private AccountService accountService;
+	private final UserDao userDao;
+
+	private final RoleDao roleDao;
+
+    private final BCryptPasswordEncoder passwordEncoder;
+
+    private final AccountService accountService;
 	
 	public void save(User user) {
         userDao.save(user);
@@ -113,8 +111,8 @@ public class UserServiceImpl implements UserService{
     public void disableUser (String username) {
         User user = findByUsername(username);
         user.setEnabled(false);
-        System.out.println(user.isEnabled());
+        LOG.debug("User enabled status: {}", user.isEnabled());
         userDao.save(user);
-        System.out.println(username + " is disabled.");
+        LOG.info("{} is disabled.", username);
     }
 }

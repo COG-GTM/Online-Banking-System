@@ -2,11 +2,10 @@ package com.userfront.service.UserServiceImpl;
 
 import java.math.BigDecimal;
 import java.security.Principal;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -23,26 +22,23 @@ import com.userfront.domain.User;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
+@RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
-	
-	@Autowired
-	private UserService userService;
-	
-	@Autowired
-	private PrimaryTransactionDao primaryTransactionDao;
-	
-	@Autowired
-	private SavingsTransactionDao savingsTransactionDao;
-	
-	@Autowired
-	private PrimaryAccountDao primaryAccountDao;
-	
-	@Autowired
-	private SavingsAccountDao savingsAccountDao;
-	
-	@Autowired
-	private RecipientDao recipientDao;
+
+	private final UserService userService;
+
+	private final PrimaryTransactionDao primaryTransactionDao;
+
+	private final SavingsTransactionDao savingsTransactionDao;
+
+	private final PrimaryAccountDao primaryAccountDao;
+
+	private final SavingsAccountDao savingsAccountDao;
+
+	private final RecipientDao recipientDao;
 	
 
 	public List<PrimaryTransaction> findPrimaryTransactionList(String username){
@@ -82,7 +78,7 @@ public class TransactionServiceImpl implements TransactionService {
             primaryAccountDao.save(primaryAccount);
             savingsAccountDao.save(savingsAccount);
 
-            Date date = new Date();
+            LocalDateTime date = LocalDateTime.now();
 
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
@@ -92,7 +88,7 @@ public class TransactionServiceImpl implements TransactionService {
             primaryAccountDao.save(primaryAccount);
             savingsAccountDao.save(savingsAccount);
 
-            Date date = new Date();
+            LocalDateTime date = LocalDateTime.now();
 
             SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
             savingsTransactionDao.save(savingsTransaction);
@@ -127,7 +123,7 @@ public class TransactionServiceImpl implements TransactionService {
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
             primaryAccountDao.save(primaryAccount);
 
-            Date date = new Date();
+            LocalDateTime date = LocalDateTime.now();
 
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
@@ -135,7 +131,7 @@ public class TransactionServiceImpl implements TransactionService {
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
             savingsAccountDao.save(savingsAccount);
 
-            Date date = new Date();
+            LocalDateTime date = LocalDateTime.now();
 
             SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
             savingsTransactionDao.save(savingsTransaction);

@@ -1,13 +1,15 @@
 package com.userfront.config;
 
-import javax.servlet.Filter;
-import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.FilterConfig;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -15,6 +17,8 @@ import org.springframework.stereotype.Component;
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class RequestFilter implements Filter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(RequestFilter.class);
 
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) {
         HttpServletResponse response = (HttpServletResponse) res;
@@ -30,10 +34,10 @@ public class RequestFilter implements Filter {
             try {
                 chain.doFilter(req, res);
             } catch(Exception e) {
-                e.printStackTrace();
+                LOG.error("Filter error", e);
             }
         } else {
-            System.out.println("Pre-flight");
+            LOG.info("Pre-flight");
             response.setHeader("Access-Control-Allow-Methods", "POST,GET,DELETE");
             response.setHeader("Access-Control-Max-Age", "3600");
             response.setHeader("Access-Control-Allow-Headers", "authorization, content-type," +
