@@ -46,7 +46,7 @@ public class SecurityConfig {
             "/",
             "/about/**",
             "/contact/**",
-            "/error/**/*",
+            "/error/**",
             "/console/**",
             "/signup"
     };
@@ -108,8 +108,7 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/index?logout")
                         .deleteCookies("remember-me")
                         .permitAll())
-                .rememberMe(rememberMe -> {
-                });
+                .rememberMe(rememberMe -> rememberMe.userDetailsService(userSecurityService));
 
         return http.build();
     }
