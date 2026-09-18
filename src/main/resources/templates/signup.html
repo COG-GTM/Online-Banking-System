@@ -71,8 +71,11 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-lock fa-lg" aria-hidden="true"></i></span>
-                            <input type="password" class="form-control" th:value="${user.password}" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required"/>
+                            <input type="password" class="form-control" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required"/>
                         </div>
+                        <ul class="bg-danger" th:if="${passwordErrors}">
+                            <li th:each="passwordError : ${passwordErrors}" th:text="${passwordError}">password error</li>
+                        </ul>
                         <div class="checkbox">
                             <label>
                                 <input id="showPassword" type="checkbox" />Show Password

@@ -15,6 +15,7 @@ import com.userfront.dao.UserDao;
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.AccountService;
+import com.userfront.service.PasswordPolicy;
 import com.userfront.service.UserService;
 
 @Service
@@ -34,6 +35,9 @@ public class UserServiceImpl implements UserService{
     
     @Autowired
     private AccountService accountService;
+
+    @Autowired
+    private PasswordPolicy passwordPolicy;
 	
 	public void save(User user) {
         userDao.save(user);
@@ -54,6 +58,12 @@ public class UserServiceImpl implements UserService{
         if (localUser != null) {
             LOG.info("User with username {} already exist. Nothing will be done. ", user.getUsername());
         } else {
+            List<String> passwordErrors = passwordPolicy.validate(user.getPassword(), user.getUsername(), user.getEmail());
+
+            if (!passwordErrors.isEmpty()) {
+                throw new IllegalArgumentException("Password does not meet the password policy: " + String.join(" ", passwordErrors));
+            }
+
             String encryptedPassword = passwordEncoder.encode(user.getPassword());
             user.setPassword(encryptedPassword);
 
