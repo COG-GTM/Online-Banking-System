@@ -30,6 +30,8 @@ public class User implements UserDetails{
     @Column(name = "userId", nullable = false, updatable = false)
     private Long userId;
     private String username;
+
+    @JsonIgnore
     private String password;
     private String firstName;
     private String lastName;
@@ -129,6 +131,8 @@ public class User implements UserDetails{
         this.recipientList = recipientList;
     }
 
+    @JsonIgnore
+    @Override
     public String getPassword() {
         return password;
     }
@@ -162,7 +166,6 @@ public class User implements UserDetails{
         return "User{" +
                 "userId=" + userId +
                 ", username='" + username + '\'' +
-                ", password='" + password + '\'' +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", email='" + email + '\'' +
