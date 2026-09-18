@@ -21,3 +21,22 @@ Online banking system detail diagram
 
 ![online banking system detail diagram](https://user-images.githubusercontent.com/34470526/37703353-999023fe-2d1f-11e8-96f6-db40724c5d14.png)
 
+
+Database configuration
+
+The datasource credentials are read from the environment, so nothing is committed to the repository. Create a least-privilege application user (no DDL/admin rights beyond what Hibernate needs for the schema) and export:
+
+```
+export SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/OnlineBankingSystem
+export SPRING_DATASOURCE_USERNAME=onlinebanking_app
+export SPRING_DATASOURCE_PASSWORD=<password>
+```
+
+Example MySQL setup:
+
+```sql
+CREATE USER 'onlinebanking_app'@'%' IDENTIFIED BY '<password>';
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, REFERENCES ON OnlineBankingSystem.* TO 'onlinebanking_app'@'%';
+```
+
+The application fails to start when `SPRING_DATASOURCE_USERNAME` or `SPRING_DATASOURCE_PASSWORD` is missing.
