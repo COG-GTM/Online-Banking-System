@@ -22,6 +22,7 @@ public class LoginAttemptService {
     public static final long BLOCK_DURATION_SECONDS = 900;
 
     private static final int MAX_TRACKED_KEYS = 20000;
+    private static final int HARD_MAX_TRACKED_KEYS = 40000;
     private static final String USERNAME_PREFIX = "u:";
     private static final String ADDRESS_PREFIX = "a:";
 
@@ -73,8 +74,10 @@ public class LoginAttemptService {
             if (current.count >= maxAttempts && current.blockedUntil == null) {
                 current.blockedUntil = now.plusSeconds(BLOCK_DURATION_SECONDS);
             }
-            purgeExpired(now);
-            evictUnblockedOverflow();
+            if (attempts.size() > MAX_TRACKED_KEYS) {
+                purgeExpired(now);
+                evictOverflow();
+            }
         }
     }
 
@@ -109,18 +112,21 @@ public class LoginAttemptService {
     }
 
     /**
-     * Keeps the map bounded by dropping the least recently used entries that are not
-     * under an active lockout, so flooding fresh keys cannot evict a blocked one.
+     * Keeps the map bounded. Entries under an active lockout are kept first, so flooding
+     * fresh keys cannot clear a block, but a hard cap still applies once even the blocked
+     * entries would grow without bound.
      */
-    private void evictUnblockedOverflow() {
-        if (attempts.size() <= MAX_TRACKED_KEYS) {
-            return;
-        }
-        Iterator<Attempts> iterator = attempts.values().iterator();
-        while (attempts.size() > MAX_TRACKED_KEYS && iterator.hasNext()) {
-            if (iterator.next().blockedUntil == null) {
-                iterator.remove();
+    private void evictOverflow() {
+        Iterator<Attempts> unblocked = attempts.values().iterator();
+        while (attempts.size() > MAX_TRACKED_KEYS && unblocked.hasNext()) {
+            if (unblocked.next().blockedUntil == null) {
+                unblocked.remove();
             }
+        }
+        Iterator<Attempts> eldest = attempts.values().iterator();
+        while (attempts.size() > HARD_MAX_TRACKED_KEYS && eldest.hasNext()) {
+            eldest.next();
+            eldest.remove();
         }
     }
 
