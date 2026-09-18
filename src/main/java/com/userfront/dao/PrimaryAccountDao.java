@@ -1,6 +1,9 @@
 package com.userfront.dao;
 
+import javax.persistence.LockModeType;
+
 import com.userfront.domain.PrimaryAccount;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.CrudRepository;
 
 /**
@@ -9,4 +12,7 @@ import org.springframework.data.repository.CrudRepository;
 public interface PrimaryAccountDao extends CrudRepository<PrimaryAccount,Long> {
 
     PrimaryAccount findByAccountNumber (int accountNumber);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    PrimaryAccount findWithLockByAccountNumber (int accountNumber);
 }
