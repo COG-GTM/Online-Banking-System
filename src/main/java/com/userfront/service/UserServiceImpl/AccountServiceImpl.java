@@ -2,9 +2,11 @@ package com.userfront.service.UserServiceImpl;
 
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.security.SecureRandom;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -20,8 +22,11 @@ import com.userfront.service.UserService;
 
 @Service
 public class AccountServiceImpl implements AccountService {
-	
-	private static int nextAccountNumber = 11223145;
+
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final int ACCOUNT_NUMBER_ORIGIN = 100000000;
+    private static final int ACCOUNT_NUMBER_BOUND = 900000000;
+    private static final int MAX_ACCOUNT_NUMBER_ATTEMPTS = 20;
 
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
@@ -36,23 +41,49 @@ public class AccountServiceImpl implements AccountService {
     private TransactionService transactionService;
 
     public PrimaryAccount createPrimaryAccount() {
-        PrimaryAccount primaryAccount = new PrimaryAccount();
-        primaryAccount.setAccountBalance(new BigDecimal(0.0));
-        primaryAccount.setAccountNumber(accountGen());
+        for (int attempt = 0; attempt < MAX_ACCOUNT_NUMBER_ATTEMPTS; attempt++) {
+            int accountNumber = accountGen();
+            if (isAccountNumberTaken(accountNumber)) {
+                continue;
+            }
 
-        primaryAccountDao.save(primaryAccount);
+            PrimaryAccount primaryAccount = new PrimaryAccount();
+            primaryAccount.setAccountBalance(new BigDecimal(0.0));
+            primaryAccount.setAccountNumber(accountNumber);
 
-        return primaryAccountDao.findByAccountNumber(primaryAccount.getAccountNumber());
+            try {
+                primaryAccountDao.save(primaryAccount);
+            } catch (DataIntegrityViolationException e) {
+                continue;
+            }
+
+            return primaryAccountDao.findByAccountNumber(accountNumber);
+        }
+
+        throw new IllegalStateException("Unable to allocate a unique primary account number");
     }
 
     public SavingsAccount createSavingsAccount() {
-        SavingsAccount savingsAccount = new SavingsAccount();
-        savingsAccount.setAccountBalance(new BigDecimal(0.0));
-        savingsAccount.setAccountNumber(accountGen());
+        for (int attempt = 0; attempt < MAX_ACCOUNT_NUMBER_ATTEMPTS; attempt++) {
+            int accountNumber = accountGen();
+            if (isAccountNumberTaken(accountNumber)) {
+                continue;
+            }
 
-        savingsAccountDao.save(savingsAccount);
+            SavingsAccount savingsAccount = new SavingsAccount();
+            savingsAccount.setAccountBalance(new BigDecimal(0.0));
+            savingsAccount.setAccountNumber(accountNumber);
 
-        return savingsAccountDao.findByAccountNumber(savingsAccount.getAccountNumber());
+            try {
+                savingsAccountDao.save(savingsAccount);
+            } catch (DataIntegrityViolationException e) {
+                continue;
+            }
+
+            return savingsAccountDao.findByAccountNumber(accountNumber);
+        }
+
+        throw new IllegalStateException("Unable to allocate a unique savings account number");
     }
     
     public void deposit(String accountType, double amount, Principal principal) {
@@ -103,7 +134,12 @@ public class AccountServiceImpl implements AccountService {
     }
     
     private int accountGen() {
-        return ++nextAccountNumber;
+        return ACCOUNT_NUMBER_ORIGIN + RANDOM.nextInt(ACCOUNT_NUMBER_BOUND);
+    }
+
+    private boolean isAccountNumberTaken(int accountNumber) {
+        return primaryAccountDao.findByAccountNumber(accountNumber) != null
+                || savingsAccountDao.findByAccountNumber(accountNumber) != null;
     }
 
 	
