@@ -3,9 +3,9 @@
  * Copyright 2011-2019 Twitter, Inc.
  * Licensed under the MIT license
  *
- * Local modification: Button.prototype.setState renders state text with
- * jQuery .text() instead of .html() (CVE-2024-6485). Keep this change when
- * updating this file.
+ * Local modification: Button.prototype.setState writes data-*-text state
+ * values with jQuery .text() instead of .html() (CVE-2024-6485). Keep this
+ * change when updating this file.
  */
 
 if (typeof jQuery === 'undefined') {
@@ -204,18 +204,26 @@ if (typeof jQuery === 'undefined') {
   }
 
   Button.prototype.setState = function (state) {
-    var d    = 'disabled'
-    var $el  = this.$element
-    var val  = $el.is('input') ? 'val' : 'text'
-    var data = $el.data()
+    var d       = 'disabled'
+    var $el     = this.$element
+    var isInput = $el.is('input')
+    var val     = isInput ? 'val' : 'html'
+    var data    = $el.data()
+
+    if (data.resetText == null) {
+      $el.data('resetText', $el[val]())
+      this.resetTextIsMarkup = !isInput
+    }
+
+    // state values can come from data-* attributes, so only the markup this
+    // plugin captured itself is written back as HTML
+    var write = isInput || (state == 'reset' && this.resetTextIsMarkup) ? val : 'text'
 
     state += 'Text'
 
-    if (data.resetText == null) $el.data('resetText', $el[val]())
-
     // push to event loop to allow forms to submit
     setTimeout($.proxy(function () {
-      $el[val](data[state] == null ? this.options[state] : data[state])
+      $el[write](data[state] == null ? this.options[state] : data[state])
 
       if (state == 'loadingText') {
         this.isLoading = true
