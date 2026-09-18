@@ -1,5 +1,6 @@
 package com.userfront.controller;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
 
@@ -18,6 +19,7 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.MonetaryAmount;
 
 @Controller
 @RequestMapping("/transfer")
@@ -43,12 +45,21 @@ public class TransferController {
             @ModelAttribute("transferFrom") String transferFrom,
             @ModelAttribute("transferTo") String transferTo,
             @ModelAttribute("amount") String amount,
+            Model model,
             Principal principal
     ) throws Exception {
+        BigDecimal transferAmount = MonetaryAmount.parse(amount);
+
+        if (transferAmount == null) {
+            model.addAttribute("amountError", MonetaryAmount.INVALID_AMOUNT_MESSAGE);
+
+            return "betweenAccounts";
+        }
+
         User user = userService.findByUsername(principal.getName());
         PrimaryAccount primaryAccount = user.getPrimaryAccount();
         SavingsAccount savingsAccount = user.getSavingsAccount();
-        transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
+        transactionService.betweenAccountsTransfer(transferFrom, transferTo, transferAmount, primaryAccount, savingsAccount);
 
         return "redirect:/userFront";
     }
@@ -114,10 +125,19 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
-    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
+    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Model model, Principal principal) {
+        BigDecimal transferAmount = MonetaryAmount.parse(amount);
+
+        if (transferAmount == null) {
+            model.addAttribute("recipientList", transactionService.findRecipientList(principal));
+            model.addAttribute("amountError", MonetaryAmount.INVALID_AMOUNT_MESSAGE);
+
+            return "toSomeoneElse";
+        }
+
         User user = userService.findByUsername(principal.getName());
         Recipient recipient = transactionService.findRecipientByName(recipientName);
-        transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
+        transactionService.toSomeoneElseTransfer(recipient, accountType, transferAmount, user.getPrimaryAccount(), user.getSavingsAccount());
 
         return "redirect:/userFront";
     }
