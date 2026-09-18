@@ -2,7 +2,6 @@ package com.userfront.service.UserServiceImpl;
 
 import java.math.BigDecimal;
 import java.security.Principal;
-import java.security.SecureRandom;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +14,7 @@ import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.service.AccountNumberService;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
@@ -22,11 +22,8 @@ import com.userfront.service.UserService;
 @Service
 public class AccountServiceImpl implements AccountService {
 
-    private static final int ACCOUNT_NUMBER_ORIGIN = 100000000;
-    private static final int ACCOUNT_NUMBER_BOUND = 1000000000;
-    private static final int MAX_ACCOUNT_NUMBER_ATTEMPTS = 100;
-
-    private final SecureRandom secureRandom = new SecureRandom();
+    @Autowired
+    private AccountNumberService accountNumberService;
 
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
@@ -43,7 +40,7 @@ public class AccountServiceImpl implements AccountService {
     public PrimaryAccount createPrimaryAccount() {
         PrimaryAccount primaryAccount = new PrimaryAccount();
         primaryAccount.setAccountBalance(new BigDecimal(0.0));
-        primaryAccount.setAccountNumber(accountGen());
+        primaryAccount.setAccountNumber(accountNumberService.generateAccountNumber());
 
         primaryAccountDao.save(primaryAccount);
 
@@ -53,7 +50,7 @@ public class AccountServiceImpl implements AccountService {
     public SavingsAccount createSavingsAccount() {
         SavingsAccount savingsAccount = new SavingsAccount();
         savingsAccount.setAccountBalance(new BigDecimal(0.0));
-        savingsAccount.setAccountNumber(accountGen());
+        savingsAccount.setAccountNumber(accountNumberService.generateAccountNumber());
 
         savingsAccountDao.save(savingsAccount);
 
@@ -107,20 +104,4 @@ public class AccountServiceImpl implements AccountService {
         }
     }
     
-    private int accountGen() {
-        for (int attempt = 0; attempt < MAX_ACCOUNT_NUMBER_ATTEMPTS; attempt++) {
-            int accountNumber = ACCOUNT_NUMBER_ORIGIN
-                    + secureRandom.nextInt(ACCOUNT_NUMBER_BOUND - ACCOUNT_NUMBER_ORIGIN);
-
-            if (primaryAccountDao.findByAccountNumber(accountNumber) == null
-                    && savingsAccountDao.findByAccountNumber(accountNumber) == null) {
-                return accountNumber;
-            }
-        }
-
-        throw new IllegalStateException("Unable to generate a unique account number");
-    }
-
-	
-
 }
