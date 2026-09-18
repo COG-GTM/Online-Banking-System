@@ -2,6 +2,7 @@ package com.userfront.controller;
 
 import java.security.Principal;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.UserService;
+import com.userfront.validation.PasswordPolicy;
 
 @Controller
 public class HomeController {
@@ -26,6 +28,9 @@ public class HomeController {
 	
 	@Autowired
     private RoleDao roleDao;
+
+	@Autowired
+    private PasswordPolicy passwordPolicy;
 	
 	@RequestMapping("/")
 	public String home() {
@@ -49,7 +54,9 @@ public class HomeController {
 	@RequestMapping(value = "/signup", method = RequestMethod.POST)
     public String signupPost(@ModelAttribute("user") User user,  Model model) {
 
-        if(userService.checkUserExists(user.getUsername(), user.getEmail()))  {
+        List<String> passwordErrors = passwordPolicy.validate(user.getPassword(), user.getUsername(), user.getEmail());
+
+        if(userService.checkUserExists(user.getUsername(), user.getEmail()) || !passwordErrors.isEmpty())  {
 
             if (userService.checkEmailExists(user.getEmail())) {
                 model.addAttribute("emailExists", true);
@@ -57,6 +64,10 @@ public class HomeController {
 
             if (userService.checkUsernameExists(user.getUsername())) {
                 model.addAttribute("usernameExists", true);
+            }
+
+            if (!passwordErrors.isEmpty()) {
+                model.addAttribute("passwordErrors", passwordErrors);
             }
 
             return "signup";
