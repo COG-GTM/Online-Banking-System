@@ -5,6 +5,7 @@ import java.security.Principal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -24,6 +25,8 @@ import com.userfront.util.AmountParser;
 @Controller
 @RequestMapping("/transfer")
 public class TransferController {
+
+    private static final String CONCURRENT_UPDATE_ERROR = "This account was updated by another transaction. Please try again.";
 
     @Autowired
     private TransactionService transactionService;
@@ -60,6 +63,9 @@ public class TransferController {
             transactionService.betweenAccountsTransfer(transferFrom, transferTo, transferAmount, principal.getName());
         } catch (InsufficientFundsException e) {
             model.addAttribute("error", e.getMessage());
+            return "betweenAccounts";
+        } catch (ObjectOptimisticLockingFailureException e) {
+            model.addAttribute("error", CONCURRENT_UPDATE_ERROR);
             return "betweenAccounts";
         }
 
@@ -141,6 +147,8 @@ public class TransferController {
             transactionService.toSomeoneElseTransfer(recipient, accountType, transferAmount, principal.getName());
         } catch (InsufficientFundsException e) {
             return toSomeoneElseError(e.getMessage(), model, principal);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            return toSomeoneElseError(CONCURRENT_UPDATE_ERROR, model, principal);
         }
 
         return "redirect:/userFront";

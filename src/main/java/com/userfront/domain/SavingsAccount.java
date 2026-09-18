@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import javax.persistence.CascadeType;
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
@@ -24,7 +25,8 @@ public class SavingsAccount {
     private BigDecimal accountBalance;
 
     @Version
-    private Long version;
+    @Column(nullable = false, columnDefinition = "bigint not null default 0")
+    private Long version = 0L;
 
     @OneToMany(mappedBy = "savingsAccount", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
