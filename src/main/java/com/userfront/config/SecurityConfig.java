@@ -43,7 +43,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             "/about/**",
             "/contact/**",
             "/error/**/*",
-            "/console/**",
             "/signup"
     };
 
@@ -51,9 +50,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         http
                 .authorizeRequests().
-//                antMatchers("/**").
-                antMatchers(PUBLIC_MATCHERS).
-                permitAll().anyRequest().authenticated();
+                antMatchers(PUBLIC_MATCHERS).permitAll().
+                antMatchers("/console/**").hasRole("ADMIN").
+                anyRequest().authenticated();
 
         http
                 .csrf().disable().cors().disable()
