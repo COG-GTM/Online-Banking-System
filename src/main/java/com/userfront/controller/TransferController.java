@@ -70,6 +70,10 @@ public class TransferController {
     @RequestMapping(value = "/recipient/save", method = RequestMethod.POST)
     public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
 
+        if (recipient.getId() != null && transactionService.findRecipientById(recipient.getId(), principal.getName()) == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+
         User user = userService.findByUsername(principal.getName());
         recipient.setUser(user);
         transactionService.saveRecipient(recipient);
