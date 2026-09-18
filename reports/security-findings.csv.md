@@ -5,15 +5,27 @@ ingestion-mode code scan.
 
 ## Provenance
 
-- **SCA rows (235)** — the Maven dependency tree resolved from `pom.xml`
+276 findings: 249 SCA, 27 SAST.
+
+- **SCA rows, Maven (235)** — the Maven dependency tree resolved from `pom.xml`
   (`mvn dependency:tree`, 86 resolved artifacts) queried against the
   [OSV.dev](https://osv.dev) API. Every row is a published advisory affecting
   the exact version currently resolved by the build; 234 of the 235 carry a CVE
   ID. Severity and CVSS vector come from the GitHub Advisory data in OSV.
   `fixed_version` is the lowest published fix newer than the resolved version.
-- **SAST rows (13)** — first-party issues in `src/main/java` and
+- **SCA rows, npm (14)** — four JavaScript libraries are vendored into
+  `src/main/resources/static/js` and ship in the war. Their versions were read
+  from the file headers (jQuery 1.11.1, Bootstrap 3.3.7, DataTables 1.10.12,
+  Bootbox 4.4.0) and queried against OSV under npm coordinates. `file_path`
+  points at the vendored file, so each of these is fixed by swapping one file
+  rather than by a dependency bump.
+- **SAST rows (27)** — first-party issues in `src/main/java` and
   `src/main/resources`, each verified by reading the code; identified as
   `OBS-SAST-NNN` with a CWE instead of a CVE.
+
+Every SCA row was checked against the advisory's `affected` ranges and version
+lists for the exact installed version, and every `fixed_version` was checked to
+be newer than the installed version and absent from the affected set.
 
 Regenerating the SCA rows is a re-run of `mvn dependency:tree` plus an OSV
 `querybatch` call; nothing in the CSV is hand-authored except the SAST rows.
@@ -28,8 +40,9 @@ Regenerating the SCA rows is a re-run of `mvn dependency:tree` plus an OSV
 | `severity` | Critical / High / Medium / Low |
 | `cvss_vector` | CVSS v3.1 or v4.0 vector where OSV publishes one |
 | `cwe` | semicolon-separated CWE IDs |
-| `package`, `installed_version`, `fixed_version` | Maven coordinates and remediation target (SCA only) |
-| `file_path`, `line` | `pom.xml` for SCA rows; source location for SAST rows |
+| `ecosystem` | `Maven` or `npm` (SCA only) |
+| `package`, `installed_version`, `fixed_version` | package coordinates and remediation target (SCA only) |
+| `file_path`, `line` | `pom.xml` or the vendored JS file for SCA rows; source location for SAST rows |
 | `title`, `description` | advisory summary/details, or the finding write-up |
 | `references` | advisory and upstream issue links |
 | `remediation` | concrete fix for this row |
@@ -45,4 +58,22 @@ logback 1.2.3) predates hundreds of advisories. `jackson-databind` (69) and
 should expect heavy duplication by package and treat "upgrade the parent BOM" as
 the shared fix, with per-CVE reachability the interesting question.
 
+The npm rows are the exception among SCA findings: each vendored library is a
+separate file swap, so they triage and remediate independently.
+
 The SAST rows are independent of each other and each is fixable in isolation.
+They span authorization (IDOR on the payee and transfer paths, profile update
+keyed on a request parameter), authentication and session configuration (CSRF
+disabled, hardcoded BCrypt seed, no brute-force protection, no transport
+security, no password policy), money handling (unvalidated transfer amounts, no
+balance check, non-transactional read-modify-write balance updates, `double`
+arithmetic, sequential account numbers), data exposure (password in `toString`,
+full `User` entities on the admin API, password echoed into the signup form,
+committed database credentials) and reliability (null dereference in appointment
+confirmation, unbounded `findAll` on the payee list).
+
+Note that a few of the lower-severity SAST rows are correctness or reliability
+defects rather than exploitable vulnerabilities (`OBS-SAST-023`, `-024`, `-025`,
+`-026`); they are included because they are real, independently fixable, and
+useful triage material, but a scan profile that only wants exploitable findings
+should drop them.
