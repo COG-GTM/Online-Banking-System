@@ -56,7 +56,7 @@ public class AccountSchemaMigration implements InitializingBean {
 
         for (Map.Entry<String, String[]> entry : MONEY_COLUMNS.entrySet()) {
             for (String column : entry.getValue()) {
-                if (!isDecimal(entry.getKey(), column)) {
+                if (!isMoneyColumn(entry.getKey(), column)) {
                     jdbcTemplate.execute(
                         "ALTER TABLE " + entry.getKey() + " MODIFY " + column + " " + MONEY_TYPE);
                 }
@@ -90,13 +90,13 @@ public class AccountSchemaMigration implements InitializingBean {
             String.class, table);
     }
 
-    private boolean isDecimal(String table, String column) {
+    private boolean isMoneyColumn(String table, String column) {
         List<String> types = jdbcTemplate.queryForList(
-            "SELECT data_type FROM information_schema.columns"
+            "SELECT column_type FROM information_schema.columns"
                 + " WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?",
             String.class, table, column);
 
-        return !types.isEmpty() && "decimal".equalsIgnoreCase(types.get(0));
+        return !types.isEmpty() && MONEY_TYPE.equalsIgnoreCase(types.get(0).replace(" ", ""));
     }
 
     private boolean versionColumnIsNullable(String table) {
