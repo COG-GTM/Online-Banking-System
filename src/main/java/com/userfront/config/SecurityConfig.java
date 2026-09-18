@@ -29,6 +29,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private static final String SALT = "salt"; // Salt should be protected carefully
 
+    private static final long HSTS_MAX_AGE_SECONDS = 31536000L;
+
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12, new SecureRandom(SALT.getBytes()));
@@ -61,7 +63,21 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
-                .rememberMe();
+                .rememberMe().useSecureCookie(requireSsl());
+
+        http
+                .headers()
+                .httpStrictTransportSecurity()
+                .includeSubDomains(true)
+                .maxAgeInSeconds(HSTS_MAX_AGE_SECONDS);
+
+        if (requireSsl()) {
+            http.requiresChannel().anyRequest().requiresSecure();
+        }
+    }
+
+    private boolean requireSsl() {
+        return env.getProperty("security.require-ssl", Boolean.class, Boolean.TRUE);
     }
 
 
