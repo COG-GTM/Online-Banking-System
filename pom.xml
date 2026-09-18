@@ -31,6 +31,16 @@
 				<artifactId>hibernate-core</artifactId>
 				<version>5.3.37.Final</version>
 			</dependency>
+			<dependency>
+				<groupId>net.bytebuddy</groupId>
+				<artifactId>byte-buddy</artifactId>
+				<version>1.11.12</version>
+			</dependency>
+			<dependency>
+				<groupId>net.bytebuddy</groupId>
+				<artifactId>byte-buddy-agent</artifactId>
+				<version>1.11.12</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
