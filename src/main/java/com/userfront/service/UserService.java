@@ -3,6 +3,7 @@ package com.userfront.service;
 import java.util.List;
 import java.util.Set;
 
+import com.userfront.domain.SignupForm;
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
 
@@ -20,6 +21,8 @@ public interface UserService {
     void save (User user);
     
     User createUser(User user, Set<UserRole> userRoles);
+
+    User createUser(SignupForm signupForm);
     
     User saveUser (User user); 
     
