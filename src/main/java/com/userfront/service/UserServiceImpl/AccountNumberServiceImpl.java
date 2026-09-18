@@ -2,10 +2,10 @@ package com.userfront.service.UserServiceImpl;
 
 import java.security.SecureRandom;
 
-import javax.persistence.PersistenceException;
+import javax.persistence.EntityExistsException;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import com.userfront.service.AccountNumberService;
@@ -30,7 +30,7 @@ public class AccountNumberServiceImpl implements AccountNumberService {
             try {
                 accountNumberReserver.reserve(accountNumber);
                 return accountNumber;
-            } catch (DataAccessException | PersistenceException e) {
+            } catch (DataIntegrityViolationException | EntityExistsException e) {
                 // The number was claimed by another account; try a different one.
             }
         }
