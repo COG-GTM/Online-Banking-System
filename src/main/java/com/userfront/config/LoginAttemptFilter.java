@@ -30,8 +30,8 @@ public class LoginAttemptFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         if (LOGIN_REQUEST.matches(request)) {
-            String key = LoginAttemptKey.of(request.getParameter("username"), request);
-            if (loginAttemptService.isBlocked(key)) {
+            if (loginAttemptService.isBlocked(request.getParameter("username"),
+                    LoginAttemptKey.clientAddress(request))) {
                 response.sendRedirect(request.getContextPath() + "/index?blocked");
                 return;
             }

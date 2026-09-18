@@ -21,11 +21,11 @@ public class AuthenticationAttemptListener {
 
     @EventListener
     public void onAuthenticationFailure(AuthenticationFailureBadCredentialsEvent event) {
-        loginAttemptService.loginFailed(LoginAttemptKey.of(String.valueOf(event.getAuthentication().getName()), request));
+        loginAttemptService.loginFailed(event.getAuthentication().getName(), LoginAttemptKey.clientAddress(request));
     }
 
     @EventListener
     public void onAuthenticationSuccess(AuthenticationSuccessEvent event) {
-        loginAttemptService.loginSucceeded(LoginAttemptKey.of(event.getAuthentication().getName(), request));
+        loginAttemptService.loginSucceeded(event.getAuthentication().getName(), LoginAttemptKey.clientAddress(request));
     }
 }
