@@ -21,3 +21,14 @@ Online banking system detail diagram
 
 ![online banking system detail diagram](https://user-images.githubusercontent.com/34470526/37703353-999023fe-2d1f-11e8-96f6-db40724c5d14.png)
 
+Database configuration
+
+The datasource credentials are not stored in the repository. Provide them through the environment (or your secrets manager) before starting the application:
+
+```
+export SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/OnlineBankingSystem
+export SPRING_DATASOURCE_USERNAME=<application db user>
+export SPRING_DATASOURCE_PASSWORD=<application db password>
+```
+
+Use a dedicated least-privilege MySQL user for the application (grants limited to the `OnlineBankingSystem` schema), not the `root` account. The application will not start if the username or password is missing.
