@@ -5,6 +5,7 @@ import java.security.Principal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -23,6 +24,8 @@ import com.userfront.util.AmountValidator;
 @Controller
 @RequestMapping("/transfer")
 public class TransferController {
+
+    private static final String CONCURRENT_UPDATE_MESSAGE = "Your account was updated by another request. Please check your balance and try again.";
 
     @Autowired
     private TransactionService transactionService;
@@ -52,6 +55,10 @@ public class TransferController {
             transactionService.betweenAccountsTransfer(transferFrom, transferTo, transferAmount, principal);
         } catch (InvalidTransactionException e) {
             model.addAttribute("error", e.getMessage());
+
+            return "betweenAccounts";
+        } catch (ObjectOptimisticLockingFailureException e) {
+            model.addAttribute("error", CONCURRENT_UPDATE_MESSAGE);
 
             return "betweenAccounts";
         }
@@ -123,15 +130,27 @@ public class TransferController {
     public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal, Model model) {
         try {
             BigDecimal transferAmount = AmountValidator.parse(amount);
-            Recipient recipient = transactionService.findRecipientByName(recipientName);
+            Recipient recipient = findOwnRecipient(recipientName, principal);
             transactionService.toSomeoneElseTransfer(recipient, accountType, transferAmount, principal);
         } catch (InvalidTransactionException e) {
             model.addAttribute("recipientList", transactionService.findRecipientList(principal));
             model.addAttribute("error", e.getMessage());
 
             return "toSomeoneElse";
+        } catch (ObjectOptimisticLockingFailureException e) {
+            model.addAttribute("recipientList", transactionService.findRecipientList(principal));
+            model.addAttribute("error", CONCURRENT_UPDATE_MESSAGE);
+
+            return "toSomeoneElse";
         }
 
         return "redirect:/userFront";
+    }
+
+    private Recipient findOwnRecipient(String recipientName, Principal principal) throws InvalidTransactionException {
+        return transactionService.findRecipientList(principal).stream()
+                .filter(candidate -> candidate.getName().equals(recipientName))
+                .findFirst()
+                .orElseThrow(() -> new InvalidTransactionException("Please select a valid recipient."));
     }
 }

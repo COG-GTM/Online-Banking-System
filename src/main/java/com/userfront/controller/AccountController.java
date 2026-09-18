@@ -5,6 +5,7 @@ import java.security.Principal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -25,6 +26,8 @@ import com.userfront.util.AmountValidator;
 @Controller
 @RequestMapping("/account")
 public class AccountController {
+
+	private static final String CONCURRENT_UPDATE_MESSAGE = "Your account was updated by another request. Please check your balance and try again.";
 	
 	@Autowired
     private UserService userService;
@@ -77,6 +80,10 @@ public class AccountController {
             model.addAttribute("error", e.getMessage());
 
             return "deposit";
+        } catch (ObjectOptimisticLockingFailureException e) {
+            model.addAttribute("error", CONCURRENT_UPDATE_MESSAGE);
+
+            return "deposit";
         }
 
         return "redirect:/userFront";
@@ -97,6 +104,10 @@ public class AccountController {
             accountService.withdraw(accountType, withdrawAmount, principal);
         } catch (InvalidTransactionException e) {
             model.addAttribute("error", e.getMessage());
+
+            return "withdraw";
+        } catch (ObjectOptimisticLockingFailureException e) {
+            model.addAttribute("error", CONCURRENT_UPDATE_MESSAGE);
 
             return "withdraw";
         }
