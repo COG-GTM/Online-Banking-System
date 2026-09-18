@@ -7,6 +7,8 @@
     <div class="row">
         <div class="col-md-6">
             <form th:action="@{/account/deposit}" method="post">
+                <div class="alert alert-danger" th:if="${amountError}" th:text="${amountError}" role="alert"></div>
+
                 <div class="form-group" >
                     <label for="accountType">1. Please select the account you would like to deposit:</label>
                     <select class="form-control" th:value="${accountType}" name="accountType" id="accountType" required="required" autofocus="autofocus">
