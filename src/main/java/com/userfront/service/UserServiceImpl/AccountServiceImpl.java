@@ -2,11 +2,9 @@ package com.userfront.service.UserServiceImpl;
 
 import java.math.BigDecimal;
 import java.security.Principal;
-import java.security.SecureRandom;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -16,17 +14,13 @@ import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.service.AccountNumberService;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
 @Service
 public class AccountServiceImpl implements AccountService {
-
-    private static final SecureRandom RANDOM = new SecureRandom();
-    private static final int ACCOUNT_NUMBER_ORIGIN = 100000000;
-    private static final int ACCOUNT_NUMBER_BOUND = 900000000;
-    private static final int MAX_ACCOUNT_NUMBER_ATTEMPTS = 20;
 
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
@@ -40,50 +34,31 @@ public class AccountServiceImpl implements AccountService {
     @Autowired
     private TransactionService transactionService;
 
+    @Autowired
+    private AccountNumberService accountNumberService;
+
     public PrimaryAccount createPrimaryAccount() {
-        for (int attempt = 0; attempt < MAX_ACCOUNT_NUMBER_ATTEMPTS; attempt++) {
-            int accountNumber = accountGen();
-            if (isAccountNumberTaken(accountNumber)) {
-                continue;
-            }
+        int accountNumber = accountNumberService.reserveAccountNumber();
 
-            PrimaryAccount primaryAccount = new PrimaryAccount();
-            primaryAccount.setAccountBalance(new BigDecimal(0.0));
-            primaryAccount.setAccountNumber(accountNumber);
+        PrimaryAccount primaryAccount = new PrimaryAccount();
+        primaryAccount.setAccountBalance(new BigDecimal(0.0));
+        primaryAccount.setAccountNumber(accountNumber);
 
-            try {
-                primaryAccountDao.save(primaryAccount);
-            } catch (DataIntegrityViolationException e) {
-                continue;
-            }
+        primaryAccountDao.save(primaryAccount);
 
-            return primaryAccountDao.findByAccountNumber(accountNumber);
-        }
-
-        throw new IllegalStateException("Unable to allocate a unique primary account number");
+        return primaryAccountDao.findByAccountNumber(accountNumber);
     }
 
     public SavingsAccount createSavingsAccount() {
-        for (int attempt = 0; attempt < MAX_ACCOUNT_NUMBER_ATTEMPTS; attempt++) {
-            int accountNumber = accountGen();
-            if (isAccountNumberTaken(accountNumber)) {
-                continue;
-            }
+        int accountNumber = accountNumberService.reserveAccountNumber();
 
-            SavingsAccount savingsAccount = new SavingsAccount();
-            savingsAccount.setAccountBalance(new BigDecimal(0.0));
-            savingsAccount.setAccountNumber(accountNumber);
+        SavingsAccount savingsAccount = new SavingsAccount();
+        savingsAccount.setAccountBalance(new BigDecimal(0.0));
+        savingsAccount.setAccountNumber(accountNumber);
 
-            try {
-                savingsAccountDao.save(savingsAccount);
-            } catch (DataIntegrityViolationException e) {
-                continue;
-            }
+        savingsAccountDao.save(savingsAccount);
 
-            return savingsAccountDao.findByAccountNumber(accountNumber);
-        }
-
-        throw new IllegalStateException("Unable to allocate a unique savings account number");
+        return savingsAccountDao.findByAccountNumber(accountNumber);
     }
     
     public void deposit(String accountType, double amount, Principal principal) {
@@ -133,15 +108,4 @@ public class AccountServiceImpl implements AccountService {
         }
     }
     
-    private int accountGen() {
-        return ACCOUNT_NUMBER_ORIGIN + RANDOM.nextInt(ACCOUNT_NUMBER_BOUND);
-    }
-
-    private boolean isAccountNumberTaken(int accountNumber) {
-        return primaryAccountDao.findByAccountNumber(accountNumber) != null
-                || savingsAccountDao.findByAccountNumber(accountNumber) != null;
-    }
-
-	
-
 }
