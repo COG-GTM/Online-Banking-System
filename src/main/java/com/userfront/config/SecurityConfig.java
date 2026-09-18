@@ -3,17 +3,21 @@ package com.userfront.config;
 import java.security.SecureRandom;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.security.authentication.DefaultAuthenticationEventPublisher;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
+import com.userfront.service.LoginAttemptService;
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
 @Configuration
@@ -26,6 +30,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
     private UserSecurityService userSecurityService;
+
+    @Autowired
+    private LoginAttemptService loginAttemptService;
+
+    @Autowired
+    private ClientIpResolver clientIpResolver;
+
+    private static final String LOGIN_PROCESSING_URL = "/index";
 
     private static final String SALT = "salt"; // Salt should be protected carefully
 
@@ -40,6 +52,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             "/js/**",
             "/images/**",
             "/",
+            "/index",
             "/about/**",
             "/contact/**",
             "/error/**/*",
@@ -57,18 +70,23 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         http
                 .csrf().disable().cors().disable()
-                .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
+                .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage(LOGIN_PROCESSING_URL).permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
                 .rememberMe();
+
+        http
+                .addFilterBefore(new LoginAttemptFilter(loginAttemptService, clientIpResolver, LOGIN_PROCESSING_URL, "/index?blocked"),
+                        UsernamePasswordAuthenticationFilter.class);
     }
 
 
 
     @Autowired
-    public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
+    public void configureGlobal(AuthenticationManagerBuilder auth, ApplicationEventPublisher eventPublisher) throws Exception {
 //    	 auth.inMemoryAuthentication().withUser("user").password("password").roles("USER"); //This is in-memory authentication
+        auth.authenticationEventPublisher(new DefaultAuthenticationEventPublisher(eventPublisher));
         auth.userDetailsService(userSecurityService).passwordEncoder(passwordEncoder());
     }
 
