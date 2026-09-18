@@ -11,5 +11,5 @@ public interface AppointmentService {
 
     Appointment findAppointment(Long id);
 
-    void confirmAppointment(Long id);
+    boolean confirmAppointment(Long id);
 }
