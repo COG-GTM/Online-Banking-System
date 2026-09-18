@@ -2,6 +2,7 @@ package com.userfront.controller;
 
 import java.security.Principal;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
+import com.userfront.service.PasswordPolicy;
 import com.userfront.service.UserService;
 
 @Controller
@@ -26,6 +28,9 @@ public class HomeController {
 	
 	@Autowired
     private RoleDao roleDao;
+
+	@Autowired
+    private PasswordPolicy passwordPolicy;
 	
 	@RequestMapping("/")
 	public String home() {
@@ -49,6 +54,15 @@ public class HomeController {
 	@RequestMapping(value = "/signup", method = RequestMethod.POST)
     public String signupPost(@ModelAttribute("user") User user,  Model model) {
 
+        boolean rejected = false;
+
+        List<String> passwordErrors = passwordPolicy.validate(user.getPassword(), user.getUsername(), user.getEmail());
+
+        if (!passwordErrors.isEmpty()) {
+            model.addAttribute("passwordErrors", passwordErrors);
+            rejected = true;
+        }
+
         if(userService.checkUserExists(user.getUsername(), user.getEmail()))  {
 
             if (userService.checkEmailExists(user.getEmail())) {
@@ -59,15 +73,21 @@ public class HomeController {
                 model.addAttribute("usernameExists", true);
             }
 
-            return "signup";
-        } else {
-        	 Set<UserRole> userRoles = new HashSet<>();
-             userRoles.add(new UserRole(user, roleDao.findByName("ROLE_USER")));
-
-            userService.createUser(user, userRoles);
-
-            return "redirect:/";
+            rejected = true;
         }
+
+        if (rejected) {
+            user.setPassword(null);
+
+            return "signup";
+        }
+
+        Set<UserRole> userRoles = new HashSet<>();
+        userRoles.add(new UserRole(user, roleDao.findByName("ROLE_USER")));
+
+        userService.createUser(user, userRoles);
+
+        return "redirect:/";
     }
 	
 	@RequestMapping("/userFront")
