@@ -213,12 +213,13 @@ if (typeof jQuery === 'undefined') {
 
     // push to event loop to allow forms to submit
     setTimeout($.proxy(function () {
-      var content = state == 'resetText'
+      var original = state == 'resetText' && data.resetText == null
+      var content  = original
         ? this.resetContent
         : (data[state] == null ? this.options[state] : data[state])
 
       if (isInput) $el.val(content)
-      else if (state == 'resetText') $el.html(content)
+      else if (original) $el.html(content)
       else $el.text(content)
 
       if (state == 'loadingText') {
