@@ -49,6 +49,18 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
+        boolean requireSsl = env.getProperty("app.security.require-ssl", Boolean.class, Boolean.TRUE);
+
+        if (requireSsl) {
+            http.requiresChannel().anyRequest().requiresSecure();
+        }
+
+        http
+                .headers()
+                .httpStrictTransportSecurity()
+                .includeSubDomains(true)
+                .maxAgeInSeconds(31536000);
+
         http
                 .authorizeRequests().
 //                antMatchers("/**").
@@ -61,7 +73,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
-                .rememberMe();
+                .rememberMe().useSecureCookie(requireSsl);
     }
 
 
