@@ -21,13 +21,12 @@ public class LoginAttemptSuccessHandler extends SavedRequestAwareAuthenticationS
 
     public LoginAttemptSuccessHandler() {
         setDefaultTargetUrl("/userFront");
-        setAlwaysUseDefaultTargetUrl(true);
     }
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
             Authentication authentication) throws IOException, ServletException {
-        loginAttemptService.loginSucceeded(authentication.getName(), LoginAttemptKey.clientAddress(request));
+        loginAttemptService.loginSucceeded(authentication.getName());
         super.onAuthenticationSuccess(request, response, authentication);
     }
 }

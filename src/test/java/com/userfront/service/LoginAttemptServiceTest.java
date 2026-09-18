@@ -76,10 +76,20 @@ public class LoginAttemptServiceTest {
     @Test
     public void successResetsTheCounter() {
         failTimes("alice", "10.0.0.1", LoginAttemptService.MAX_ATTEMPTS_PER_USERNAME - 1);
-        service.loginSucceeded("alice", "10.0.0.1");
+        service.loginSucceeded("alice");
 
         failTimes("alice", "10.0.0.1", LoginAttemptService.MAX_ATTEMPTS_PER_USERNAME - 1);
         assertFalse(service.isBlocked("alice", "10.0.0.1"));
+    }
+
+    @Test
+    public void successDoesNotResetTheAddressCounter() {
+        for (int i = 0; i < LoginAttemptService.MAX_ATTEMPTS_PER_ADDRESS - 1; i++) {
+            service.loginFailed("user" + i, "10.0.0.1");
+        }
+        service.loginSucceeded("attacker-owned");
+        service.loginFailed("one-more", "10.0.0.1");
+        assertTrue(service.isBlocked("fresh-user", "10.0.0.1"));
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.userfront.service;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -25,15 +26,7 @@ public class LoginAttemptService {
     private static final String ADDRESS_PREFIX = "a:";
 
     private final Map<String, Attempts> attempts = Collections.synchronizedMap(
-            new LinkedHashMap<String, Attempts>(256, 0.75f, true) {
-
-                private static final long serialVersionUID = 1L;
-
-                @Override
-                protected boolean removeEldestEntry(Map.Entry<String, Attempts> eldest) {
-                    return size() > MAX_TRACKED_KEYS;
-                }
-            });
+            new LinkedHashMap<String, Attempts>(256, 0.75f, true));
 
     private final Clock clock;
 
@@ -50,9 +43,12 @@ public class LoginAttemptService {
         record(addressKey(clientAddress), MAX_ATTEMPTS_PER_ADDRESS);
     }
 
-    public void loginSucceeded(String username, String clientAddress) {
+    /**
+     * Clears the username counter only. The address counter survives, so an attacker
+     * who owns one account cannot reset the spraying limit between guesses.
+     */
+    public void loginSucceeded(String username) {
         attempts.remove(usernameKey(username));
-        attempts.remove(addressKey(clientAddress));
     }
 
     public boolean isBlocked(String username, String clientAddress) {
@@ -78,6 +74,7 @@ public class LoginAttemptService {
                 current.blockedUntil = now.plusSeconds(BLOCK_DURATION_SECONDS);
             }
             purgeExpired(now);
+            evictUnblockedOverflow();
         }
     }
 
@@ -109,6 +106,22 @@ public class LoginAttemptService {
 
     private void purgeExpired(Instant now) {
         attempts.values().removeIf(entry -> entry.isDiscardable(now));
+    }
+
+    /**
+     * Keeps the map bounded by dropping the least recently used entries that are not
+     * under an active lockout, so flooding fresh keys cannot evict a blocked one.
+     */
+    private void evictUnblockedOverflow() {
+        if (attempts.size() <= MAX_TRACKED_KEYS) {
+            return;
+        }
+        Iterator<Attempts> iterator = attempts.values().iterator();
+        while (attempts.size() > MAX_TRACKED_KEYS && iterator.hasNext()) {
+            if (iterator.next().blockedUntil == null) {
+                iterator.remove();
+            }
+        }
     }
 
     private String usernameKey(String username) {
