@@ -15,6 +15,8 @@ import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.exception.InsufficientFundsException;
+import com.userfront.exception.InvalidAmountException;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
@@ -66,8 +68,14 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
-    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.deposit(accountType, Double.parseDouble(amount), principal);
+    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
+        try {
+            accountService.deposit(accountType, parseAmount(amount), principal);
+        } catch (InvalidAmountException e) {
+            model.addAttribute("error", e.getMessage());
+
+            return "deposit";
+        }
 
         return "redirect:/userFront";
     }
@@ -81,9 +89,23 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
-    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
+        try {
+            accountService.withdraw(accountType, parseAmount(amount), principal);
+        } catch (InsufficientFundsException | InvalidAmountException e) {
+            model.addAttribute("error", e.getMessage());
+
+            return "withdraw";
+        }
 
         return "redirect:/userFront";
+    }
+
+    private double parseAmount(String amount) {
+        try {
+            return Double.parseDouble(amount);
+        } catch (NumberFormatException | NullPointerException e) {
+            throw new InvalidAmountException("Amount must be a valid number");
+        }
     }
 }

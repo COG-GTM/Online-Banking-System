@@ -14,6 +14,8 @@ import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.exception.InsufficientFundsException;
+import com.userfront.exception.InvalidAmountException;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
@@ -57,6 +59,7 @@ public class AccountServiceImpl implements AccountService {
     
     public void deposit(String accountType, double amount, Principal principal) {
         User user = userService.findByUsername(principal.getName());
+        requirePositiveAmount(amount);
 
         if (accountType.equalsIgnoreCase("Primary")) {
             PrimaryAccount primaryAccount = user.getPrimaryAccount();
@@ -81,10 +84,20 @@ public class AccountServiceImpl implements AccountService {
     
     public void withdraw(String accountType, double amount, Principal principal) {
         User user = userService.findByUsername(principal.getName());
+        requirePositiveAmount(amount);
+
+        BigDecimal withdrawAmount = new BigDecimal(amount);
 
         if (accountType.equalsIgnoreCase("Primary")) {
             PrimaryAccount primaryAccount = user.getPrimaryAccount();
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+
+            if (primaryAccount.getAccountBalance().compareTo(withdrawAmount) < 0) {
+                PrimaryTransaction declinedTransaction = new PrimaryTransaction(new Date(), "Withdraw from Primary Account", "Account", "Declined", amount, primaryAccount.getAccountBalance(), primaryAccount);
+                transactionService.savePrimaryWithdrawTransaction(declinedTransaction);
+                throw new InsufficientFundsException("Insufficient funds in the Primary Account to withdraw " + amount);
+            }
+
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(withdrawAmount));
             primaryAccountDao.save(primaryAccount);
 
             Date date = new Date();
@@ -93,7 +106,14 @@ public class AccountServiceImpl implements AccountService {
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
             SavingsAccount savingsAccount = user.getSavingsAccount();
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+
+            if (savingsAccount.getAccountBalance().compareTo(withdrawAmount) < 0) {
+                SavingsTransaction declinedTransaction = new SavingsTransaction(new Date(), "Withdraw from savings Account", "Account", "Declined", amount, savingsAccount.getAccountBalance(), savingsAccount);
+                transactionService.saveSavingsWithdrawTransaction(declinedTransaction);
+                throw new InsufficientFundsException("Insufficient funds in the Savings Account to withdraw " + amount);
+            }
+
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(withdrawAmount));
             savingsAccountDao.save(savingsAccount);
 
             Date date = new Date();
@@ -102,6 +122,12 @@ public class AccountServiceImpl implements AccountService {
         }
     }
     
+    private void requirePositiveAmount(double amount) {
+        if (amount <= 0) {
+            throw new InvalidAmountException("Amount must be greater than zero");
+        }
+    }
+
     private int accountGen() {
         return ++nextAccountNumber;
     }
