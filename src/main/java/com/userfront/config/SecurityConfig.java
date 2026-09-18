@@ -1,8 +1,12 @@
 package com.userfront.config;
 
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -13,6 +17,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
@@ -56,7 +63,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 permitAll().anyRequest().authenticated();
 
         http
-                .csrf().disable().cors().disable()
+                .csrf().disable().cors()
+                .and()
                 .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
@@ -65,6 +73,31 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
 
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins:}") String[] allowedOrigins) {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+
+        List<String> origins = new ArrayList<>();
+        for (String origin : allowedOrigins) {
+            if (!origin.trim().isEmpty()) {
+                origins.add(origin.trim());
+            }
+        }
+
+        if (!origins.isEmpty()) {
+            CorsConfiguration configuration = new CorsConfiguration();
+            configuration.setAllowedOrigins(origins);
+            configuration.setAllowedMethods(Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"));
+            configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
+            configuration.setAllowCredentials(true);
+            configuration.setMaxAge(3600L);
+            source.registerCorsConfiguration("/**", configuration);
+        }
+
+        return source;
+    }
 
     @Autowired
     public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
