@@ -4,6 +4,7 @@ import java.security.Principal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
@@ -69,6 +71,9 @@ public class TransferController {
     public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
 
         User user = userService.findByUsername(principal.getName());
+        Recipient existing = transactionService.findRecipientByNameAndUser(recipient.getName(), user);
+
+        recipient.setId(existing == null ? null : existing.getId());
         recipient.setUser(user);
         transactionService.saveRecipient(recipient);
 
@@ -78,7 +83,8 @@ public class TransferController {
     @RequestMapping(value = "/recipient/edit", method = RequestMethod.GET)
     public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        User user = userService.findByUsername(principal.getName());
+        Recipient recipient = requireOwnedRecipient(recipientName, user);
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
         model.addAttribute("recipientList", recipientList);
@@ -91,7 +97,9 @@ public class TransferController {
     @Transactional
     public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName);
+        User user = userService.findByUsername(principal.getName());
+        requireOwnedRecipient(recipientName, user);
+        transactionService.deleteRecipientByNameAndUser(recipientName, user);
 
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
@@ -116,9 +124,19 @@ public class TransferController {
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
     public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = requireOwnedRecipient(recipientName, user);
         transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
 
         return "redirect:/userFront";
+    }
+
+    private Recipient requireOwnedRecipient(String recipientName, User user) {
+        Recipient recipient = transactionService.findRecipientByNameAndUser(recipientName, user);
+
+        if (recipient == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipient not found");
+        }
+
+        return recipient;
     }
 }
