@@ -29,13 +29,13 @@ The datasource credentials are read from the environment, so nothing is committe
 ```
 export SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/OnlineBankingSystem
 export SPRING_DATASOURCE_USERNAME=onlinebanking_app
-export SPRING_DATASOURCE_PASSWORD=<password>
+export SPRING_DATASOURCE_PASSWORD='your-password'
 ```
 
 Example MySQL setup:
 
 ```sql
-CREATE USER 'onlinebanking_app'@'%' IDENTIFIED BY '<password>';
+CREATE USER 'onlinebanking_app'@'%' IDENTIFIED BY 'your-password';
 GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, REFERENCES ON OnlineBankingSystem.* TO 'onlinebanking_app'@'%';
 ```
 
