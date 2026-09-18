@@ -40,22 +40,52 @@
     };
 
 
+    $.confirmDialog = function (options) {
+        var settings = $.extend({
+            title: "",
+            message: "",
+            cancelLabel: "Cancel",
+            confirmLabel: "Confirm",
+            callback: function () {}
+        }, options);
+
+        var modal = $('<div class="modal fade" tabindex="-1" role="dialog"><div class="modal-dialog" role="document"><div class="modal-content">' +
+            '<div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+            '<h4 class="modal-title"></h4></div>' +
+            '<div class="modal-body"><p></p></div>' +
+            '<div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal"></button>' +
+            '<button type="button" class="btn btn-primary"></button></div>' +
+            '</div></div></div>');
+
+        modal.find('.modal-title').text(settings.title);
+        modal.find('.modal-body p').text(settings.message);
+        modal.find('.modal-footer .btn-default').text(settings.cancelLabel);
+        modal.find('.modal-footer .btn-primary').text(settings.confirmLabel);
+
+        var confirmed = false;
+        modal.find('.modal-footer .btn-primary').on('click', function () {
+            confirmed = true;
+            modal.modal('hide');
+        });
+
+        modal.on('hidden.bs.modal', function () {
+            modal.remove();
+            settings.callback(confirmed);
+        });
+
+        $('body').append(modal);
+        modal.modal('show');
+    };
 
 }(jQuery));
 
 $(document).ready(function() {
     var confirm = function() {
-        bootbox.confirm({
+        $.confirmDialog({
             title: "Appointment Confirmation",
             message: "Do you really want to schedule this appointment?",
-            buttons: {
-                cancel: {
-                    label: '<i class="fa fa-times"></i> Cancel'
-                },
-                confirm: {
-                    label: '<i class="fa fa-check"></i> Confirm'
-                }
-            },
+            cancelLabel: "Cancel",
+            confirmLabel: "Confirm",
             callback: function (result) {
                 if (result == true) {
                     $('#appointmentForm').submit();
