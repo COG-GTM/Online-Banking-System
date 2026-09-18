@@ -16,10 +16,13 @@ public class AuthenticationSuccessListener implements ApplicationListener<Authen
     private LoginAttemptService loginAttemptService;
 
     @Autowired
+    private ClientIpResolver clientIpResolver;
+
+    @Autowired
     private HttpServletRequest request;
 
     @Override
     public void onApplicationEvent(AuthenticationSuccessEvent event) {
-        loginAttemptService.loginSucceeded(event.getAuthentication().getName(), ClientIpResolver.resolve(request));
+        loginAttemptService.loginSucceeded(event.getAuthentication().getName(), clientIpResolver.resolve(request));
     }
 }

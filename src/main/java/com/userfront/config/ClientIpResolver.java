@@ -2,20 +2,30 @@ package com.userfront.config;
 
 import javax.servlet.http.HttpServletRequest;
 
-public final class ClientIpResolver {
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+@Component
+public class ClientIpResolver {
 
     private static final String FORWARDED_FOR = "X-Forwarded-For";
 
-    private ClientIpResolver() {
-    }
+    /**
+     * Only enable when every request reaches the application through a trusted
+     * proxy that overwrites the header; a client can otherwise set it freely.
+     */
+    @Value("${security.login.trust-forwarded-for:false}")
+    private boolean trustForwardedFor;
 
-    public static String resolve(HttpServletRequest request) {
+    public String resolve(HttpServletRequest request) {
         if (request == null) {
             return "";
         }
-        String forwardedFor = request.getHeader(FORWARDED_FOR);
-        if (forwardedFor != null && !forwardedFor.trim().isEmpty()) {
-            return forwardedFor.split(",")[0].trim();
+        if (trustForwardedFor) {
+            String forwardedFor = request.getHeader(FORWARDED_FOR);
+            if (forwardedFor != null && !forwardedFor.trim().isEmpty()) {
+                return forwardedFor.split(",")[0].trim();
+            }
         }
         return request.getRemoteAddr();
     }

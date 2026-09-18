@@ -32,6 +32,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     private LoginAttemptService loginAttemptService;
 
+    @Autowired
+    private ClientIpResolver clientIpResolver;
+
     private static final String LOGIN_PROCESSING_URL = "/index";
 
     private static final String SALT = "salt"; // Salt should be protected carefully
@@ -71,7 +74,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .rememberMe();
 
         http
-                .addFilterBefore(new LoginAttemptFilter(loginAttemptService, LOGIN_PROCESSING_URL, "/index?blocked"),
+                .addFilterBefore(new LoginAttemptFilter(loginAttemptService, clientIpResolver, LOGIN_PROCESSING_URL, "/index?blocked"),
                         UsernamePasswordAuthenticationFilter.class);
     }
 

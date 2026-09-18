@@ -16,11 +16,14 @@ import com.userfront.service.LoginAttemptService;
 public class LoginAttemptFilter extends OncePerRequestFilter {
 
     private final LoginAttemptService loginAttemptService;
+    private final ClientIpResolver clientIpResolver;
     private final RequestMatcher loginRequestMatcher;
     private final String blockedUrl;
 
-    public LoginAttemptFilter(LoginAttemptService loginAttemptService, String loginProcessingUrl, String blockedUrl) {
+    public LoginAttemptFilter(LoginAttemptService loginAttemptService, ClientIpResolver clientIpResolver,
+            String loginProcessingUrl, String blockedUrl) {
         this.loginAttemptService = loginAttemptService;
+        this.clientIpResolver = clientIpResolver;
         this.loginRequestMatcher = new AntPathRequestMatcher(loginProcessingUrl, "POST");
         this.blockedUrl = blockedUrl;
     }
@@ -29,7 +32,7 @@ public class LoginAttemptFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         if (loginRequestMatcher.matches(request)
-                && loginAttemptService.isBlocked(request.getParameter("username"), ClientIpResolver.resolve(request))) {
+                && loginAttemptService.isBlocked(request.getParameter("username"), clientIpResolver.resolve(request))) {
             response.sendRedirect(request.getContextPath() + blockedUrl);
             return;
         }
