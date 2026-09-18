@@ -6,7 +6,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +30,7 @@ public class UserServiceImpl implements UserService{
     private RoleDao roleDao;
 
     @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+    private PasswordEncoder passwordEncoder;
     
     @Autowired
     private AccountService accountService;
@@ -73,7 +73,7 @@ public class UserServiceImpl implements UserService{
     }
     
     public boolean checkUserExists(String username, String email){
-        if (checkUsernameExists(username) || checkEmailExists(username)) {
+        if (checkUsernameExists(username) || checkEmailExists(email)) {
             return true;
         } else {
             return false;
@@ -113,8 +113,7 @@ public class UserServiceImpl implements UserService{
     public void disableUser (String username) {
         User user = findByUsername(username);
         user.setEnabled(false);
-        System.out.println(user.isEnabled());
         userDao.save(user);
-        System.out.println(username + " is disabled.");
+        LOG.info("User {} is disabled", username);
     }
 }

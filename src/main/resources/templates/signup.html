@@ -14,7 +14,13 @@
             </div>
         </div>
         <div class="main-login main-center">
-            <form class="form-horizontal" method="post" th:action="@{/signup}">
+            <form class="form-horizontal" method="post" th:action="@{/signup}" th:object="${user}">
+
+                <div class="bg-danger" th:if="${#fields.hasAnyErrors()}">
+                    <ul>
+                        <li th:each="err : ${#fields.allErrors()}" th:text="${err}">error</li>
+                    </ul>
+                </div>
 
                 <div class="form-group">
                     <label for="firstName" class="cols-sm-2 control-label">First Name</label>
@@ -71,7 +77,7 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-lock fa-lg" aria-hidden="true"></i></span>
-                            <input type="password" class="form-control" th:value="${user.password}" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required"/>
+                            <input type="password" class="form-control" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required"/>
                         </div>
                         <div class="checkbox">
                             <label>
