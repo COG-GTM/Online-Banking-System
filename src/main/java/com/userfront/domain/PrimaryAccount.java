@@ -10,6 +10,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
+import javax.persistence.Version;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -21,6 +22,9 @@ public class PrimaryAccount {
     private Long id;
     private int accountNumber;
     private BigDecimal accountBalance;
+
+    @Version
+    private Long version;
 
     @OneToMany(mappedBy = "primaryAccount", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
@@ -48,6 +52,10 @@ public class PrimaryAccount {
 
     public void setAccountBalance(BigDecimal accountBalance) {
         this.accountBalance = accountBalance;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public List<PrimaryTransaction> getPrimaryTransactionList() {

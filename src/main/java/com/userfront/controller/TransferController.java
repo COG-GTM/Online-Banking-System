@@ -1,5 +1,6 @@
 package com.userfront.controller;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
 
@@ -12,12 +13,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
-import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.exception.InvalidTransactionException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.AmountValidator;
 
 @Controller
 @RequestMapping("/transfer")
@@ -43,12 +44,17 @@ public class TransferController {
             @ModelAttribute("transferFrom") String transferFrom,
             @ModelAttribute("transferTo") String transferTo,
             @ModelAttribute("amount") String amount,
-            Principal principal
-    ) throws Exception {
-        User user = userService.findByUsername(principal.getName());
-        PrimaryAccount primaryAccount = user.getPrimaryAccount();
-        SavingsAccount savingsAccount = user.getSavingsAccount();
-        transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
+            Principal principal,
+            Model model
+    ) {
+        try {
+            BigDecimal transferAmount = AmountValidator.parse(amount);
+            transactionService.betweenAccountsTransfer(transferFrom, transferTo, transferAmount, principal);
+        } catch (InvalidTransactionException e) {
+            model.addAttribute("error", e.getMessage());
+
+            return "betweenAccounts";
+        }
 
         return "redirect:/userFront";
     }
@@ -114,10 +120,17 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
-    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
-        User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
-        transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
+    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal, Model model) {
+        try {
+            BigDecimal transferAmount = AmountValidator.parse(amount);
+            Recipient recipient = transactionService.findRecipientByName(recipientName);
+            transactionService.toSomeoneElseTransfer(recipient, accountType, transferAmount, principal);
+        } catch (InvalidTransactionException e) {
+            model.addAttribute("recipientList", transactionService.findRecipientList(principal));
+            model.addAttribute("error", e.getMessage());
+
+            return "toSomeoneElse";
+        }
 
         return "redirect:/userFront";
     }
