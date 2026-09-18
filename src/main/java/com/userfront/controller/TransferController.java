@@ -1,9 +1,11 @@
 package com.userfront.controller;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -12,16 +14,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
-import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.exception.InsufficientFundsException;
+import com.userfront.exception.InvalidAmountException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.AmountParser;
 
 @Controller
 @RequestMapping("/transfer")
 public class TransferController {
+
+    private static final String CONCURRENT_UPDATE_ERROR = "This account was updated by another transaction. Please try again.";
 
     @Autowired
     private TransactionService transactionService;
@@ -43,12 +48,26 @@ public class TransferController {
             @ModelAttribute("transferFrom") String transferFrom,
             @ModelAttribute("transferTo") String transferTo,
             @ModelAttribute("amount") String amount,
+            Model model,
             Principal principal
     ) throws Exception {
-        User user = userService.findByUsername(principal.getName());
-        PrimaryAccount primaryAccount = user.getPrimaryAccount();
-        SavingsAccount savingsAccount = user.getSavingsAccount();
-        transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
+        BigDecimal transferAmount;
+        try {
+            transferAmount = AmountParser.parse(amount);
+        } catch (InvalidAmountException e) {
+            model.addAttribute("error", e.getMessage());
+            return "betweenAccounts";
+        }
+
+        try {
+            transactionService.betweenAccountsTransfer(transferFrom, transferTo, transferAmount, principal.getName());
+        } catch (InsufficientFundsException e) {
+            model.addAttribute("error", e.getMessage());
+            return "betweenAccounts";
+        } catch (ObjectOptimisticLockingFailureException e) {
+            model.addAttribute("error", CONCURRENT_UPDATE_ERROR);
+            return "betweenAccounts";
+        }
 
         return "redirect:/userFront";
     }
@@ -114,11 +133,32 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
-    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
-        User user = userService.findByUsername(principal.getName());
+    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Model model, Principal principal) {
+        BigDecimal transferAmount;
+        try {
+            transferAmount = AmountParser.parse(amount);
+        } catch (InvalidAmountException e) {
+            return toSomeoneElseError(e.getMessage(), model, principal);
+        }
+
         Recipient recipient = transactionService.findRecipientByName(recipientName);
-        transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
+
+        try {
+            transactionService.toSomeoneElseTransfer(recipient, accountType, transferAmount, principal.getName());
+        } catch (InsufficientFundsException e) {
+            return toSomeoneElseError(e.getMessage(), model, principal);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            return toSomeoneElseError(CONCURRENT_UPDATE_ERROR, model, principal);
+        }
 
         return "redirect:/userFront";
+    }
+
+    private String toSomeoneElseError(String message, Model model, Principal principal) {
+        model.addAttribute("recipientList", transactionService.findRecipientList(principal));
+        model.addAttribute("accountType", "");
+        model.addAttribute("error", message);
+
+        return "toSomeoneElse";
     }
 }

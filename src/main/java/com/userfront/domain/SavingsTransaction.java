@@ -3,6 +3,7 @@ package com.userfront.domain;
 import java.math.BigDecimal;
 import java.util.Date;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -20,7 +21,11 @@ public class SavingsTransaction {
     private String description;
     private String type;
     private String status;
-    private double amount;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal amount;
+
+    @Column(precision = 19, scale = 2)
     private BigDecimal availableBalance;
 
     @ManyToOne
@@ -29,7 +34,7 @@ public class SavingsTransaction {
 
     public SavingsTransaction() {}
 
-    public SavingsTransaction(Date date, String description, String type, String status, double amount, BigDecimal availableBalance, SavingsAccount savingsAccount) {
+    public SavingsTransaction(Date date, String description, String type, String status, BigDecimal amount, BigDecimal availableBalance, SavingsAccount savingsAccount) {
         this.date = date;
         this.description = description;
         this.type = type;
@@ -79,11 +84,11 @@ public class SavingsTransaction {
         this.status = status;
     }
 
-    public double getAmount() {
+    public BigDecimal getAmount() {
         return amount;
     }
 
-    public void setAmount(double amount) {
+    public void setAmount(BigDecimal amount) {
         this.amount = amount;
     }
 
