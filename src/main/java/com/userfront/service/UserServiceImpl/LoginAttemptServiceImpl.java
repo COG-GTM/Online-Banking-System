@@ -15,6 +15,8 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
 
     private final Map<String, Attempts> attemptsByKey = new ConcurrentHashMap<>();
 
+    private final Object admissionLock = new Object();
+
     @Value("${security.login.max-attempts:5}")
     private int maxAttempts;
 
@@ -27,15 +29,22 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
     @Override
     public void loginFailed(String username, String clientIp) {
         for (String key : keys(username, clientIp)) {
-            makeRoomFor(key);
-            attemptsByKey.compute(key, (k, current) -> {
-                long now = System.currentTimeMillis();
-                if (current == null || current.isExpired(lockoutMillis(), now)) {
-                    return new Attempts(1, now);
-                }
-                return new Attempts(current.count + 1, now);
-            });
+            if (attemptsByKey.computeIfPresent(key, this::increment) != null) {
+                continue;
+            }
+            synchronized (admissionLock) {
+                makeRoomFor(key);
+                attemptsByKey.compute(key, this::increment);
+            }
         }
+    }
+
+    private Attempts increment(String key, Attempts current) {
+        long now = System.currentTimeMillis();
+        if (current == null || current.isExpired(lockoutMillis(), now)) {
+            return new Attempts(1, now);
+        }
+        return new Attempts(current.count + 1, now);
     }
 
     @Override
@@ -70,7 +79,8 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
     /**
      * Keeps the tracking map bounded so that failures against an endless stream of
      * usernames cannot grow it without limit: expired entries go first, then the
-     * least recently failed one.
+     * least recently failed one. Callers hold {@code admissionLock} so that
+     * eviction and insertion of a new key happen as one admission.
      */
     private void makeRoomFor(String key) {
         if (attemptsByKey.size() < maxTrackedKeys || attemptsByKey.containsKey(key)) {
