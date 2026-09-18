@@ -1,10 +1,13 @@
 package com.userfront.service.UserServiceImpl;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.AccountNumberAllocationDao;
 import com.userfront.dao.PrimaryAccountDao;
@@ -24,26 +27,39 @@ public class AccountNumberBackfill implements ApplicationRunner {
     private AccountNumberAllocationDao accountNumberAllocationDao;
 
     @Autowired
+    private AccountNumberAllocator accountNumberAllocator;
+
+    @Autowired
     private PrimaryAccountDao primaryAccountDao;
 
     @Autowired
     private SavingsAccountDao savingsAccountDao;
 
     @Override
-    @Transactional
     public void run(ApplicationArguments args) {
+        Set<Integer> reserved = new HashSet<>();
+        for (AccountNumberAllocation allocation : accountNumberAllocationDao.findAll()) {
+            reserved.add(allocation.getAccountNumber());
+        }
+
         for (PrimaryAccount primaryAccount : primaryAccountDao.findAll()) {
-            reserve(primaryAccount.getAccountNumber());
+            reserve(primaryAccount.getAccountNumber(), reserved);
         }
 
         for (SavingsAccount savingsAccount : savingsAccountDao.findAll()) {
-            reserve(savingsAccount.getAccountNumber());
+            reserve(savingsAccount.getAccountNumber(), reserved);
         }
     }
 
-    private void reserve(int accountNumber) {
-        if (!accountNumberAllocationDao.existsById(accountNumber)) {
-            accountNumberAllocationDao.save(new AccountNumberAllocation(accountNumber));
+    private void reserve(int accountNumber, Set<Integer> reserved) {
+        if (!reserved.add(accountNumber)) {
+            return;
+        }
+
+        try {
+            accountNumberAllocator.allocate(accountNumber);
+        } catch (DataIntegrityViolationException e) {
+            // Another instance reserved the same number; nothing left to do.
         }
     }
 }
