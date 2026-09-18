@@ -9,8 +9,6 @@
             <h2 class="title">My Profile</h2>
             <hr/>
             <form method="post" th:action="@{/user/profile}">
-                <input type="hidden" name="id" th:value="${user.userId}"/>
-
                 <div class="form-group">
                     <label for="firstName">First Name</label>
                     <div class="cols-sm-10">
@@ -65,9 +63,8 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-users fa" aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" th:value="${user.username}" id="username"
-                                   name="username" roleId="username" placeholder="Enter your Username"
-                                   required="required"/>
+                            <input type="text" class="form-control" th:value="${#authentication.name}" id="username"
+                                   roleId="username" disabled="disabled"/>
                         </div>
                     </div>
                 </div>

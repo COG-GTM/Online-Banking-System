@@ -3,12 +3,12 @@ package com.userfront.domain;
 import java.math.BigDecimal;
 import java.util.Date;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 @Entity
 public class PrimaryTransaction {
@@ -20,13 +20,13 @@ public class PrimaryTransaction {
     private String description;
     private String type;
     private String status;
-    private double amount;
+    private BigDecimal amount;
     private BigDecimal availableBalance;
 
     public PrimaryTransaction() {}
 
 
-    public PrimaryTransaction(Date date, String description, String type, String status, double amount, BigDecimal availableBalance, PrimaryAccount primaryAccount) {
+    public PrimaryTransaction(Date date, String description, String type, String status, BigDecimal amount, BigDecimal availableBalance, PrimaryAccount primaryAccount) {
         this.date = date;
         this.description = description;
         this.type = type;
@@ -80,11 +80,11 @@ public class PrimaryTransaction {
         this.status = status;
     }
 
-    public double getAmount() {
+    public BigDecimal getAmount() {
         return amount;
     }
 
-    public void setAmount(double amount) {
+    public void setAmount(BigDecimal amount) {
         this.amount = amount;
     }
 

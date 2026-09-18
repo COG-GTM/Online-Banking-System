@@ -7,6 +7,7 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -17,6 +18,9 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.UserService;
+import com.userfront.web.SignupForm;
+
+import jakarta.validation.Valid;
 
 @Controller
 public class HomeController {
@@ -39,30 +43,40 @@ public class HomeController {
 	
 	@RequestMapping(value = "/signup", method = RequestMethod.GET)
     public String signup(Model model) {
-        User user = new User();
-
-        model.addAttribute("user", user);
+        model.addAttribute("user", new SignupForm());
 
         return "signup";
     }
 	
 	@RequestMapping(value = "/signup", method = RequestMethod.POST)
-    public String signupPost(@ModelAttribute("user") User user,  Model model) {
+    public String signupPost(@ModelAttribute("user") @Valid SignupForm form, BindingResult bindingResult, Model model) {
 
-        if(userService.checkUserExists(user.getUsername(), user.getEmail()))  {
+        if (bindingResult.hasErrors()) {
+            return "signup";
+        }
 
-            if (userService.checkEmailExists(user.getEmail())) {
+        if (userService.checkUserExists(form.getUsername(), form.getEmail()))  {
+
+            if (userService.checkEmailExists(form.getEmail())) {
                 model.addAttribute("emailExists", true);
             }
 
-            if (userService.checkUsernameExists(user.getUsername())) {
+            if (userService.checkUsernameExists(form.getUsername())) {
                 model.addAttribute("usernameExists", true);
             }
 
             return "signup";
         } else {
-        	 Set<UserRole> userRoles = new HashSet<>();
-             userRoles.add(new UserRole(user, roleDao.findByName("ROLE_USER")));
+            User user = new User();
+            user.setUsername(form.getUsername());
+            user.setPassword(form.getPassword());
+            user.setFirstName(form.getFirstName());
+            user.setLastName(form.getLastName());
+            user.setEmail(form.getEmail());
+            user.setPhone(form.getPhone());
+
+            Set<UserRole> userRoles = new HashSet<>();
+            userRoles.add(new UserRole(user, roleDao.findByName("ROLE_USER")));
 
             userService.createUser(user, userRoles);
 

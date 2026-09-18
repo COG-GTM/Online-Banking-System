@@ -1,6 +1,7 @@
 package com.userfront.service.UserServiceImpl;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -24,11 +25,12 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     public Appointment findAppointment(Long id) {
-        return null;
+        return appointmentDao.findById(id).orElse(null);
     }
 
     public void confirmAppointment(Long id) {
-        Appointment appointment = findAppointment(id);
+        Appointment appointment = appointmentDao.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("No appointment found with id " + id));
         appointment.setConfirmed(true);
         appointmentDao.save(appointment);
     }
