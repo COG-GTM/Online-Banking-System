@@ -27,6 +27,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     private UserSecurityService userSecurityService;
 
+    @Autowired
+    private LoginAttemptFailureHandler loginAttemptFailureHandler;
+
+    @Autowired
+    private LoginAttemptSuccessHandler loginAttemptSuccessHandler;
+
     private static final String SALT = "salt"; // Salt should be protected carefully
 
     @Bean
@@ -57,7 +63,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         http
                 .csrf().disable().cors().disable()
-                .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
+                .formLogin().failureHandler(loginAttemptFailureHandler).successHandler(loginAttemptSuccessHandler).loginPage("/index").permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
