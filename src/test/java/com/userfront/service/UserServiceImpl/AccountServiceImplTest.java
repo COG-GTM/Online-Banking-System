@@ -74,6 +74,19 @@ public class AccountServiceImplTest {
     }
 
     @Test
+    public void withdrawRejectsNegativeAmountInsteadOfCreditingTheAccount() throws InsufficientFundsException {
+        try {
+            accountService.withdraw("Primary", new BigDecimal("-10.00"), principal);
+            fail("Expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+
+        assertEquals(new BigDecimal("100.00"), primaryAccount.getAccountBalance());
+        verify(primaryAccountDao, never()).save(primaryAccount);
+    }
+
+    @Test
     public void withdrawRejectsAmountAboveBalanceWithoutTouchingTheBalance() {
         try {
             accountService.withdraw("Primary", new BigDecimal("100.01"), principal);

@@ -24,6 +24,7 @@ import com.userfront.domain.User;
 import com.userfront.exception.InsufficientFundsException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.AmountParser;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -79,6 +80,7 @@ public class TransactionServiceImpl implements TransactionService {
     
     @Transactional
     public void betweenAccountsTransfer(String transferFrom, String transferTo, BigDecimal amount, String username) throws Exception {
+        AmountParser.requireValidAmount(amount);
         User user = userService.findByUsername(username);
         PrimaryAccount primaryAccount = user.getPrimaryAccount();
         SavingsAccount savingsAccount = user.getSavingsAccount();
@@ -133,6 +135,7 @@ public class TransactionServiceImpl implements TransactionService {
     
     @Transactional
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, BigDecimal amount, String username) throws InsufficientFundsException {
+        AmountParser.requireValidAmount(amount);
         User user = userService.findByUsername(username);
 
         if (accountType.equalsIgnoreCase("Primary")) {

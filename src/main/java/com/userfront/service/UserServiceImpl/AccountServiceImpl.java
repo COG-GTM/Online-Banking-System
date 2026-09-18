@@ -19,6 +19,7 @@ import com.userfront.exception.InsufficientFundsException;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.AmountParser;
 
 @Service
 public class AccountServiceImpl implements AccountService {
@@ -59,6 +60,7 @@ public class AccountServiceImpl implements AccountService {
     
     @Transactional
     public void deposit(String accountType, BigDecimal amount, Principal principal) {
+        AmountParser.requireValidAmount(amount);
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {
@@ -84,6 +86,7 @@ public class AccountServiceImpl implements AccountService {
     
     @Transactional
     public void withdraw(String accountType, BigDecimal amount, Principal principal) throws InsufficientFundsException {
+        AmountParser.requireValidAmount(amount);
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {

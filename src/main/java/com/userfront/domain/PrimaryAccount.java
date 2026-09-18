@@ -22,6 +22,8 @@ public class PrimaryAccount {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
     private int accountNumber;
+
+    @Column(precision = 19, scale = 2)
     private BigDecimal accountBalance;
 
     @Version
