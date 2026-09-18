@@ -10,6 +10,9 @@
                 <div class="bg-danger" th:if="${param.error}">
                     Invalid username and secret.
                 </div>
+                <div class="bg-danger" th:if="${param.locked}">
+                    Too many failed sign in attempts. Try again later.
+                </div>
                 <div class="bg-danger" th:if="${param.logout}">
                     You have been logged out.
                 </div>
