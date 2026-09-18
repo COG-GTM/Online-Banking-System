@@ -2,6 +2,9 @@
  * Bootstrap v3.3.7 (http://getbootstrap.com)
  * Copyright 2011-2016 Twitter, Inc.
  * Licensed under the MIT license
+ *
+ * Local modification: the button plugin renders *Text state values as plain
+ * text instead of HTML.
  */
 
 if (typeof jQuery === 'undefined') {
@@ -201,7 +204,7 @@ if (typeof jQuery === 'undefined') {
   Button.prototype.setState = function (state) {
     var d    = 'disabled'
     var $el  = this.$element
-    var val  = $el.is('input') ? 'val' : 'html'
+    var val  = $el.is('input') ? 'val' : 'text'
     var data = $el.data()
 
     state += 'Text'
