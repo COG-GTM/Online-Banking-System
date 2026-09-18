@@ -14,6 +14,7 @@ import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.exception.InsufficientFundsException;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
@@ -79,29 +80,47 @@ public class AccountServiceImpl implements AccountService {
         }
     }
     
-    public void withdraw(String accountType, double amount, Principal principal) {
+    public void withdraw(String accountType, double amount, Principal principal) throws InsufficientFundsException {
         User user = userService.findByUsername(principal.getName());
+        BigDecimal withdrawAmount = new BigDecimal(amount);
 
         if (accountType.equalsIgnoreCase("Primary")) {
             PrimaryAccount primaryAccount = user.getPrimaryAccount();
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            primaryAccountDao.save(primaryAccount);
-
             Date date = new Date();
+
+            if (!isDebitAllowed(primaryAccount.getAccountBalance(), withdrawAmount)) {
+                PrimaryTransaction declinedTransaction = new PrimaryTransaction(date, "Withdraw from Primary Account", "Account", "Declined", amount, primaryAccount.getAccountBalance(), primaryAccount);
+                transactionService.savePrimaryWithdrawTransaction(declinedTransaction);
+                throw new InsufficientFundsException("Withdrawal declined: the Primary Account balance does not cover this amount.");
+            }
+
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(withdrawAmount));
+            primaryAccountDao.save(primaryAccount);
 
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Withdraw from Primary Account", "Account", "Finished", amount, primaryAccount.getAccountBalance(), primaryAccount);
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
             SavingsAccount savingsAccount = user.getSavingsAccount();
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            Date date = new Date();
+
+            if (!isDebitAllowed(savingsAccount.getAccountBalance(), withdrawAmount)) {
+                SavingsTransaction declinedTransaction = new SavingsTransaction(date, "Withdraw from savings Account", "Account", "Declined", amount, savingsAccount.getAccountBalance(), savingsAccount);
+                transactionService.saveSavingsWithdrawTransaction(declinedTransaction);
+                throw new InsufficientFundsException("Withdrawal declined: the Savings Account balance does not cover this amount.");
+            }
+
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(withdrawAmount));
             savingsAccountDao.save(savingsAccount);
 
-            Date date = new Date();
             SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Withdraw from savings Account", "Account", "Finished", amount, savingsAccount.getAccountBalance(), savingsAccount);
             transactionService.saveSavingsWithdrawTransaction(savingsTransaction);
         }
     }
     
+    private static boolean isDebitAllowed(BigDecimal balance, BigDecimal amount) {
+        return amount.signum() > 0 && balance.compareTo(amount) >= 0;
+    }
+
     private int accountGen() {
         return ++nextAccountNumber;
     }

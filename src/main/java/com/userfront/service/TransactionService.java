@@ -8,6 +8,7 @@ import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
+import com.userfront.exception.InsufficientFundsException;
 
 public interface TransactionService {
 	List<PrimaryTransaction> findPrimaryTransactionList(String username);
@@ -31,5 +32,5 @@ public interface TransactionService {
 
     void deleteRecipientByName(String recipientName);
     
-    void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount);
+    void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws InsufficientFundsException;
 }
