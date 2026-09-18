@@ -4,6 +4,24 @@ About
 This is a project for practicing Spring + Thymeleaf. The idea was to build online banking system.
 
 It was made using Spring Boot, Spring Security, Thymeleaf, Spring Data JPA, Spring Data REST, JavaScript, JQuery. Database is in memory sql Workbench.
+
+Configuration
+
+The datasource credentials are read from the environment, so nothing secret is stored in the repository. Create a dedicated, least-privilege MySQL user for the application (not root) and export:
+
+    export DB_URL=jdbc:mysql://localhost:3306/OnlineBankingSystem   # optional, this is the default
+    export DB_USERNAME=obs_app
+    export DB_PASSWORD=<password from your secrets manager>
+
+Example of a least-privilege user:
+
+    CREATE USER 'obs_app'@'%' IDENTIFIED BY '<password>';
+    GRANT SELECT, INSERT, UPDATE, DELETE ON OnlineBankingSystem.* TO 'obs_app'@'%';
+
+Local development also uses `spring.jpa.hibernate.ddl-auto = update`, which additionally needs CREATE, ALTER, INDEX and REFERENCES on that schema. In production, manage the schema separately and keep the application user limited to DML.
+
+The application fails to start when DB_USERNAME or DB_PASSWORD is unset.
+
 Online Banking Requirements
 
 About
