@@ -21,6 +21,62 @@
         })
     };
 
+    $.confirmDialog = function (options) {
+        var settings = $.extend({
+            title: "Confirm",
+            message: "",
+            cancelLabel: "Cancel",
+            cancelIcon: "fa fa-times",
+            confirmLabel: "Confirm",
+            confirmIcon: "fa fa-check",
+            callback: function () {}
+        }, options);
+
+        var button = function (label, iconClass, cssClass) {
+            var $button = $('<button type="button"></button>').addClass('btn').addClass(cssClass);
+            if (iconClass) {
+                $button.append($('<i></i>').addClass(iconClass)).append(document.createTextNode(' '));
+            }
+            return $button.append(document.createTextNode(label));
+        };
+
+        var $cancel = button(settings.cancelLabel, settings.cancelIcon, 'btn-default');
+        var $confirm = button(settings.confirmLabel, settings.confirmIcon, 'btn-primary');
+
+        var $modal = $('<div class="modal fade" tabindex="-1" role="dialog"></div>').append(
+            $('<div class="modal-dialog" role="document"></div>').append(
+                $('<div class="modal-content"></div>').append(
+                    $('<div class="modal-header"></div>').append(
+                        $('<h4 class="modal-title"></h4>').text(settings.title)
+                    ),
+                    $('<div class="modal-body"></div>').append(
+                        $('<p></p>').text(settings.message)
+                    ),
+                    $('<div class="modal-footer"></div>').append($cancel, $confirm)
+                )
+            )
+        );
+
+        var result = false;
+
+        $cancel.on('click', function () {
+            $modal.modal('hide');
+        });
+
+        $confirm.on('click', function () {
+            result = true;
+            $modal.modal('hide');
+        });
+
+        $modal.on('hidden.bs.modal', function () {
+            $modal.remove();
+            settings.callback(result);
+        });
+
+        $('body').append($modal);
+        $modal.modal('show');
+    };
+
     $.transferDisplay = function () {
         $("#transferFrom").change(function() {
             if ($("#transferFrom").val() == 'Primary') {
@@ -45,17 +101,11 @@
 
 $(document).ready(function() {
     var confirm = function() {
-        bootbox.confirm({
+        $.confirmDialog({
             title: "Appointment Confirmation",
             message: "Do you really want to schedule this appointment?",
-            buttons: {
-                cancel: {
-                    label: '<i class="fa fa-times"></i> Cancel'
-                },
-                confirm: {
-                    label: '<i class="fa fa-check"></i> Confirm'
-                }
-            },
+            cancelLabel: "Cancel",
+            confirmLabel: "Confirm",
             callback: function (result) {
                 if (result == true) {
                     $('#appointmentForm').submit();
