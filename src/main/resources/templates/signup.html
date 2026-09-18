@@ -14,15 +14,16 @@
             </div>
         </div>
         <div class="main-login main-center">
-            <form class="form-horizontal" method="post" th:action="@{/signup}">
+            <form class="form-horizontal" method="post" th:action="@{/signup}" th:object="${signupForm}">
 
                 <div class="form-group">
                     <label for="firstName" class="cols-sm-2 control-label">First Name</label>
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-user fa" aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" th:value="${user.firstName}" id="firstName" name="firstName" roleId="firstname"  placeholder="Enter your first name" required="required"/>
+                            <input type="text" class="form-control" th:field="*{firstName}" id="firstName" roleId="firstname"  placeholder="Enter your first name" required="required"/>
                         </div>
+                        <span class="bg-danger" th:if="${#fields.hasErrors('firstName')}" th:errors="*{firstName}"></span>
                     </div>
                 </div>
 
@@ -31,8 +32,9 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-user fa" aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" th:value="${user.lastName}" id="lastName" name="lastName" roleId="lastName"  placeholder="Enter your last name" required="required"/>
+                            <input type="text" class="form-control" th:field="*{lastName}" id="lastName" roleId="lastName"  placeholder="Enter your last name" required="required"/>
                         </div>
+                        <span class="bg-danger" th:if="${#fields.hasErrors('lastName')}" th:errors="*{lastName}"></span>
                     </div>
                 </div>
 
@@ -41,8 +43,9 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-phone fa" aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" th:value="${user.phone}" id="phone" name="phone" roleId="phone"  placeholder="xxx-xxx-xxxx" required="required"/>
+                            <input type="text" class="form-control" th:field="*{phone}" id="phone" roleId="phone"  placeholder="xxx-xxx-xxxx" required="required"/>
                         </div>
+                        <span class="bg-danger" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}"></span>
                     </div>
                 </div>
 
@@ -51,8 +54,9 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-envelope fa" aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" th:value="${user.email}" id="email" name="email" roleId="email"  placeholder="Enter your Email" required="required"/>
+                            <input type="text" class="form-control" th:field="*{email}" id="email" roleId="email"  placeholder="Enter your Email" required="required"/>
                         </div>
+                        <span class="bg-danger" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></span>
                     </div>
                 </div>
 
@@ -61,8 +65,9 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-users fa" aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" th:value="${user.username}" id="username" name="username" roleId="username"  placeholder="Enter your Username" required="required"/>
+                            <input type="text" class="form-control" th:field="*{username}" id="username" roleId="username"  placeholder="Enter your Username" required="required"/>
                         </div>
+                        <span class="bg-danger" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></span>
                     </div>
                 </div>
 
@@ -71,8 +76,9 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-lock fa-lg" aria-hidden="true"></i></span>
-                            <input type="password" class="form-control" th:value="${user.password}" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required"/>
+                            <input type="password" class="form-control" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required" minlength="12"/>
                         </div>
+                        <span class="bg-danger" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></span>
                         <div class="checkbox">
                             <label>
                                 <input id="showPassword" type="checkbox" />Show Password
