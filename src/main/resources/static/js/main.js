@@ -21,6 +21,44 @@
         })
     };
 
+    $.confirmDialog = function (options) {
+        var settings = $.extend({
+            title: "Confirm",
+            message: "",
+            cancelLabel: "Cancel",
+            confirmLabel: "Confirm",
+            callback: function () {}
+        }, options);
+
+        var modal = $('<div class="modal fade" tabindex="-1" role="dialog"></div>');
+        var dialog = $('<div class="modal-dialog" role="document"></div>').appendTo(modal);
+        var content = $('<div class="modal-content"></div>').appendTo(dialog);
+
+        var header = $('<div class="modal-header"></div>').appendTo(content);
+        $('<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>').appendTo(header);
+        $('<h4 class="modal-title"></h4>').text(settings.title).appendTo(header);
+
+        $('<div class="modal-body"></div>').append($('<p></p>').text(settings.message)).appendTo(content);
+
+        var footer = $('<div class="modal-footer"></div>').appendTo(content);
+        $('<button type="button" class="btn btn-default" data-dismiss="modal"></button>')
+            .text(settings.cancelLabel).appendTo(footer);
+        var confirm = $('<button type="button" class="btn btn-primary"></button>')
+            .text(settings.confirmLabel).appendTo(footer);
+
+        var confirmed = false;
+        confirm.on('click', function () {
+            confirmed = true;
+            modal.modal('hide');
+        });
+        modal.on('hidden.bs.modal', function () {
+            modal.remove();
+            settings.callback(confirmed);
+        });
+
+        modal.appendTo('body').modal('show');
+    };
+
     $.transferDisplay = function () {
         $("#transferFrom").change(function() {
             if ($("#transferFrom").val() == 'Primary') {
@@ -45,17 +83,11 @@
 
 $(document).ready(function() {
     var confirm = function() {
-        bootbox.confirm({
+        $.confirmDialog({
             title: "Appointment Confirmation",
             message: "Do you really want to schedule this appointment?",
-            buttons: {
-                cancel: {
-                    label: '<i class="fa fa-times"></i> Cancel'
-                },
-                confirm: {
-                    label: '<i class="fa fa-check"></i> Confirm'
-                }
-            },
+            cancelLabel: "Cancel",
+            confirmLabel: "Confirm",
             callback: function (result) {
                 if (result == true) {
                     $('#appointmentForm').submit();
