@@ -1,7 +1,9 @@
 package com.userfront.controller;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -18,10 +20,13 @@ import com.userfront.domain.User;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.AmountParser;
 
 @Controller
 @RequestMapping("/account")
 public class AccountController {
+
+	static final String INVALID_AMOUNT_MESSAGE = "Please enter a valid amount greater than zero.";
 	
 	@Autowired
     private UserService userService;
@@ -66,8 +71,15 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
-    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.deposit(accountType, Double.parseDouble(amount), principal);
+    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
+        Optional<BigDecimal> parsedAmount = AmountParser.parse(amount);
+
+        if (!parsedAmount.isPresent()) {
+            model.addAttribute("amountError", INVALID_AMOUNT_MESSAGE);
+            return "deposit";
+        }
+
+        accountService.deposit(accountType, parsedAmount.get(), principal);
 
         return "redirect:/userFront";
     }
@@ -81,8 +93,15 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
-    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
+        Optional<BigDecimal> parsedAmount = AmountParser.parse(amount);
+
+        if (!parsedAmount.isPresent()) {
+            model.addAttribute("amountError", INVALID_AMOUNT_MESSAGE);
+            return "withdraw";
+        }
+
+        accountService.withdraw(accountType, parsedAmount.get(), principal);
 
         return "redirect:/userFront";
     }
