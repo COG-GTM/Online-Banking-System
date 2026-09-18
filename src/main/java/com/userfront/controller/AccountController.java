@@ -1,5 +1,6 @@
 package com.userfront.controller;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
 
@@ -15,9 +16,12 @@ import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.exception.InsufficientFundsException;
+import com.userfront.exception.InvalidAmountException;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.AmountParser;
 
 @Controller
 @RequestMapping("/account")
@@ -66,8 +70,16 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
-    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.deposit(accountType, Double.parseDouble(amount), principal);
+    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Model model, Principal principal) {
+        BigDecimal depositAmount;
+        try {
+            depositAmount = AmountParser.parse(amount);
+        } catch (InvalidAmountException e) {
+            model.addAttribute("error", e.getMessage());
+            return "deposit";
+        }
+
+        accountService.deposit(accountType, depositAmount, principal);
 
         return "redirect:/userFront";
     }
@@ -81,8 +93,21 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
-    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Model model, Principal principal) {
+        BigDecimal withdrawAmount;
+        try {
+            withdrawAmount = AmountParser.parse(amount);
+        } catch (InvalidAmountException e) {
+            model.addAttribute("error", e.getMessage());
+            return "withdraw";
+        }
+
+        try {
+            accountService.withdraw(accountType, withdrawAmount, principal);
+        } catch (InsufficientFundsException e) {
+            model.addAttribute("error", e.getMessage());
+            return "withdraw";
+        }
 
         return "redirect:/userFront";
     }
