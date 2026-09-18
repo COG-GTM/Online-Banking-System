@@ -200,19 +200,26 @@ if (typeof jQuery === 'undefined') {
   }
 
   Button.prototype.setState = function (state) {
-    var d    = 'disabled'
-    var $el  = this.$element
-    // Local patch (CVE-2024-6485): button state text is rendered as text, never HTML.
-    var val  = $el.is('input') ? 'val' : 'text'
-    var data = $el.data()
+    var d       = 'disabled'
+    var $el     = this.$element
+    var isInput = $el.is('input')
+    var data    = $el.data()
 
     state += 'Text'
 
-    if (data.resetText == null) $el.data('resetText', $el[val]())
+    // Local patch (CVE-2024-6485): the original markup is captured on the instance and is the
+    // only content restored as HTML; state text coming from data-* attributes is set as text.
+    if (this.resetContent == null) this.resetContent = isInput ? $el.val() : $el.html()
 
     // push to event loop to allow forms to submit
     setTimeout($.proxy(function () {
-      $el[val](data[state] == null ? this.options[state] : data[state])
+      var content = state == 'resetText'
+        ? this.resetContent
+        : (data[state] == null ? this.options[state] : data[state])
+
+      if (isInput) $el.val(content)
+      else if (state == 'resetText') $el.html(content)
+      else $el.text(content)
 
       if (state == 'loadingText') {
         this.isLoading = true
