@@ -3,6 +3,7 @@ package com.userfront.controller;
 import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -149,7 +150,7 @@ public class TransferController {
 
     private Recipient findOwnRecipient(String recipientName, Principal principal) throws InvalidTransactionException {
         return transactionService.findRecipientList(principal).stream()
-                .filter(candidate -> candidate.getName().equals(recipientName))
+                .filter(candidate -> Objects.equals(candidate.getName(), recipientName))
                 .findFirst()
                 .orElseThrow(() -> new InvalidTransactionException("Please select a valid recipient."));
     }
