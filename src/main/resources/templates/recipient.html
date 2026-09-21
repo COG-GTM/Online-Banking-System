@@ -8,7 +8,6 @@
         <div class="col-md-6">
             <h3>Recipient Information</h3>
             <form th:action="@{/transfer/recipient/save}" method="post">
-                <input type="hidden" name="id" th:value="${recipient.id}" />
 
                 <div class="form-group">
                     <label for="recipientName">Name</label>
@@ -35,10 +34,6 @@
                     <textarea class="form-control" th:value="${recipient.description}" name="description"
                               id="recipientDescription" placeholder="Description" th:text="${recipient.description}"></textarea>
                 </div>
-
-                <input type="hidden"
-                       name="${_csrf.parameterName}"
-                       value="${_csrf.token}"/>
 
                 <button class="btn btn-primary" type="submit">Add/Edit Recipient</button>
             </form>
@@ -69,7 +64,12 @@
                     <td data-th-text="${eachRecipient.phone}">...</td>
                     <td data-th-text="${eachRecipient.accountNumber}">...</td>
                     <td data-th-text="${eachRecipient.description}">...</td>
-                    <td><a th:href="@{/transfer/recipient/delete?recipientName=}+${eachRecipient.name}">delete</a></td>
+                    <td>
+                        <form th:action="@{/transfer/recipient/delete}" method="post">
+                            <input type="hidden" name="recipientName" th:value="${eachRecipient.name}"/>
+                            <button class="btn btn-link" type="submit">delete</button>
+                        </form>
+                    </td>
                 </tr>
                 </tbody>
             </table>
