@@ -83,7 +83,11 @@
                     <ul class="dropdown-menu">
                         <li><a th:href="@{/user/profile}">Profile</a></li>
                         <li role="separator" class="divider"></li>
-                        <li><a th:href="@{/logout}">Logout</a></li>
+                        <li>
+                            <form th:action="@{/logout}" method="post">
+                                <button type="submit" class="btn btn-link">Logout</button>
+                            </form>
+                        </li>
                     </ul>
                 </li>
             </ul>
@@ -105,9 +109,6 @@
 
     <!--bootstrap date-time picker-->
     <script src="/js/bootstrap-datetimepicker.min.js"></script>
-
-    <!--bootbox-->
-    <script src="/js/bootbox.min.js"></script>
 
     <!--data table-->
     <script src="/js/jquery.dataTables.min.js"></script>

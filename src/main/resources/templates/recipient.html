@@ -36,10 +36,6 @@
                               id="recipientDescription" placeholder="Description" th:text="${recipient.description}"></textarea>
                 </div>
 
-                <input type="hidden"
-                       name="${_csrf.parameterName}"
-                       value="${_csrf.token}"/>
-
                 <button class="btn btn-primary" type="submit">Add/Edit Recipient</button>
             </form>
 
@@ -64,12 +60,22 @@
                 </thead>
                 <tbody>
                 <tr data-th-each="eachRecipient : ${recipientList}">
-                    <td><a data-th-text="${eachRecipient.name}" th:href="@{/transfer/recipient/edit?recipientName=}+${eachRecipient.name}">...</a></td>
+                    <td>
+                        <form th:action="@{/transfer/recipient/edit}" method="post">
+                            <input type="hidden" name="recipientName" th:value="${eachRecipient.name}"/>
+                            <button type="submit" class="btn btn-link" data-th-text="${eachRecipient.name}">...</button>
+                        </form>
+                    </td>
                     <td data-th-text="${eachRecipient.email}">...</td>
                     <td data-th-text="${eachRecipient.phone}">...</td>
                     <td data-th-text="${eachRecipient.accountNumber}">...</td>
                     <td data-th-text="${eachRecipient.description}">...</td>
-                    <td><a th:href="@{/transfer/recipient/delete?recipientName=}+${eachRecipient.name}">delete</a></td>
+                    <td>
+                        <form th:action="@{/transfer/recipient/delete}" method="post">
+                            <input type="hidden" name="recipientName" th:value="${eachRecipient.name}"/>
+                            <button type="submit" class="btn btn-link">delete</button>
+                        </form>
+                    </td>
                 </tr>
                 </tbody>
             </table>
