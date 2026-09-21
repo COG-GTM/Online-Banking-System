@@ -3,6 +3,7 @@ package com.userfront.controller;
 import java.security.Principal;
 import java.util.List;
 
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,6 +19,7 @@ import com.userfront.domain.User;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.MoneyUtil;
 
 @Controller
 @RequestMapping("/account")
@@ -67,7 +69,11 @@ public class AccountController {
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
     public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.deposit(accountType, Double.parseDouble(amount), principal);
+        try {
+            accountService.deposit(accountType, MoneyUtil.parsePositiveAmount(amount), principal);
+        } catch (IllegalArgumentException e) {
+            return "redirect:/account/deposit?error";
+        }
 
         return "redirect:/userFront";
     }
@@ -82,7 +88,11 @@ public class AccountController {
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
     public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+        try {
+            accountService.withdraw(accountType, MoneyUtil.parsePositiveAmount(amount), principal);
+        } catch (IllegalArgumentException e) {
+            return "redirect:/account/withdraw?error";
+        }
 
         return "redirect:/userFront";
     }
