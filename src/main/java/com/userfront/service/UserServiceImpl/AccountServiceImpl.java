@@ -56,6 +56,7 @@ public class AccountServiceImpl implements AccountService {
     }
     
     public void deposit(String accountType, double amount, Principal principal) {
+        requirePositiveAmount(amount);
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {
@@ -80,10 +81,12 @@ public class AccountServiceImpl implements AccountService {
     }
     
     public void withdraw(String accountType, double amount, Principal principal) {
+        requirePositiveAmount(amount);
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {
             PrimaryAccount primaryAccount = user.getPrimaryAccount();
+            requireSufficientFunds(primaryAccount.getAccountBalance(), amount);
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
             primaryAccountDao.save(primaryAccount);
 
@@ -93,6 +96,7 @@ public class AccountServiceImpl implements AccountService {
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
             SavingsAccount savingsAccount = user.getSavingsAccount();
+            requireSufficientFunds(savingsAccount.getAccountBalance(), amount);
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
             savingsAccountDao.save(savingsAccount);
 
@@ -104,6 +108,18 @@ public class AccountServiceImpl implements AccountService {
     
     private int accountGen() {
         return ++nextAccountNumber;
+    }
+
+    private void requirePositiveAmount(double amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Invalid amount");
+        }
+    }
+
+    private void requireSufficientFunds(BigDecimal balance, double amount) {
+        if (balance.compareTo(BigDecimal.valueOf(amount)) < 0) {
+            throw new IllegalArgumentException("Insufficient funds");
+        }
     }
 
 	
