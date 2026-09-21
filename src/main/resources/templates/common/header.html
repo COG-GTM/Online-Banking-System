@@ -9,7 +9,7 @@
     <meta name="author" content=""/>
     <title>User Front</title>
     <!-- Bootstrap Core CSS -->
-    <link href="/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="/webjars/bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet" />
 
     <!-- Website Font style -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.1/css/font-awesome.min.css" />
@@ -22,7 +22,7 @@
     <link href="/css/bootstrap-datetimepicker.min.css" rel="stylesheet" />
 
     <!--data table-->
-    <link href="/css/jquery.dataTable.min.css" rel="stylesheet" />
+    <link href="/webjars/datatables/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet" />
     <link href="/css/dataTables.bootstrap.min.css" rel="stylesheet" />
 
     <!-- Custom CSS -->
@@ -83,7 +83,11 @@
                     <ul class="dropdown-menu">
                         <li><a th:href="@{/user/profile}">Profile</a></li>
                         <li role="separator" class="divider"></li>
-                        <li><a th:href="@{/logout}">Logout</a></li>
+                        <li>
+                            <form th:action="@{/logout}" method="post">
+                                <button type="submit" class="btn btn-link">Logout</button>
+                            </form>
+                        </li>
                     </ul>
                 </li>
             </ul>
@@ -96,10 +100,10 @@
 
 <div th:fragment="body-bottom-scripts">
     <!-- jQuery -->
-    <script src="/js/jquery.js"></script>
+    <script src="/webjars/jquery/3.7.1/jquery.min.js"></script>
 
     <!-- Bootstrap Core JavaScript -->
-    <script src="/js/bootstrap.min.js"></script>
+    <script src="/webjars/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 
     <script src="/js/jquery.easing.min.js"></script>
 
@@ -107,10 +111,10 @@
     <script src="/js/bootstrap-datetimepicker.min.js"></script>
 
     <!--bootbox-->
-    <script src="/js/bootbox.min.js"></script>
+    <script src="/webjars/bootbox/4.4.0/bootbox.min.js"></script>
 
     <!--data table-->
-    <script src="/js/jquery.dataTables.min.js"></script>
+    <script src="/webjars/datatables/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="/js/dataTables.bootstrap.min.js"></script>
 
     <!--main js-->
