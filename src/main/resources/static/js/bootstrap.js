@@ -2,6 +2,11 @@
  * Bootstrap v3.3.7 (http://getbootstrap.com)
  * Copyright 2011-2016 Twitter, Inc.
  * Licensed under the MIT license
+ *
+ * Includes the XSS fixes released in Bootstrap 3.4.0 and 3.4.1
+ * (CVE-2016-10735, CVE-2018-14040, CVE-2018-14042, CVE-2018-20676,
+ * CVE-2018-20677, CVE-2019-8331) plus hardening of the button plugin
+ * data-*-text attributes (CVE-2024-6485).
  */
 
 if (typeof jQuery === 'undefined') {
@@ -109,7 +114,7 @@ if (typeof jQuery === 'undefined') {
       selector = selector && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
     }
 
-    var $parent = $(selector === '#' ? [] : selector)
+    var $parent = $(document).find(selector === '#' ? [] : selector)
 
     if (e) e.preventDefault()
 
@@ -199,18 +204,25 @@ if (typeof jQuery === 'undefined') {
   }
 
   Button.prototype.setState = function (state) {
-    var d    = 'disabled'
-    var $el  = this.$element
-    var val  = $el.is('input') ? 'val' : 'html'
-    var data = $el.data()
+    var d       = 'disabled'
+    var $el     = this.$element
+    var isInput = $el.is('input')
+    var val     = isInput ? 'val' : 'html'
+    var data    = $el.data()
 
     state += 'Text'
 
-    if (data.resetText == null) $el.data('resetText', $el[val]())
+    if (data.resetText == null) {
+      $el.data('resetText', $el[val]())
+      this.capturedResetText = true
+    }
 
     // push to event loop to allow forms to submit
     setTimeout($.proxy(function () {
-      $el[val](data[state] == null ? this.options[state] : data[state])
+      var content   = data[state] == null ? this.options[state] : data[state]
+      var isMarkup  = isInput || (state == 'resetText' && this.capturedResetText)
+
+      $el[isInput ? 'val' : isMarkup ? 'html' : 'text'](content)
 
       if (state == 'loadingText') {
         this.isLoading = true
@@ -505,9 +517,14 @@ if (typeof jQuery === 'undefined') {
   // =================
 
   var clickHandler = function (e) {
-    var href
-    var $this   = $(this)
-    var $target = $($this.attr('data-target') || (href = $this.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '')) // strip for ie7
+    var $this = $(this)
+    var href  = $this.attr('href')
+    if (href) {
+      href = href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
+    }
+
+    var target  = $this.attr('data-target') || href
+    var $target = $(document).find(target)
     if (!$target.hasClass('carousel')) return
     var options = $.extend({}, $target.data(), $this.data())
     var slideIndex = $this.attr('data-slide-to')
@@ -674,7 +691,7 @@ if (typeof jQuery === 'undefined') {
   }
 
   Collapse.prototype.getParent = function () {
-    return $(this.options.parent)
+    return $(document).find(this.options.parent)
       .find('[data-toggle="collapse"][data-parent="' + this.options.parent + '"]')
       .each($.proxy(function (i, element) {
         var $element = $(element)
@@ -697,7 +714,7 @@ if (typeof jQuery === 'undefined') {
     var target = $trigger.attr('data-target')
       || (href = $trigger.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
 
-    return $(target)
+    return $(document).find(target)
   }
 
 
@@ -779,7 +796,7 @@ if (typeof jQuery === 'undefined') {
       selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
     }
 
-    var $parent = selector && $(selector)
+    var $parent = selector && selector !== '#' ? $(document).find(selector) : null
 
     return $parent && $parent.length ? $parent : $this.parent()
   }
@@ -1238,7 +1255,8 @@ if (typeof jQuery === 'undefined') {
   $(document).on('click.bs.modal.data-api', '[data-toggle="modal"]', function (e) {
     var $this   = $(this)
     var href    = $this.attr('href')
-    var $target = $($this.attr('data-target') || (href && href.replace(/.*(?=#[^\s]+$)/, ''))) // strip for ie7
+    var target  = $this.attr('data-target') || (href && href.replace(/.*(?=#[^\s]+$)/, '')) // strip for ie7
+    var $target = $(document).find(target)
     var option  = $target.data('bs.modal') ? 'toggle' : $.extend({ remote: !/#/.test(href) && href }, $target.data(), $this.data())
 
     if ($this.is('a')) e.preventDefault()
@@ -1286,6 +1304,136 @@ if (typeof jQuery === 'undefined') {
 
   Tooltip.TRANSITION_DURATION = 150
 
+  var uriAttrs = [
+    'background',
+    'cite',
+    'href',
+    'itemtype',
+    'longdesc',
+    'poster',
+    'src',
+    'xlink:href'
+  ]
+
+  var ARIA_ATTRIBUTE_PATTERN = /^aria-[\w-]*$/i
+
+  var DefaultWhitelist = {
+    // Global attributes allowed on any supplied element below.
+    '*': ['class', 'dir', 'id', 'lang', 'role', ARIA_ATTRIBUTE_PATTERN],
+    a: ['target', 'href', 'title', 'rel'],
+    area: [],
+    b: [],
+    br: [],
+    col: [],
+    code: [],
+    div: [],
+    em: [],
+    hr: [],
+    h1: [],
+    h2: [],
+    h3: [],
+    h4: [],
+    h5: [],
+    h6: [],
+    i: [],
+    img: ['src', 'alt', 'title', 'width', 'height'],
+    li: [],
+    ol: [],
+    p: [],
+    pre: [],
+    s: [],
+    small: [],
+    span: [],
+    sub: [],
+    sup: [],
+    strong: [],
+    u: [],
+    ul: []
+  }
+
+  /**
+   * A pattern that recognizes a commonly useful subset of URLs that are safe.
+   */
+  var SAFE_URL_PATTERN = /^(?:(?:https?|mailto|ftp|tel|file):|[^&:/?#]*(?:[/?#]|$))/gi
+
+  /**
+   * A pattern that matches safe data URLs.
+   */
+  var DATA_URL_PATTERN = /^data:(?:image\/(?:bmp|gif|jpeg|jpg|png|tiff|webp)|video\/(?:mpeg|mp4|ogg|webm)|audio\/(?:mp3|oga|ogg|opus));base64,[a-z0-9+/]+=*$/i
+
+  function allowedAttribute(attr, allowedAttributeList) {
+    var attrName = attr.nodeName.toLowerCase()
+
+    if ($.inArray(attrName, allowedAttributeList) !== -1) {
+      if ($.inArray(attrName, uriAttrs) !== -1) {
+        return Boolean(attr.nodeValue.match(SAFE_URL_PATTERN) || attr.nodeValue.match(DATA_URL_PATTERN))
+      }
+
+      return true
+    }
+
+    var regExp = $(allowedAttributeList).filter(function (index, value) {
+      return value instanceof RegExp
+    })
+
+    // Check if a regular expression validates the attribute.
+    for (var i = 0, l = regExp.length; i < l; i++) {
+      if (attrName.match(regExp[i])) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  function sanitizeHtml(unsafeHtml, whiteList, sanitizeFn) {
+    if (unsafeHtml.length === 0) {
+      return unsafeHtml
+    }
+
+    if (sanitizeFn && typeof sanitizeFn === 'function') {
+      return sanitizeFn(unsafeHtml)
+    }
+
+    // IE 8 and below don't support createHTMLDocument
+    if (!document.implementation || !document.implementation.createHTMLDocument) {
+      return unsafeHtml
+    }
+
+    var createdDocument = document.implementation.createHTMLDocument('sanitization')
+    createdDocument.body.innerHTML = unsafeHtml
+
+    var whitelistKeys = $.map(whiteList, function (el, i) { return i })
+    var elements = $(createdDocument.body).find('*')
+
+    for (var i = 0, len = elements.length; i < len; i++) {
+      var el = elements[i]
+      var elName = el.nodeName.toLowerCase()
+
+      if ($.inArray(elName, whitelistKeys) === -1) {
+        el.parentNode.removeChild(el)
+
+        continue
+      }
+
+      var attributeList = $.map(el.attributes, function (el) { return el })
+      var whitelistedAttributes = [].concat(whiteList['*'] || [], whiteList[elName] || [])
+
+      for (var j = 0, len2 = attributeList.length; j < len2; j++) {
+        var attr = attributeList[j]
+
+        if (!allowedAttribute(attr, whitelistedAttributes)) {
+          el.removeAttribute(attr.nodeName)
+        }
+      }
+    }
+
+    return createdDocument.body.innerHTML
+  }
+
+  Tooltip.sanitizeHtml = sanitizeHtml
+  Tooltip.DEFAULT_WHITELIST = DefaultWhitelist
+
   Tooltip.DEFAULTS = {
     animation: true,
     placement: 'top',
@@ -1299,7 +1447,10 @@ if (typeof jQuery === 'undefined') {
     viewport: {
       selector: 'body',
       padding: 0
-    }
+    },
+    sanitize: true,
+    sanitizeFn: null,
+    whiteList: DefaultWhitelist
   }
 
   Tooltip.prototype.init = function (type, element, options) {
@@ -1307,8 +1458,12 @@ if (typeof jQuery === 'undefined') {
     this.type      = type
     this.$element  = $(element)
     this.options   = this.getOptions(options)
-    this.$viewport = this.options.viewport && $($.isFunction(this.options.viewport) ? this.options.viewport.call(this, this.$element) : (this.options.viewport.selector || this.options.viewport))
+    this.$viewport = this.options.viewport && $(document).find($.isFunction(this.options.viewport) ? this.options.viewport.call(this, this.$element) : (this.options.viewport.selector || this.options.viewport))
     this.inState   = { click: false, hover: false, focus: false }
+
+    if (this.options.sanitize) {
+      this.options.template = sanitizeHtml(this.options.template, this.options.whiteList, this.options.sanitizeFn)
+    }
 
     if (this.$element[0] instanceof document.constructor && !this.options.selector) {
       throw new Error('`selector` option must be specified when initializing ' + this.type + ' on the window.document object!')
@@ -1460,7 +1615,7 @@ if (typeof jQuery === 'undefined') {
         .addClass(placement)
         .data('bs.' + this.type, this)
 
-      this.options.container ? $tip.appendTo(this.options.container) : $tip.insertAfter(this.$element)
+      this.options.container ? $tip.appendTo($(document).find(this.options.container)) : $tip.insertAfter(this.$element)
       this.$element.trigger('inserted.bs.' + this.type)
 
       var pos          = this.getPosition()
@@ -1562,7 +1717,16 @@ if (typeof jQuery === 'undefined') {
     var $tip  = this.tip()
     var title = this.getTitle()
 
-    $tip.find('.tooltip-inner')[this.options.html ? 'html' : 'text'](title)
+    if (this.options.html) {
+      if (this.options.sanitize) {
+        title = sanitizeHtml(title, this.options.whiteList, this.options.sanitizeFn)
+      }
+
+      $tip.find('.tooltip-inner').html(title)
+    } else {
+      $tip.find('.tooltip-inner').text(title)
+    }
+
     $tip.removeClass('fade in top bottom left right')
   }
 
@@ -1822,10 +1986,29 @@ if (typeof jQuery === 'undefined') {
     var title   = this.getTitle()
     var content = this.getContent()
 
-    $tip.find('.popover-title')[this.options.html ? 'html' : 'text'](title)
-    $tip.find('.popover-content').children().detach().end()[ // we use append for html objects to maintain js events
-      this.options.html ? (typeof content == 'string' ? 'html' : 'append') : 'text'
-    ](content)
+    if (this.options.html) {
+      var typeContent = typeof content
+
+      if (this.options.sanitize) {
+        title = $.fn.tooltip.Constructor.sanitizeHtml(title, this.options.whiteList, this.options.sanitizeFn)
+
+        if (typeContent === 'string') {
+          content = $.fn.tooltip.Constructor.sanitizeHtml(content, this.options.whiteList, this.options.sanitizeFn)
+        }
+      }
+
+      $tip.find('.popover-title').html(title)
+
+      if (typeContent === 'string') {
+        $tip.find('.popover-content').children().detach().end().html(content)
+      } else {
+        // we use append for html objects to maintain js events
+        $tip.find('.popover-content').children().detach().end().append(content)
+      }
+    } else {
+      $tip.find('.popover-title').text(title)
+      $tip.find('.popover-content').children().detach().end().text(content)
+    }
 
     $tip.removeClass('fade top bottom left right in')
 
@@ -1943,7 +2126,7 @@ if (typeof jQuery === 'undefined') {
       .map(function () {
         var $el   = $(this)
         var href  = $el.data('target') || $el.attr('href')
-        var $href = /^#./.test(href) && $(href)
+        var $href = /^#./.test(href) && $(document).find(href)
 
         return ($href
           && $href.length
@@ -1996,7 +2179,7 @@ if (typeof jQuery === 'undefined') {
       '[data-target="' + target + '"],' +
       this.selector + '[href="' + target + '"]'
 
-    var active = $(selector)
+    var active = $(document).find(selector)
       .parents('li')
       .addClass('active')
 
@@ -2107,7 +2290,7 @@ if (typeof jQuery === 'undefined') {
 
     if (showEvent.isDefaultPrevented() || hideEvent.isDefaultPrevented()) return
 
-    var $target = $(selector)
+    var $target = $(document).find(selector)
 
     this.activate($this.closest('li'), $ul)
     this.activate($target, $target.parent(), function () {
@@ -2231,7 +2414,9 @@ if (typeof jQuery === 'undefined') {
   var Affix = function (element, options) {
     this.options = $.extend({}, Affix.DEFAULTS, options)
 
-    this.$target = $(this.options.target)
+    var target = this.options.target === Affix.DEFAULTS.target ? $(this.options.target) : $(document).find(this.options.target)
+
+    this.$target = target
       .on('scroll.bs.affix.data-api', $.proxy(this.checkPosition, this))
       .on('click.bs.affix.data-api',  $.proxy(this.checkPositionWithEventLoop, this))
 
