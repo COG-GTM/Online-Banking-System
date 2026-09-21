@@ -2,14 +2,18 @@ package com.userfront.service.UserServiceImpl;
 
 import java.util.List;
 
+import javax.persistence.EntityNotFoundException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.AppointmentDao;
 import com.userfront.domain.Appointment;
 import com.userfront.service.AppointmentService;
 
 @Service
+@Transactional
 public class AppointmentServiceImpl implements AppointmentService {
 
     @Autowired
@@ -24,7 +28,8 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     public Appointment findAppointment(Long id) {
-        return null;
+        return appointmentDao.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Appointment " + id + " not found"));
     }
 
     public void confirmAppointment(Long id) {

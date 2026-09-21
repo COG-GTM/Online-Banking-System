@@ -8,8 +8,13 @@
         <div class="col-md-6">
             <h2 class="title">My Profile</h2>
             <hr/>
-            <form method="post" th:action="@{/user/profile}">
-                <input type="hidden" name="id" th:value="${user.userId}"/>
+            <form method="post" th:action="@{/user/profile}" th:object="${user}">
+
+                <div class="bg-danger" th:if="${#fields.hasErrors('*')}">
+                    <ul>
+                        <li th:each="err : ${#fields.errors('*')}" th:text="${err}">error</li>
+                    </ul>
+                </div>
 
                 <div class="form-group">
                     <label for="firstName">First Name</label>
@@ -65,9 +70,8 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-users fa" aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" th:value="${user.username}" id="username"
-                                   name="username" roleId="username" placeholder="Enter your Username"
-                                   required="required"/>
+                            <input type="text" class="form-control" th:value="${account.username}" id="username"
+                                   roleId="username" readonly="readonly"/>
                         </div>
                     </div>
                 </div>
@@ -92,8 +96,8 @@
                     </tr>
 
                     <tr>
-                        <td data-th-text="${user.primaryAccount.accountNumber}">...</td>
-                        <td data-th-text="${user.savingsAccount.accountNumber}">...</td>
+                        <td data-th-text="${account.primaryAccount.accountNumber}">...</td>
+                        <td data-th-text="${account.savingsAccount.accountNumber}">...</td>
                     </tr>
                 </table>
             </div>
