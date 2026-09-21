@@ -14,7 +14,7 @@
             </div>
         </div>
         <div class="main-login main-center">
-            <form class="form-horizontal" method="post" th:action="@{/signup}">
+            <form class="form-horizontal" method="post" th:action="@{/signup}" th:object="${user}">
 
                 <div class="form-group">
                     <label for="firstName" class="cols-sm-2 control-label">First Name</label>
@@ -71,8 +71,9 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-lock fa-lg" aria-hidden="true"></i></span>
-                            <input type="password" class="form-control" th:value="${user.password}" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required"/>
+                            <input type="password" class="form-control" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required"/>
                         </div>
+                        <span class="bg-danger" th:if="${#fields.hasErrors('password')}" th:errors="*{password}">password error</span>
                         <div class="checkbox">
                             <label>
                                 <input id="showPassword" type="checkbox" />Show Password

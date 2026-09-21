@@ -1,7 +1,14 @@
 package com.userfront.dao;
 
+import java.util.Optional;
+
 import com.userfront.domain.PrimaryAccount;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 /**
  * Created by z00382545 on 10/21/16.
@@ -9,4 +16,10 @@ import org.springframework.data.repository.CrudRepository;
 public interface PrimaryAccountDao extends CrudRepository<PrimaryAccount,Long> {
 
     PrimaryAccount findByAccountNumber (int accountNumber);
+
+    boolean existsByAccountNumber(int accountNumber);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from PrimaryAccount a where a.id = :id")
+    Optional<PrimaryAccount> findForUpdate(@Param("id") Long id);
 }
