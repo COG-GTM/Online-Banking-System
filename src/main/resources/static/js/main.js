@@ -44,26 +44,10 @@
 }(jQuery));
 
 $(document).ready(function() {
-    var confirm = function() {
-        bootbox.confirm({
-            title: "Appointment Confirmation",
-            message: "Do you really want to schedule this appointment?",
-            buttons: {
-                cancel: {
-                    label: '<i class="fa fa-times"></i> Cancel'
-                },
-                confirm: {
-                    label: '<i class="fa fa-check"></i> Confirm'
-                }
-            },
-            callback: function (result) {
-                if (result == true) {
-                    $('#appointmentForm').submit();
-                } else {
-                    console.log("Scheduling cancelled.");
-                }
-            }
-        });
+    var confirmAppointment = function() {
+        if (window.confirm("Do you really want to schedule this appointment?")) {
+            $('#appointmentForm').submit();
+        }
     };
 
     $.toggleShowPassword({
@@ -82,7 +66,7 @@ $(document).ready(function() {
     });
 
     $('#submitAppointment').click(function () {
-        confirm();
+        confirmAppointment();
     });
 
 });

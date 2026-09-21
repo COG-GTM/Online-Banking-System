@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<head th:replace="common/header :: common-header"/>
+<body>
+<head th:replace="common/header :: navbar"/>
+<div class="container main">
+    <h2>Request could not be completed</h2>
+    <p class="text-danger" th:text="${transactionError} ?: 'Something went wrong. Please try again.'"></p>
+    <a th:href="@{/userFront}">Back to account summary</a>
+</div>
+</body>
+</html>

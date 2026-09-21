@@ -4,9 +4,11 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.AppointmentDao;
 import com.userfront.domain.Appointment;
+import com.userfront.service.AppointmentNotFoundException;
 import com.userfront.service.AppointmentService;
 
 @Service
@@ -24,9 +26,11 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     public Appointment findAppointment(Long id) {
-        return null;
+        return appointmentDao.findById(id)
+                .orElseThrow(() -> new AppointmentNotFoundException("Appointment " + id + " not found"));
     }
 
+    @Transactional
     public void confirmAppointment(Long id) {
         Appointment appointment = findAppointment(id);
         appointment.setConfirmed(true);

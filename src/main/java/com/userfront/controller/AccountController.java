@@ -16,6 +16,7 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
 import com.userfront.service.AccountService;
+import com.userfront.service.MoneyAmount;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -67,7 +68,7 @@ public class AccountController {
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
     public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.deposit(accountType, Double.parseDouble(amount), principal);
+        accountService.deposit(accountType, MoneyAmount.parsePositive(amount), principal);
 
         return "redirect:/userFront";
     }
@@ -82,7 +83,7 @@ public class AccountController {
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
     public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+        accountService.withdraw(accountType, MoneyAmount.parsePositive(amount), principal);
 
         return "redirect:/userFront";
     }
