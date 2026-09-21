@@ -3,6 +3,7 @@ package com.userfront.config;
 import java.security.SecureRandom;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -28,6 +29,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private UserSecurityService userSecurityService;
 
     private static final String SALT = "salt"; // Salt should be protected carefully
+
+    private static final int HSTS_MAX_AGE_SECONDS = 31536000;
+
+    @Value("${app.security.require-ssl:true}")
+    private boolean requireSsl;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -55,13 +61,23 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 antMatchers(PUBLIC_MATCHERS).
                 permitAll().anyRequest().authenticated();
 
+        if (requireSsl) {
+            http.requiresChannel().anyRequest().requiresSecure();
+        }
+
+        http
+                .headers()
+                .httpStrictTransportSecurity()
+                .includeSubDomains(true)
+                .maxAgeInSeconds(HSTS_MAX_AGE_SECONDS);
+
         http
                 .csrf().disable().cors().disable()
                 .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
-                .rememberMe();
+                .rememberMe().useSecureCookie(requireSsl);
     }
 
 
