@@ -1,5 +1,6 @@
 package com.userfront.controller;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
 
@@ -67,7 +68,7 @@ public class AccountController {
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
     public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.deposit(accountType, Double.parseDouble(amount), principal);
+        accountService.deposit(accountType, new BigDecimal(amount), principal);
 
         return "redirect:/userFront";
     }
@@ -82,7 +83,7 @@ public class AccountController {
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
     public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+        accountService.withdraw(accountType, new BigDecimal(amount), principal);
 
         return "redirect:/userFront";
     }

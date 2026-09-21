@@ -15,11 +15,14 @@ import com.userfront.dao.RoleDao;
 import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.domain.dto.SignupForm;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.UserService;
 
 @Controller
 public class HomeController {
+
+	private static final int MIN_PASSWORD_LENGTH = 12;
 	
 	@Autowired
 	private UserService userService;
@@ -39,28 +42,40 @@ public class HomeController {
 	
 	@RequestMapping(value = "/signup", method = RequestMethod.GET)
     public String signup(Model model) {
-        User user = new User();
-
-        model.addAttribute("user", user);
+        model.addAttribute("user", new SignupForm());
 
         return "signup";
     }
 	
 	@RequestMapping(value = "/signup", method = RequestMethod.POST)
-    public String signupPost(@ModelAttribute("user") User user,  Model model) {
+    public String signupPost(@ModelAttribute("user") SignupForm signupForm,  Model model) {
 
-        if(userService.checkUserExists(user.getUsername(), user.getEmail()))  {
+        if (!isPasswordAcceptable(signupForm.getPassword())) {
+            model.addAttribute("passwordInvalid", true);
 
-            if (userService.checkEmailExists(user.getEmail())) {
+            return "signup";
+        }
+
+        if(userService.checkUserExists(signupForm.getUsername(), signupForm.getEmail()))  {
+
+            if (userService.checkEmailExists(signupForm.getEmail())) {
                 model.addAttribute("emailExists", true);
             }
 
-            if (userService.checkUsernameExists(user.getUsername())) {
+            if (userService.checkUsernameExists(signupForm.getUsername())) {
                 model.addAttribute("usernameExists", true);
             }
 
             return "signup";
         } else {
+            User user = new User();
+            user.setUsername(signupForm.getUsername());
+            user.setPassword(signupForm.getPassword());
+            user.setFirstName(signupForm.getFirstName());
+            user.setLastName(signupForm.getLastName());
+            user.setEmail(signupForm.getEmail());
+            user.setPhone(signupForm.getPhone());
+
         	 Set<UserRole> userRoles = new HashSet<>();
              userRoles.add(new UserRole(user, roleDao.findByName("ROLE_USER")));
 
@@ -68,6 +83,15 @@ public class HomeController {
 
             return "redirect:/";
         }
+    }
+
+    private static boolean isPasswordAcceptable(String password) {
+        return password != null
+                && password.length() >= MIN_PASSWORD_LENGTH
+                && password.chars().anyMatch(Character::isUpperCase)
+                && password.chars().anyMatch(Character::isLowerCase)
+                && password.chars().anyMatch(Character::isDigit)
+                && password.chars().anyMatch(c -> !Character.isLetterOrDigit(c));
     }
 	
 	@RequestMapping("/userFront")
