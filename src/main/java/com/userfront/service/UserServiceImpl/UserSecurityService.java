@@ -3,11 +3,13 @@ package com.userfront.service.UserServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import com.userfront.config.LoginAttemptService;
 import com.userfront.dao.UserDao;
 import com.userfront.domain.User;
 
@@ -20,8 +22,16 @@ public class UserSecurityService implements UserDetailsService {
     @Autowired
     private UserDao userDao;
 
+    @Autowired
+    private LoginAttemptService loginAttemptService;
+
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        if (loginAttemptService.isBlocked(username)) {
+            LOG.warn("Username {} is temporarily blocked after too many failed login attempts", username);
+            throw new LockedException("Too many failed login attempts, try again later");
+        }
+
         User user = userDao.findByUsername(username);
         if (null == user) {
             LOG.warn("Username {} not found", username);

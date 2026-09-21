@@ -4,10 +4,10 @@ import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.PrimaryTransactionDao;
@@ -22,6 +22,7 @@ import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.MoneyUtil;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -75,26 +76,34 @@ public class TransactionServiceImpl implements TransactionService {
         savingsTransactionDao.save(savingsTransaction);
     }
     
+    @Transactional
     public void betweenAccountsTransfer(String transferFrom, String transferTo, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception {
+        BigDecimal transferAmount = MoneyUtil.parsePositiveAmount(amount);
+        Date date = new Date();
+
         if (transferFrom.equalsIgnoreCase("Primary") && transferTo.equalsIgnoreCase("Savings")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(new BigDecimal(amount)));
-            primaryAccountDao.save(primaryAccount);
-            savingsAccountDao.save(savingsAccount);
+            PrimaryAccount lockedPrimary = primaryAccountDao.findWithLockByAccountNumber(primaryAccount.getAccountNumber());
+            SavingsAccount lockedSavings = savingsAccountDao.findWithLockByAccountNumber(savingsAccount.getAccountNumber());
+            requireSufficientFunds(lockedPrimary.getAccountBalance(), transferAmount);
 
-            Date date = new Date();
+            lockedPrimary.setAccountBalance(lockedPrimary.getAccountBalance().subtract(transferAmount));
+            lockedSavings.setAccountBalance(lockedSavings.getAccountBalance().add(transferAmount));
+            primaryAccountDao.save(lockedPrimary);
+            savingsAccountDao.save(lockedSavings);
 
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", transferAmount, lockedPrimary.getAccountBalance(), lockedPrimary);
             primaryTransactionDao.save(primaryTransaction);
         } else if (transferFrom.equalsIgnoreCase("Savings") && transferTo.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            primaryAccountDao.save(primaryAccount);
-            savingsAccountDao.save(savingsAccount);
+            PrimaryAccount lockedPrimary = primaryAccountDao.findWithLockByAccountNumber(primaryAccount.getAccountNumber());
+            SavingsAccount lockedSavings = savingsAccountDao.findWithLockByAccountNumber(savingsAccount.getAccountNumber());
+            requireSufficientFunds(lockedSavings.getAccountBalance(), transferAmount);
 
-            Date date = new Date();
+            lockedPrimary.setAccountBalance(lockedPrimary.getAccountBalance().add(transferAmount));
+            lockedSavings.setAccountBalance(lockedSavings.getAccountBalance().subtract(transferAmount));
+            primaryAccountDao.save(lockedPrimary);
+            savingsAccountDao.save(lockedSavings);
 
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", transferAmount, lockedSavings.getAccountBalance(), lockedSavings);
             savingsTransactionDao.save(savingsTransaction);
         } else {
             throw new Exception("Invalid Transfer");
@@ -102,43 +111,53 @@ public class TransactionServiceImpl implements TransactionService {
     }
     
     public List<Recipient> findRecipientList(Principal principal) {
-        String username = principal.getName();
-        List<Recipient> recipientList = recipientDao.findAll().stream() 			//convert list to stream
-                .filter(recipient -> username.equals(recipient.getUser().getUsername()))	//filters the line, equals to username
-                .collect(Collectors.toList());
-
-        return recipientList;
+        return recipientDao.findByUserUsername(principal.getName());
     }
 
     public Recipient saveRecipient(Recipient recipient) {
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName) {
-        return recipientDao.findByName(recipientName);
+    public Recipient findRecipientByName(String recipientName, Principal principal) {
+        return recipientDao.findByNameAndUserUsername(recipientName, principal.getName());
     }
 
-    public void deleteRecipientByName(String recipientName) {
-        recipientDao.deleteByName(recipientName);
+    @Transactional
+    public void deleteRecipientByName(String recipientName, Principal principal) {
+        recipientDao.deleteByNameAndUserUsername(recipientName, principal.getName());
     }
     
+    @Transactional
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
+        BigDecimal transferAmount = MoneyUtil.parsePositiveAmount(amount);
+        Date date = new Date();
+
         if (accountType.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            primaryAccountDao.save(primaryAccount);
+            PrimaryAccount lockedPrimary = primaryAccountDao.findWithLockByAccountNumber(primaryAccount.getAccountNumber());
+            requireSufficientFunds(lockedPrimary.getAccountBalance(), transferAmount);
 
-            Date date = new Date();
+            lockedPrimary.setAccountBalance(lockedPrimary.getAccountBalance().subtract(transferAmount));
+            primaryAccountDao.save(lockedPrimary);
 
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", transferAmount, lockedPrimary.getAccountBalance(), lockedPrimary);
             primaryTransactionDao.save(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            savingsAccountDao.save(savingsAccount);
+            SavingsAccount lockedSavings = savingsAccountDao.findWithLockByAccountNumber(savingsAccount.getAccountNumber());
+            requireSufficientFunds(lockedSavings.getAccountBalance(), transferAmount);
 
-            Date date = new Date();
+            lockedSavings.setAccountBalance(lockedSavings.getAccountBalance().subtract(transferAmount));
+            savingsAccountDao.save(lockedSavings);
 
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", transferAmount, lockedSavings.getAccountBalance(), lockedSavings);
             savingsTransactionDao.save(savingsTransaction);
+        } else {
+            throw new IllegalArgumentException("Invalid account type");
+        }
+    }
+
+    private void requireSufficientFunds(BigDecimal balance, BigDecimal amount) {
+        if (balance == null || balance.compareTo(amount) < 0) {
+            throw new IllegalArgumentException("Insufficient funds");
         }
     }
 }
