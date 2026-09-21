@@ -42,13 +42,13 @@ public class UserResource {
         return transactionService.findSavingsTransactionList(username);
     }
 
-    @RequestMapping("/user/{username}/enable")
+    @RequestMapping(value = "/user/{username}/enable", method = RequestMethod.POST)
     public void enableUser(@PathVariable("username") String username) {
         userService.enableUser(username);
     }
 
-    @RequestMapping("/user/{username}/disable")
-    public void diableUser(@PathVariable("username") String username) {
+    @RequestMapping(value = "/user/{username}/disable", method = RequestMethod.POST)
+    public void disableUser(@PathVariable("username") String username) {
         userService.disableUser(username);
     }
 }
