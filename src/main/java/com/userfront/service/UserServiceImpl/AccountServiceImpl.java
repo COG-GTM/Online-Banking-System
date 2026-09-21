@@ -2,10 +2,12 @@ package com.userfront.service.UserServiceImpl;
 
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.security.SecureRandom;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.SavingsAccountDao;
@@ -20,8 +22,11 @@ import com.userfront.service.UserService;
 
 @Service
 public class AccountServiceImpl implements AccountService {
-	
-	private static int nextAccountNumber = 11223145;
+
+    private static final int ACCOUNT_NUMBER_ORIGIN = 10_000_000;
+    private static final int ACCOUNT_NUMBER_BOUND = 100_000_000;
+
+    private final SecureRandom accountNumberGenerator = new SecureRandom();
 
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
@@ -37,7 +42,7 @@ public class AccountServiceImpl implements AccountService {
 
     public PrimaryAccount createPrimaryAccount() {
         PrimaryAccount primaryAccount = new PrimaryAccount();
-        primaryAccount.setAccountBalance(new BigDecimal(0.0));
+        primaryAccount.setAccountBalance(BigDecimal.ZERO);
         primaryAccount.setAccountNumber(accountGen());
 
         primaryAccountDao.save(primaryAccount);
@@ -47,7 +52,7 @@ public class AccountServiceImpl implements AccountService {
 
     public SavingsAccount createSavingsAccount() {
         SavingsAccount savingsAccount = new SavingsAccount();
-        savingsAccount.setAccountBalance(new BigDecimal(0.0));
+        savingsAccount.setAccountBalance(BigDecimal.ZERO);
         savingsAccount.setAccountNumber(accountGen());
 
         savingsAccountDao.save(savingsAccount);
@@ -55,12 +60,14 @@ public class AccountServiceImpl implements AccountService {
         return savingsAccountDao.findByAccountNumber(savingsAccount.getAccountNumber());
     }
     
-    public void deposit(String accountType, double amount, Principal principal) {
+    @Transactional
+    public void deposit(String accountType, BigDecimal amount, Principal principal) {
+        requirePositive(amount);
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {
-            PrimaryAccount primaryAccount = user.getPrimaryAccount();
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(new BigDecimal(amount)));
+            PrimaryAccount primaryAccount = lockPrimaryAccount(user);
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(amount));
             primaryAccountDao.save(primaryAccount);
 
             Date date = new Date();
@@ -69,8 +76,8 @@ public class AccountServiceImpl implements AccountService {
             transactionService.savePrimaryDepositTransaction(primaryTransaction);
             
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            SavingsAccount savingsAccount = user.getSavingsAccount();
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(new BigDecimal(amount)));
+            SavingsAccount savingsAccount = lockSavingsAccount(user);
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(amount));
             savingsAccountDao.save(savingsAccount);
 
             Date date = new Date();
@@ -79,12 +86,15 @@ public class AccountServiceImpl implements AccountService {
         }
     }
     
-    public void withdraw(String accountType, double amount, Principal principal) {
+    @Transactional
+    public void withdraw(String accountType, BigDecimal amount, Principal principal) {
+        requirePositive(amount);
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {
-            PrimaryAccount primaryAccount = user.getPrimaryAccount();
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            PrimaryAccount primaryAccount = lockPrimaryAccount(user);
+            requireSufficientFunds(primaryAccount.getAccountBalance(), amount);
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(amount));
             primaryAccountDao.save(primaryAccount);
 
             Date date = new Date();
@@ -92,8 +102,9 @@ public class AccountServiceImpl implements AccountService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Withdraw from Primary Account", "Account", "Finished", amount, primaryAccount.getAccountBalance(), primaryAccount);
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            SavingsAccount savingsAccount = user.getSavingsAccount();
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            SavingsAccount savingsAccount = lockSavingsAccount(user);
+            requireSufficientFunds(savingsAccount.getAccountBalance(), amount);
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(amount));
             savingsAccountDao.save(savingsAccount);
 
             Date date = new Date();
@@ -101,11 +112,31 @@ public class AccountServiceImpl implements AccountService {
             transactionService.saveSavingsWithdrawTransaction(savingsTransaction);
         }
     }
-    
-    private int accountGen() {
-        return ++nextAccountNumber;
+
+    private PrimaryAccount lockPrimaryAccount(User user) {
+        return primaryAccountDao.findWithLockById(user.getPrimaryAccount().getId())
+                .orElseThrow(() -> new IllegalStateException("Primary account not found"));
     }
 
-	
+    private SavingsAccount lockSavingsAccount(User user) {
+        return savingsAccountDao.findWithLockById(user.getSavingsAccount().getId())
+                .orElseThrow(() -> new IllegalStateException("Savings account not found"));
+    }
+
+    static void requirePositive(BigDecimal amount) {
+        if (amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero");
+        }
+    }
+
+    static void requireSufficientFunds(BigDecimal balance, BigDecimal amount) {
+        if (balance.compareTo(amount) < 0) {
+            throw new IllegalArgumentException("Insufficient funds");
+        }
+    }
+
+    private int accountGen() {
+        return ACCOUNT_NUMBER_ORIGIN + accountNumberGenerator.nextInt(ACCOUNT_NUMBER_BOUND - ACCOUNT_NUMBER_ORIGIN);
+    }
 
 }
