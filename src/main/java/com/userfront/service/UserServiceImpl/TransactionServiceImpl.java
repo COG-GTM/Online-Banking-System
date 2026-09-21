@@ -4,10 +4,10 @@ import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.PrimaryTransactionDao;
@@ -20,6 +20,7 @@ import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.service.InsufficientFundsException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -74,27 +75,30 @@ public class TransactionServiceImpl implements TransactionService {
     public void saveSavingsWithdrawTransaction(SavingsTransaction savingsTransaction) {
         savingsTransactionDao.save(savingsTransaction);
     }
-    
-    public void betweenAccountsTransfer(String transferFrom, String transferTo, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception {
+
+    @Transactional
+    public void betweenAccountsTransfer(String transferFrom, String transferTo, BigDecimal amount, User user) throws Exception {
         if (transferFrom.equalsIgnoreCase("Primary") && transferTo.equalsIgnoreCase("Savings")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(new BigDecimal(amount)));
+            PrimaryAccount primaryAccount = lockPrimaryAccount(user);
+            SavingsAccount savingsAccount = lockSavingsAccount(user);
+
+            debit(primaryAccount, amount);
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(amount));
             primaryAccountDao.save(primaryAccount);
             savingsAccountDao.save(savingsAccount);
 
-            Date date = new Date();
-
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(new Date(), "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", amount, primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else if (transferFrom.equalsIgnoreCase("Savings") && transferTo.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            PrimaryAccount primaryAccount = lockPrimaryAccount(user);
+            SavingsAccount savingsAccount = lockSavingsAccount(user);
+
+            debit(savingsAccount, amount);
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(amount));
             primaryAccountDao.save(primaryAccount);
             savingsAccountDao.save(savingsAccount);
 
-            Date date = new Date();
-
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(new Date(), "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", amount, savingsAccount.getAccountBalance(), savingsAccount);
             savingsTransactionDao.save(savingsTransaction);
         } else {
             throw new Exception("Invalid Transfer");
@@ -102,43 +106,73 @@ public class TransactionServiceImpl implements TransactionService {
     }
     
     public List<Recipient> findRecipientList(Principal principal) {
-        String username = principal.getName();
-        List<Recipient> recipientList = recipientDao.findAll().stream() 			//convert list to stream
-                .filter(recipient -> username.equals(recipient.getUser().getUsername()))	//filters the line, equals to username
-                .collect(Collectors.toList());
+        User user = userService.findByUsername(principal.getName());
 
-        return recipientList;
+        return recipientDao.findByUser(user);
     }
 
     public Recipient saveRecipient(Recipient recipient) {
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName) {
-        return recipientDao.findByName(recipientName);
+    public Recipient findRecipientForUser(Long recipientId, User user) {
+        return recipientDao.findByIdAndUser(recipientId, user)
+                .orElseThrow(() -> new IllegalArgumentException("Recipient not found"));
     }
 
-    public void deleteRecipientByName(String recipientName) {
-        recipientDao.deleteByName(recipientName);
+    @Transactional
+    public void deleteRecipientForUser(Long recipientId, User user) {
+        if (recipientDao.deleteByIdAndUser(recipientId, user) == 0) {
+            throw new IllegalArgumentException("Recipient not found");
+        }
     }
-    
-    public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
+
+    @Transactional
+    public void toSomeoneElseTransfer(Recipient recipient, String accountType, BigDecimal amount, User user) {
+        if (!user.getUserId().equals(recipient.getUser().getUserId())) {
+            throw new IllegalArgumentException("Recipient not found");
+        }
+
         if (accountType.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            PrimaryAccount primaryAccount = lockPrimaryAccount(user);
+            debit(primaryAccount, amount);
             primaryAccountDao.save(primaryAccount);
 
-            Date date = new Date();
-
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(new Date(), "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", amount, primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            SavingsAccount savingsAccount = lockSavingsAccount(user);
+            debit(savingsAccount, amount);
             savingsAccountDao.save(savingsAccount);
 
-            Date date = new Date();
-
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(new Date(), "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", amount, savingsAccount.getAccountBalance(), savingsAccount);
             savingsTransactionDao.save(savingsTransaction);
+        } else {
+            throw new IllegalArgumentException("Invalid account type");
         }
+    }
+
+    private PrimaryAccount lockPrimaryAccount(User user) {
+        return primaryAccountDao.findForUpdate(user.getPrimaryAccount().getId())
+                .orElseThrow(() -> new IllegalStateException("Primary account not found"));
+    }
+
+    private SavingsAccount lockSavingsAccount(User user) {
+        return savingsAccountDao.findForUpdate(user.getSavingsAccount().getId())
+                .orElseThrow(() -> new IllegalStateException("Savings account not found"));
+    }
+
+    private void debit(PrimaryAccount account, BigDecimal amount) {
+        if (account.getAccountBalance().compareTo(amount) < 0) {
+            throw new InsufficientFundsException("Insufficient funds in primary account");
+        }
+        account.setAccountBalance(account.getAccountBalance().subtract(amount));
+    }
+
+    private void debit(SavingsAccount account, BigDecimal amount) {
+        if (account.getAccountBalance().compareTo(amount) < 0) {
+            throw new InsufficientFundsException("Insufficient funds in savings account");
+        }
+        account.setAccountBalance(account.getAccountBalance().subtract(amount));
     }
 }
