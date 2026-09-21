@@ -1,15 +1,16 @@
 package com.userfront.dao;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.repository.CrudRepository;
 
 import com.userfront.domain.Recipient;
 
 public interface RecipientDao extends CrudRepository<Recipient, Long> {
-    List<Recipient> findAll();
+    List<Recipient> findByUserUsername(String username);
 
-    Recipient findByName(String recipientName);
+    Optional<Recipient> findByNameAndUserUsername(String recipientName, String username);
 
-    void deleteByName(String recipientName);
+    void deleteByNameAndUserUsername(String recipientName, String username);
 }

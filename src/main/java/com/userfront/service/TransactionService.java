@@ -1,5 +1,6 @@
 package com.userfront.service;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
 
@@ -21,15 +22,15 @@ public interface TransactionService {
     void savePrimaryWithdrawTransaction(PrimaryTransaction primaryTransaction);
     void saveSavingsWithdrawTransaction(SavingsTransaction savingsTransaction);
     
-    void betweenAccountsTransfer(String transferFrom, String transferTo, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception;
+    void betweenAccountsTransfer(String transferFrom, String transferTo, BigDecimal amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception;
     
     List<Recipient> findRecipientList(Principal principal);
 
     Recipient saveRecipient(Recipient recipient);
 
-    Recipient findRecipientByName(String recipientName);
+    Recipient findRecipientByName(String recipientName, Principal principal);
 
-    void deleteRecipientByName(String recipientName);
+    void deleteRecipientByName(String recipientName, Principal principal);
     
-    void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount);
+    void toSomeoneElseTransfer(Recipient recipient, String accountType, BigDecimal amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount);
 }
