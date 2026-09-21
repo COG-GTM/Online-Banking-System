@@ -2,10 +2,12 @@ package com.userfront.service.UserServiceImpl;
 
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.security.SecureRandom;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.SavingsAccountDao;
@@ -17,11 +19,15 @@ import com.userfront.domain.User;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.MoneyUtil;
 
 @Service
 public class AccountServiceImpl implements AccountService {
 	
-	private static int nextAccountNumber = 11223145;
+	private static final SecureRandom RANDOM = new SecureRandom();
+	private static final int ACCOUNT_NUMBER_ORIGIN = 100_000_000;
+	private static final int ACCOUNT_NUMBER_BOUND = 900_000_000;
+	private static final int MAX_ACCOUNT_NUMBER_ATTEMPTS = 20;
 
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
@@ -37,7 +43,7 @@ public class AccountServiceImpl implements AccountService {
 
     public PrimaryAccount createPrimaryAccount() {
         PrimaryAccount primaryAccount = new PrimaryAccount();
-        primaryAccount.setAccountBalance(new BigDecimal(0.0));
+        primaryAccount.setAccountBalance(BigDecimal.ZERO);
         primaryAccount.setAccountNumber(accountGen());
 
         primaryAccountDao.save(primaryAccount);
@@ -47,7 +53,7 @@ public class AccountServiceImpl implements AccountService {
 
     public SavingsAccount createSavingsAccount() {
         SavingsAccount savingsAccount = new SavingsAccount();
-        savingsAccount.setAccountBalance(new BigDecimal(0.0));
+        savingsAccount.setAccountBalance(BigDecimal.ZERO);
         savingsAccount.setAccountNumber(accountGen());
 
         savingsAccountDao.save(savingsAccount);
@@ -55,55 +61,71 @@ public class AccountServiceImpl implements AccountService {
         return savingsAccountDao.findByAccountNumber(savingsAccount.getAccountNumber());
     }
     
-    public void deposit(String accountType, double amount, Principal principal) {
+    @Transactional
+    public void deposit(String accountType, String amount, Principal principal) {
+        BigDecimal depositAmount = MoneyUtil.parsePositiveAmount(amount);
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {
-            PrimaryAccount primaryAccount = user.getPrimaryAccount();
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(new BigDecimal(amount)));
+            PrimaryAccount primaryAccount = primaryAccountDao.findLockedById(user.getPrimaryAccount().getId());
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(depositAmount));
             primaryAccountDao.save(primaryAccount);
 
-            Date date = new Date();
-
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Deposit to Primary Account", "Account", "Finished", amount, primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(new Date(), "Deposit to Primary Account", "Account", "Finished", depositAmount, primaryAccount.getAccountBalance(), primaryAccount);
             transactionService.savePrimaryDepositTransaction(primaryTransaction);
-            
+
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            SavingsAccount savingsAccount = user.getSavingsAccount();
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(new BigDecimal(amount)));
+            SavingsAccount savingsAccount = savingsAccountDao.findLockedById(user.getSavingsAccount().getId());
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(depositAmount));
             savingsAccountDao.save(savingsAccount);
 
-            Date date = new Date();
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Deposit to savings Account", "Account", "Finished", amount, savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(new Date(), "Deposit to savings Account", "Account", "Finished", depositAmount, savingsAccount.getAccountBalance(), savingsAccount);
             transactionService.saveSavingsDepositTransaction(savingsTransaction);
+        } else {
+            throw new IllegalArgumentException("Invalid account type");
         }
     }
     
-    public void withdraw(String accountType, double amount, Principal principal) {
+    @Transactional
+    public void withdraw(String accountType, String amount, Principal principal) {
+        BigDecimal withdrawAmount = MoneyUtil.parsePositiveAmount(amount);
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {
-            PrimaryAccount primaryAccount = user.getPrimaryAccount();
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            PrimaryAccount primaryAccount = primaryAccountDao.findLockedById(user.getPrimaryAccount().getId());
+            requireSufficientFunds(primaryAccount.getAccountBalance(), withdrawAmount);
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(withdrawAmount));
             primaryAccountDao.save(primaryAccount);
 
-            Date date = new Date();
-
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Withdraw from Primary Account", "Account", "Finished", amount, primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(new Date(), "Withdraw from Primary Account", "Account", "Finished", withdrawAmount, primaryAccount.getAccountBalance(), primaryAccount);
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            SavingsAccount savingsAccount = user.getSavingsAccount();
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            SavingsAccount savingsAccount = savingsAccountDao.findLockedById(user.getSavingsAccount().getId());
+            requireSufficientFunds(savingsAccount.getAccountBalance(), withdrawAmount);
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(withdrawAmount));
             savingsAccountDao.save(savingsAccount);
 
-            Date date = new Date();
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Withdraw from savings Account", "Account", "Finished", amount, savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(new Date(), "Withdraw from savings Account", "Account", "Finished", withdrawAmount, savingsAccount.getAccountBalance(), savingsAccount);
             transactionService.saveSavingsWithdrawTransaction(savingsTransaction);
+        } else {
+            throw new IllegalArgumentException("Invalid account type");
+        }
+    }
+
+    private void requireSufficientFunds(BigDecimal balance, BigDecimal amount) {
+        if (balance.compareTo(amount) < 0) {
+            throw new IllegalArgumentException("Insufficient funds");
         }
     }
     
     private int accountGen() {
-        return ++nextAccountNumber;
+        for (int attempt = 0; attempt < MAX_ACCOUNT_NUMBER_ATTEMPTS; attempt++) {
+            int candidate = ACCOUNT_NUMBER_ORIGIN + RANDOM.nextInt(ACCOUNT_NUMBER_BOUND);
+            if (!primaryAccountDao.existsByAccountNumber(candidate) && !savingsAccountDao.existsByAccountNumber(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("Unable to allocate a unique account number");
     }
 
 	

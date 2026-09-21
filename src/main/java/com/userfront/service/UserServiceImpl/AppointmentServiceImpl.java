@@ -24,7 +24,8 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     public Appointment findAppointment(Long id) {
-        return null;
+        return appointmentDao.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Appointment " + id + " not found"));
     }
 
     public void confirmAppointment(Long id) {
