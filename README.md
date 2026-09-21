@@ -21,3 +21,14 @@ Online banking system detail diagram
 
 ![online banking system detail diagram](https://user-images.githubusercontent.com/34470526/37703353-999023fe-2d1f-11e8-96f6-db40724c5d14.png)
 
+
+## Database configuration
+
+Datasource credentials are read from the environment; the application fails to
+start if they are not set. Use a least-privilege MySQL user, not `root`.
+
+```
+export DB_URL=jdbc:mysql://localhost:3306/OnlineBankingSystem   # optional, defaults to this value
+export DB_USERNAME=obs_app
+export DB_PASSWORD=<password>
+```
