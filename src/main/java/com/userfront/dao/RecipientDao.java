@@ -7,9 +7,11 @@ import org.springframework.data.repository.CrudRepository;
 import com.userfront.domain.Recipient;
 
 public interface RecipientDao extends CrudRepository<Recipient, Long> {
-    List<Recipient> findAll();
+    List<Recipient> findByUserUsername(String username);
 
-    Recipient findByName(String recipientName);
+    Recipient findByNameAndUserUsername(String recipientName, String username);
 
-    void deleteByName(String recipientName);
+    Recipient findByIdAndUserUsername(Long id, String username);
+
+    void deleteByNameAndUserUsername(String recipientName, String username);
 }
