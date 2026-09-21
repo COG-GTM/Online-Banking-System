@@ -7,6 +7,7 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -16,7 +17,10 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
+import com.userfront.dto.SignupForm;
 import com.userfront.service.UserService;
+
+import jakarta.validation.Valid;
 
 @Controller
 public class HomeController {
@@ -39,35 +43,44 @@ public class HomeController {
 	
 	@RequestMapping(value = "/signup", method = RequestMethod.GET)
     public String signup(Model model) {
-        User user = new User();
-
-        model.addAttribute("user", user);
+        model.addAttribute("user", new SignupForm());
 
         return "signup";
     }
 	
 	@RequestMapping(value = "/signup", method = RequestMethod.POST)
-    public String signupPost(@ModelAttribute("user") User user,  Model model) {
+    public String signupPost(@ModelAttribute("user") @Valid SignupForm signupForm, BindingResult bindingResult, Model model) {
+        if (bindingResult.hasErrors()) {
+            return "signup";
+        }
 
-        if(userService.checkUserExists(user.getUsername(), user.getEmail()))  {
+        if (userService.checkUserExists(signupForm.getUsername(), signupForm.getEmail())) {
 
-            if (userService.checkEmailExists(user.getEmail())) {
+            if (userService.checkEmailExists(signupForm.getEmail())) {
                 model.addAttribute("emailExists", true);
             }
 
-            if (userService.checkUsernameExists(user.getUsername())) {
+            if (userService.checkUsernameExists(signupForm.getUsername())) {
                 model.addAttribute("usernameExists", true);
             }
 
             return "signup";
-        } else {
-        	 Set<UserRole> userRoles = new HashSet<>();
-             userRoles.add(new UserRole(user, roleDao.findByName("ROLE_USER")));
-
-            userService.createUser(user, userRoles);
-
-            return "redirect:/";
         }
+
+        User user = new User();
+        user.setFirstName(signupForm.getFirstName());
+        user.setLastName(signupForm.getLastName());
+        user.setPhone(signupForm.getPhone());
+        user.setEmail(signupForm.getEmail());
+        user.setUsername(signupForm.getUsername());
+        user.setPassword(signupForm.getPassword());
+
+        Set<UserRole> userRoles = new HashSet<>();
+        userRoles.add(new UserRole(user, roleDao.findByName("ROLE_USER")));
+
+        userService.createUser(user, userRoles);
+
+        return "redirect:/";
     }
 	
 	@RequestMapping("/userFront")

@@ -4,13 +4,14 @@ import java.security.Principal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
@@ -18,6 +19,7 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.MoneyUtil;
 
 @Controller
 @RequestMapping("/transfer")
@@ -48,7 +50,7 @@ public class TransferController {
         User user = userService.findByUsername(principal.getName());
         PrimaryAccount primaryAccount = user.getPrimaryAccount();
         SavingsAccount savingsAccount = user.getSavingsAccount();
-        transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
+        transactionService.betweenAccountsTransfer(transferFrom, transferTo, MoneyUtil.parseAmount(amount), primaryAccount, savingsAccount);
 
         return "redirect:/userFront";
     }
@@ -78,7 +80,7 @@ public class TransferController {
     @RequestMapping(value = "/recipient/edit", method = RequestMethod.GET)
     public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = findOwnedRecipient(recipientName, principal);
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
         model.addAttribute("recipientList", recipientList);
@@ -87,20 +89,13 @@ public class TransferController {
         return "recipient";
     }
 
-    @RequestMapping(value = "/recipient/delete", method = RequestMethod.GET)
-    @Transactional
-    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
+    @RequestMapping(value = "/recipient/delete", method = RequestMethod.POST)
+    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName);
+        findOwnedRecipient(recipientName, principal);
+        transactionService.deleteRecipientByName(recipientName, principal.getName());
 
-        List<Recipient> recipientList = transactionService.findRecipientList(principal);
-
-        Recipient recipient = new Recipient();
-        model.addAttribute("recipient", recipient);
-        model.addAttribute("recipientList", recipientList);
-
-
-        return "recipient";
+        return "redirect:/transfer/recipient";
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.GET)
@@ -116,9 +111,18 @@ public class TransferController {
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
     public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
-        transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
+        Recipient recipient = findOwnedRecipient(recipientName, principal);
+        transactionService.toSomeoneElseTransfer(recipient, accountType, MoneyUtil.parseAmount(amount), user.getPrimaryAccount(), user.getSavingsAccount());
 
         return "redirect:/userFront";
+    }
+
+    private Recipient findOwnedRecipient(String recipientName, Principal principal) {
+        Recipient recipient = transactionService.findRecipientByName(recipientName, principal.getName());
+        if (recipient == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipient not found");
+        }
+
+        return recipient;
     }
 }
