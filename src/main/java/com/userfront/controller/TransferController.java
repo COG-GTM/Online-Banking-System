@@ -5,7 +5,6 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,7 +47,12 @@ public class TransferController {
         User user = userService.findByUsername(principal.getName());
         PrimaryAccount primaryAccount = user.getPrimaryAccount();
         SavingsAccount savingsAccount = user.getSavingsAccount();
-        transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
+
+        try {
+            transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
+        } catch (IllegalArgumentException e) {
+            return "redirect:/transfer/betweenAccounts?error";
+        }
 
         return "redirect:/userFront";
     }
@@ -69,6 +73,7 @@ public class TransferController {
     public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
 
         User user = userService.findByUsername(principal.getName());
+        recipient.setId(null);
         recipient.setUser(user);
         transactionService.saveRecipient(recipient);
 
@@ -78,7 +83,11 @@ public class TransferController {
     @RequestMapping(value = "/recipient/edit", method = RequestMethod.GET)
     public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = transactionService.findRecipientByName(recipientName, principal.getName());
+        if (recipient == null) {
+            return "redirect:/transfer/recipient";
+        }
+
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
         model.addAttribute("recipientList", recipientList);
@@ -87,20 +96,12 @@ public class TransferController {
         return "recipient";
     }
 
-    @RequestMapping(value = "/recipient/delete", method = RequestMethod.GET)
-    @Transactional
-    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
+    @RequestMapping(value = "/recipient/delete", method = RequestMethod.POST)
+    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName);
+        transactionService.deleteRecipientByName(recipientName, principal.getName());
 
-        List<Recipient> recipientList = transactionService.findRecipientList(principal);
-
-        Recipient recipient = new Recipient();
-        model.addAttribute("recipient", recipient);
-        model.addAttribute("recipientList", recipientList);
-
-
-        return "recipient";
+        return "redirect:/transfer/recipient";
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.GET)
@@ -116,8 +117,16 @@ public class TransferController {
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
     public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
-        transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
+        Recipient recipient = transactionService.findRecipientByName(recipientName, principal.getName());
+        if (recipient == null) {
+            return "redirect:/transfer/toSomeoneElse?error";
+        }
+
+        try {
+            transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
+        } catch (IllegalArgumentException e) {
+            return "redirect:/transfer/toSomeoneElse?error";
+        }
 
         return "redirect:/userFront";
     }
