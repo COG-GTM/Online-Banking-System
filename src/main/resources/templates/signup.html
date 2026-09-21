@@ -67,11 +67,11 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="password" class="cols-sm-2 control-label">Password</label>
+                    <label for="password" class="cols-sm-2 control-label">Password</label><span class="bg-danger pull-right" th:if="${passwordInvalid}">Password must be at least 12 characters and contain upper and lower case letters, a digit and a symbol</span>
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-lock fa-lg" aria-hidden="true"></i></span>
-                            <input type="password" class="form-control" th:value="${user.password}" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required"/>
+                            <input type="password" class="form-control" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required"/>
                         </div>
                         <div class="checkbox">
                             <label>
