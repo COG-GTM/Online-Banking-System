@@ -4,6 +4,7 @@
 <body roleId="page-top" data-spy="scroll" data-target=".navbar-fixed-top">
 <head th:replace="common/header :: navbar"/>
 <div class="container main">
+    <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
     <div class="row">
         <div class="col-md-6">
             <form th:action="@{/account/deposit}" method="post">
