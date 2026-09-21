@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -102,24 +101,25 @@ public class TransactionServiceImpl implements TransactionService {
     }
     
     public List<Recipient> findRecipientList(Principal principal) {
-        String username = principal.getName();
-        List<Recipient> recipientList = recipientDao.findAll().stream() 			//convert list to stream
-                .filter(recipient -> username.equals(recipient.getUser().getUsername()))	//filters the line, equals to username
-                .collect(Collectors.toList());
+        User user = userService.findByUsername(principal.getName());
 
-        return recipientList;
+        return recipientDao.findByUser(user);
     }
 
     public Recipient saveRecipient(Recipient recipient) {
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName) {
-        return recipientDao.findByName(recipientName);
+    public Recipient findRecipientById(Long id) {
+        return recipientDao.findOneById(id);
     }
 
-    public void deleteRecipientByName(String recipientName) {
-        recipientDao.deleteByName(recipientName);
+    public Recipient findRecipientByNameAndUser(String recipientName, User user) {
+        return recipientDao.findByNameAndUser(recipientName, user);
+    }
+
+    public void deleteRecipientByNameAndUser(String recipientName, User user) {
+        recipientDao.deleteByNameAndUser(recipientName, user);
     }
     
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
