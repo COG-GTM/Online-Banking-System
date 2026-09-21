@@ -1,6 +1,6 @@
 package com.userfront.config;
 
-import java.security.SecureRandom;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -27,11 +27,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     private UserSecurityService userSecurityService;
 
-    private static final String SALT = "salt"; // Salt should be protected carefully
-
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12, new SecureRandom(SALT.getBytes()));
+        return new BCryptPasswordEncoder(12);
     }
 
     private static final String[] PUBLIC_MATCHERS = {
@@ -43,7 +41,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             "/about/**",
             "/contact/**",
             "/error/**/*",
-            "/console/**",
             "/signup"
     };
 
@@ -56,15 +53,30 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 permitAll().anyRequest().authenticated();
 
         http
-                .csrf().disable().cors().disable()
+                .cors().disable()
                 .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
-                .rememberMe();
+                .sessionManagement().sessionFixation().migrateSession()
+                .and()
+                .headers()
+                .httpStrictTransportSecurity().includeSubDomains(true).maxAgeInSeconds(31536000)
+                .and()
+                .frameOptions().deny()
+                .and()
+                .rememberMe().key(rememberMeKey()).tokenValiditySeconds(86400);
     }
 
 
+
+    private String rememberMeKey() {
+        String configuredKey = env.getProperty("app.remember-me.key");
+
+        return configuredKey != null && !configuredKey.isEmpty()
+                ? configuredKey
+                : UUID.randomUUID().toString();
+    }
 
     @Autowired
     public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
