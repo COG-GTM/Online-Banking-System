@@ -44,27 +44,14 @@
 }(jQuery));
 
 $(document).ready(function() {
-    var confirm = function() {
-        bootbox.confirm({
-            title: "Appointment Confirmation",
-            message: "Do you really want to schedule this appointment?",
-            buttons: {
-                cancel: {
-                    label: '<i class="fa fa-times"></i> Cancel'
-                },
-                confirm: {
-                    label: '<i class="fa fa-check"></i> Confirm'
-                }
-            },
-            callback: function (result) {
-                if (result == true) {
-                    $('#appointmentForm').submit();
-                } else {
-                    console.log("Scheduling cancelled.");
-                }
-            }
-        });
+    var confirmAppointment = function() {
+        $('#appointmentConfirmModal').modal('show');
     };
+
+    $('#confirmAppointment').click(function () {
+        $('#appointmentConfirmModal').modal('hide');
+        $('#appointmentForm').submit();
+    });
 
     $.toggleShowPassword({
         field: '#password',
@@ -82,7 +69,7 @@ $(document).ready(function() {
     });
 
     $('#submitAppointment').click(function () {
-        confirm();
+        confirmAppointment();
     });
 
 });
