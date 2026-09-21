@@ -8,6 +8,7 @@ import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
+import com.userfront.domain.User;
 
 public interface TransactionService {
 	List<PrimaryTransaction> findPrimaryTransactionList(String username);
@@ -27,9 +28,11 @@ public interface TransactionService {
 
     Recipient saveRecipient(Recipient recipient);
 
-    Recipient findRecipientByName(String recipientName);
+    Recipient findRecipientByName(String recipientName, User user);
 
-    void deleteRecipientByName(String recipientName);
+    Recipient findRecipientById(Long id, User user);
+
+    void deleteRecipientByName(String recipientName, User user);
     
-    void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount);
+    void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception;
 }

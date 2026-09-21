@@ -66,9 +66,18 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/recipient/save", method = RequestMethod.POST)
-    public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
+    public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) throws Exception {
 
         User user = userService.findByUsername(principal.getName());
+
+        if (recipient.getId() != null) {
+            Recipient existingRecipient = transactionService.findRecipientById(recipient.getId(), user);
+
+            if (existingRecipient == null) {
+                throw new Exception("Recipient not found");
+            }
+        }
+
         recipient.setUser(user);
         transactionService.saveRecipient(recipient);
 
@@ -76,9 +85,15 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/recipient/edit", method = RequestMethod.GET)
-    public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
+    public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal) throws Exception {
 
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        User user = userService.findByUsername(principal.getName());
+        Recipient recipient = transactionService.findRecipientByName(recipientName, user);
+
+        if (recipient == null) {
+            throw new Exception("Recipient not found");
+        }
+
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
         model.addAttribute("recipientList", recipientList);
@@ -87,11 +102,12 @@ public class TransferController {
         return "recipient";
     }
 
-    @RequestMapping(value = "/recipient/delete", method = RequestMethod.GET)
+    @RequestMapping(value = "/recipient/delete", method = RequestMethod.POST)
     @Transactional
     public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName);
+        User user = userService.findByUsername(principal.getName());
+        transactionService.deleteRecipientByName(recipientName, user);
 
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
@@ -114,9 +130,14 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
-    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
+    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) throws Exception {
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = transactionService.findRecipientByName(recipientName, user);
+
+        if (recipient == null) {
+            throw new Exception("Recipient not found");
+        }
+
         transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
 
         return "redirect:/userFront";
