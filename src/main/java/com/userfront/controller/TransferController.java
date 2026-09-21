@@ -69,6 +69,12 @@ public class TransferController {
     public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
 
         User user = userService.findByUsername(principal.getName());
+
+        if (recipient.getId() != null
+                && transactionService.findRecipientByIdAndUsername(recipient.getId(), user.getUsername()) == null) {
+            throw new IllegalArgumentException("Recipient not found");
+        }
+
         recipient.setUser(user);
         transactionService.saveRecipient(recipient);
 
@@ -78,7 +84,10 @@ public class TransferController {
     @RequestMapping(value = "/recipient/edit", method = RequestMethod.GET)
     public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = transactionService.findRecipientByNameAndUsername(recipientName, principal.getName());
+        if (recipient == null) {
+            recipient = new Recipient();
+        }
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
         model.addAttribute("recipientList", recipientList);
@@ -87,20 +96,13 @@ public class TransferController {
         return "recipient";
     }
 
-    @RequestMapping(value = "/recipient/delete", method = RequestMethod.GET)
+    @RequestMapping(value = "/recipient/delete", method = RequestMethod.POST)
     @Transactional
-    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
+    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName);
+        transactionService.deleteRecipientByNameAndUsername(recipientName, principal.getName());
 
-        List<Recipient> recipientList = transactionService.findRecipientList(principal);
-
-        Recipient recipient = new Recipient();
-        model.addAttribute("recipient", recipient);
-        model.addAttribute("recipientList", recipientList);
-
-
-        return "recipient";
+        return "redirect:/transfer/recipient";
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.GET)
@@ -116,7 +118,10 @@ public class TransferController {
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
     public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = transactionService.findRecipientByNameAndUsername(recipientName, principal.getName());
+        if (recipient == null) {
+            throw new IllegalArgumentException("Recipient not found");
+        }
         transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
 
         return "redirect:/userFront";
