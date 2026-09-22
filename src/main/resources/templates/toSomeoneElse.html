@@ -7,6 +7,8 @@
     <div class="row">
         <div class="col-md-6">
             <form th:action="@{/transfer/toSomeoneElse}" method="post">
+                <div class="alert alert-danger" th:if="${amountError}" th:text="${amountError}"></div>
+
                 <div class="form-group" >
                     <label for="recipientName">1. Please choose the recipient:</label>
                     <select class="form-control" th:value="${recipientName}"  name="recipientName" id="recipientName" required="required">

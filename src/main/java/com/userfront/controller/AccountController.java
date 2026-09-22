@@ -18,6 +18,7 @@ import com.userfront.domain.User;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.AmountValidator;
 
 @Controller
 @RequestMapping("/account")
@@ -66,8 +67,14 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
-    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.deposit(accountType, Double.parseDouble(amount), principal);
+    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
+        try {
+            accountService.deposit(accountType, AmountValidator.parse(amount).doubleValue(), principal);
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("amountError", e.getMessage());
+
+            return "deposit";
+        }
 
         return "redirect:/userFront";
     }
@@ -81,8 +88,14 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
-    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
+        try {
+            accountService.withdraw(accountType, AmountValidator.parse(amount).doubleValue(), principal);
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("amountError", e.getMessage());
+
+            return "withdraw";
+        }
 
         return "redirect:/userFront";
     }
