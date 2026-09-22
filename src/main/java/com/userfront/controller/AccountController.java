@@ -1,5 +1,6 @@
 package com.userfront.controller;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
 
@@ -18,6 +19,8 @@ import com.userfront.domain.User;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.AmountParser;
+import com.userfront.util.InvalidAmountException;
 
 @Controller
 @RequestMapping("/account")
@@ -66,8 +69,19 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
-    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.deposit(accountType, Double.parseDouble(amount), principal);
+    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
+        BigDecimal depositAmount;
+        try {
+            depositAmount = AmountParser.parse(amount);
+        } catch (InvalidAmountException e) {
+            model.addAttribute("accountType", accountType);
+            model.addAttribute("amount", amount);
+            model.addAttribute("amountError", e.getMessage());
+
+            return "deposit";
+        }
+
+        accountService.deposit(accountType, depositAmount, principal);
 
         return "redirect:/userFront";
     }
@@ -81,8 +95,19 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
-    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
+        BigDecimal withdrawAmount;
+        try {
+            withdrawAmount = AmountParser.parse(amount);
+        } catch (InvalidAmountException e) {
+            model.addAttribute("accountType", accountType);
+            model.addAttribute("amount", amount);
+            model.addAttribute("amountError", e.getMessage());
+
+            return "withdraw";
+        }
+
+        accountService.withdraw(accountType, withdrawAmount, principal);
 
         return "redirect:/userFront";
     }
