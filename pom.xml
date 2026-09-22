@@ -22,6 +22,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
+		<!-- Kay-SR14 ships spring-data-jpa 2.0.14.RELEASE (CVE-2019-3797) -->
+		<spring-data-releasetrain.version>Kay-SR14</spring-data-releasetrain.version>
 	</properties>
 
 	<dependencies>
