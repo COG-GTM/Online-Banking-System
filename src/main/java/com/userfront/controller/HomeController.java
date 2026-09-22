@@ -17,6 +17,7 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.UserService;
+import com.userfront.validation.PasswordPolicy;
 
 @Controller
 public class HomeController {
@@ -48,6 +49,15 @@ public class HomeController {
 	
 	@RequestMapping(value = "/signup", method = RequestMethod.POST)
     public String signupPost(@ModelAttribute("user") User user,  Model model) {
+
+        String passwordError = PasswordPolicy.validate(user.getPassword(), user.getUsername(), user.getEmail());
+
+        if (passwordError != null) {
+            user.setPassword("");
+            model.addAttribute("passwordError", passwordError);
+
+            return "signup";
+        }
 
         if(userService.checkUserExists(user.getUsername(), user.getEmail()))  {
 
