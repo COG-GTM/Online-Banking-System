@@ -40,22 +40,62 @@
     };
 
 
+    $.confirmDialog = function (options) {
+        var settings = $.extend({
+            title: "",
+            message: "",
+            cancelLabel: "Cancel",
+            confirmLabel: "Confirm",
+            callback: function () {}
+        }, options);
+
+        var titleEl = $('<h4>', {"class": "modal-title"}).text(settings.title);
+        var closeBtn = $('<button>', {
+            type: "button",
+            "class": "close",
+            "data-dismiss": "modal",
+            "aria-label": "Close"
+        }).append($('<span>', {"aria-hidden": "true"}).html("&times;"));
+
+        var cancelBtn = $('<button>', {type: "button", "class": "btn btn-default"})
+            .append($('<i>', {"class": "fa fa-times"}), document.createTextNode(" " + settings.cancelLabel));
+        var confirmBtn = $('<button>', {type: "button", "class": "btn btn-primary"})
+            .append($('<i>', {"class": "fa fa-check"}), document.createTextNode(" " + settings.confirmLabel));
+
+        var modal = $('<div>', {"class": "modal fade", tabindex: "-1", role: "dialog"}).append(
+            $('<div>', {"class": "modal-dialog", role: "document"}).append(
+                $('<div>', {"class": "modal-content"}).append(
+                    $('<div>', {"class": "modal-header"}).append(closeBtn, titleEl),
+                    $('<div>', {"class": "modal-body"}).append($('<p>').text(settings.message)),
+                    $('<div>', {"class": "modal-footer"}).append(cancelBtn, confirmBtn)
+                )
+            )
+        );
+
+        var result = false;
+        confirmBtn.on('click', function () {
+            result = true;
+            modal.modal('hide');
+        });
+        cancelBtn.on('click', function () {
+            modal.modal('hide');
+        });
+        modal.on('hidden.bs.modal', function () {
+            modal.remove();
+            settings.callback(result);
+        });
+
+        $('body').append(modal);
+        modal.modal('show');
+    };
 
 }(jQuery));
 
 $(document).ready(function() {
     var confirm = function() {
-        bootbox.confirm({
+        $.confirmDialog({
             title: "Appointment Confirmation",
             message: "Do you really want to schedule this appointment?",
-            buttons: {
-                cancel: {
-                    label: '<i class="fa fa-times"></i> Cancel'
-                },
-                confirm: {
-                    label: '<i class="fa fa-check"></i> Confirm'
-                }
-            },
             callback: function (result) {
                 if (result == true) {
                     $('#appointmentForm').submit();
