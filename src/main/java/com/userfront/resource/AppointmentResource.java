@@ -3,6 +3,7 @@ package com.userfront.resource;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,7 +28,11 @@ public class AppointmentResource {
     }
 
     @RequestMapping("/{id}/confirm")
-    public void confirmAppointment(@PathVariable("id") Long id) {
-        appointmentService.confirmAppointment(id);
+    public ResponseEntity<Void> confirmAppointment(@PathVariable("id") Long id) {
+        if (!appointmentService.confirmAppointment(id)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok().build();
     }
 }
