@@ -16,6 +16,7 @@ import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.AccountService;
 import com.userfront.service.UserService;
+import com.userfront.validation.PasswordPolicy;
 
 @Service
 @Transactional
@@ -54,6 +55,12 @@ public class UserServiceImpl implements UserService{
         if (localUser != null) {
             LOG.info("User with username {} already exist. Nothing will be done. ", user.getUsername());
         } else {
+            String passwordError = PasswordPolicy.validate(user.getPassword(), user.getUsername(), user.getEmail());
+
+            if (passwordError != null) {
+                throw new IllegalArgumentException(passwordError);
+            }
+
             String encryptedPassword = passwordEncoder.encode(user.getPassword());
             user.setPassword(encryptedPassword);
 
