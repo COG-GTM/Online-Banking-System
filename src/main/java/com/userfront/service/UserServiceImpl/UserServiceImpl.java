@@ -1,5 +1,6 @@
 package com.userfront.service.UserServiceImpl;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.RoleDao;
 import com.userfront.dao.UserDao;
+import com.userfront.domain.SignupForm;
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.AccountService;
@@ -72,6 +74,21 @@ public class UserServiceImpl implements UserService{
         return localUser;
     }
     
+    public User registerUser(SignupForm signupForm) {
+        User user = new User();
+        user.setUsername(signupForm.getUsername());
+        user.setPassword(signupForm.getPassword());
+        user.setFirstName(signupForm.getFirstName());
+        user.setLastName(signupForm.getLastName());
+        user.setEmail(signupForm.getEmail());
+        user.setPhone(signupForm.getPhone());
+
+        Set<UserRole> userRoles = new HashSet<>();
+        userRoles.add(new UserRole(user, roleDao.findByName("ROLE_USER")));
+
+        return createUser(user, userRoles);
+    }
+
     public boolean checkUserExists(String username, String email){
         if (checkUsernameExists(username) || checkEmailExists(username)) {
             return true;
