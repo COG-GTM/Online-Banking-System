@@ -20,8 +20,10 @@ import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.exception.TransactionDeclinedException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.service.util.DebitValidator;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -76,9 +78,13 @@ public class TransactionServiceImpl implements TransactionService {
     }
     
     public void betweenAccountsTransfer(String transferFrom, String transferTo, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception {
+        BigDecimal transferAmount = new BigDecimal(amount);
+
         if (transferFrom.equalsIgnoreCase("Primary") && transferTo.equalsIgnoreCase("Savings")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(new BigDecimal(amount)));
+            DebitValidator.validate("Primary", primaryAccount.getAccountBalance(), transferAmount);
+
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(transferAmount));
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(transferAmount));
             primaryAccountDao.save(primaryAccount);
             savingsAccountDao.save(savingsAccount);
 
@@ -87,8 +93,10 @@ public class TransactionServiceImpl implements TransactionService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else if (transferFrom.equalsIgnoreCase("Savings") && transferTo.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            DebitValidator.validate("Savings", savingsAccount.getAccountBalance(), transferAmount);
+
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(transferAmount));
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(transferAmount));
             primaryAccountDao.save(primaryAccount);
             savingsAccountDao.save(savingsAccount);
 
@@ -122,9 +130,18 @@ public class TransactionServiceImpl implements TransactionService {
         recipientDao.deleteByName(recipientName);
     }
     
-    public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
+    public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws TransactionDeclinedException {
+        BigDecimal transferAmount = new BigDecimal(amount);
+
         if (accountType.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            try {
+                DebitValidator.validate("Primary", primaryAccount.getAccountBalance(), transferAmount);
+            } catch (TransactionDeclinedException e) {
+                primaryTransactionDao.save(new PrimaryTransaction(new Date(), "Transfer to recipient "+recipient.getName(), "Transfer", "Declined", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount));
+                throw e;
+            }
+
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(transferAmount));
             primaryAccountDao.save(primaryAccount);
 
             Date date = new Date();
@@ -132,7 +149,14 @@ public class TransactionServiceImpl implements TransactionService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            try {
+                DebitValidator.validate("Savings", savingsAccount.getAccountBalance(), transferAmount);
+            } catch (TransactionDeclinedException e) {
+                savingsTransactionDao.save(new SavingsTransaction(new Date(), "Transfer to recipient "+recipient.getName(), "Transfer", "Declined", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount));
+                throw e;
+            }
+
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(transferAmount));
             savingsAccountDao.save(savingsAccount);
 
             Date date = new Date();

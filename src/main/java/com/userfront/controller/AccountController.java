@@ -15,6 +15,7 @@ import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.exception.TransactionDeclinedException;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
@@ -81,8 +82,16 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
-    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
+        try {
+            accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+        } catch (TransactionDeclinedException e) {
+            model.addAttribute("accountType", accountType);
+            model.addAttribute("amount", amount);
+            model.addAttribute("error", e.getMessage());
+
+            return "withdraw";
+        }
 
         return "redirect:/userFront";
     }

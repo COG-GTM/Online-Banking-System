@@ -14,9 +14,11 @@ import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.exception.TransactionDeclinedException;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.service.util.DebitValidator;
 
 @Service
 public class AccountServiceImpl implements AccountService {
@@ -79,12 +81,22 @@ public class AccountServiceImpl implements AccountService {
         }
     }
     
-    public void withdraw(String accountType, double amount, Principal principal) {
+    public void withdraw(String accountType, double amount, Principal principal) throws TransactionDeclinedException {
         User user = userService.findByUsername(principal.getName());
+        BigDecimal withdrawAmount = new BigDecimal(amount);
 
         if (accountType.equalsIgnoreCase("Primary")) {
             PrimaryAccount primaryAccount = user.getPrimaryAccount();
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+
+            try {
+                DebitValidator.validate("Primary", primaryAccount.getAccountBalance(), withdrawAmount);
+            } catch (TransactionDeclinedException e) {
+                PrimaryTransaction declined = new PrimaryTransaction(new Date(), "Withdraw from Primary Account", "Account", "Declined", amount, primaryAccount.getAccountBalance(), primaryAccount);
+                transactionService.savePrimaryWithdrawTransaction(declined);
+                throw e;
+            }
+
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(withdrawAmount));
             primaryAccountDao.save(primaryAccount);
 
             Date date = new Date();
@@ -93,7 +105,16 @@ public class AccountServiceImpl implements AccountService {
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
             SavingsAccount savingsAccount = user.getSavingsAccount();
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+
+            try {
+                DebitValidator.validate("Savings", savingsAccount.getAccountBalance(), withdrawAmount);
+            } catch (TransactionDeclinedException e) {
+                SavingsTransaction declined = new SavingsTransaction(new Date(), "Withdraw from savings Account", "Account", "Declined", amount, savingsAccount.getAccountBalance(), savingsAccount);
+                transactionService.saveSavingsWithdrawTransaction(declined);
+                throw e;
+            }
+
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(withdrawAmount));
             savingsAccountDao.save(savingsAccount);
 
             Date date = new Date();
