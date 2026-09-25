@@ -1,6 +1,7 @@
 package com.userfront.config;
 
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -79,13 +80,20 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     public CorsConfigurationSource corsConfigurationSource() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
-        if (allowedOrigins == null || allowedOrigins.isEmpty() || allowedOrigins.contains(CorsConfiguration.ALL)) {
+        if (allowedOrigins == null || allowedOrigins.isEmpty()) {
+            return source;
+        }
+
+        List<String> origins = new ArrayList<>(allowedOrigins);
+        origins.remove(CorsConfiguration.ALL);
+
+        if (origins.isEmpty()) {
             return source;
         }
 
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(allowedOrigins);
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedOrigins(origins);
+        configuration.setAllowedMethods(Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
