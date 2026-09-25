@@ -56,12 +56,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 permitAll().anyRequest().authenticated();
 
         http
+                .requiresChannel()
+                .requestMatchers(request -> request.getHeader("X-Forwarded-Proto") != null).requiresSecure()
+                .and()
+                .headers().httpStrictTransportSecurity().includeSubDomains(true).maxAgeInSeconds(31536000)
+                .and().and()
                 .csrf().disable().cors().disable()
                 .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
-                .rememberMe();
+                .rememberMe().useSecureCookie(true);
     }
 
 
