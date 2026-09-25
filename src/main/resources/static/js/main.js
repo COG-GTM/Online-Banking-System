@@ -69,6 +69,10 @@
             settings.callback(confirmed);
         });
 
+        modal.on('shown.bs.modal', function () {
+            modal.find('.confirm-button').trigger('focus');
+        });
+
         $('body').append(modal);
         modal.modal('show');
     };
