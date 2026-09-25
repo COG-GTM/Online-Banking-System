@@ -2,6 +2,7 @@ package com.userfront.service.UserServiceImpl;
 
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.security.SecureRandom;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +21,11 @@ import com.userfront.service.UserService;
 
 @Service
 public class AccountServiceImpl implements AccountService {
-	
-	private static int nextAccountNumber = 11223145;
+
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final int ACCOUNT_NUMBER_ORIGIN = 100000000;
+    private static final int ACCOUNT_NUMBER_BOUND = 900000000;
+    private static final int ACCOUNT_NUMBER_ATTEMPTS = 20;
 
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
@@ -103,7 +107,14 @@ public class AccountServiceImpl implements AccountService {
     }
     
     private int accountGen() {
-        return ++nextAccountNumber;
+        for (int attempt = 0; attempt < ACCOUNT_NUMBER_ATTEMPTS; attempt++) {
+            int accountNumber = ACCOUNT_NUMBER_ORIGIN + RANDOM.nextInt(ACCOUNT_NUMBER_BOUND);
+            if (primaryAccountDao.findByAccountNumber(accountNumber) == null
+                    && savingsAccountDao.findByAccountNumber(accountNumber) == null) {
+                return accountNumber;
+            }
+        }
+        throw new IllegalStateException("Unable to generate a unique account number");
     }
 
 	
