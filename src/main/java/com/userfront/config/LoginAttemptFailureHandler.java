@@ -7,7 +7,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +26,9 @@ public class LoginAttemptFailureHandler extends SimpleUrlAuthenticationFailureHa
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
             AuthenticationException exception) throws IOException, ServletException {
-        loginAttemptService.loginFailed(request.getParameter("username"), request.getRemoteAddr());
+        if (exception instanceof BadCredentialsException || exception instanceof UsernameNotFoundException) {
+            loginAttemptService.loginFailed(request.getParameter("username"), request.getRemoteAddr());
+        }
         super.onAuthenticationFailure(request, response, exception);
     }
 }
