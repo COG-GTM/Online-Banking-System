@@ -1,7 +1,5 @@
 package com.userfront.config;
 
-import java.security.SecureRandom;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,11 +25,15 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     private UserSecurityService userSecurityService;
 
-    private static final String SALT = "salt"; // Salt should be protected carefully
+    @Autowired
+    private LoginAttemptFailureHandler loginAttemptFailureHandler;
+
+    @Autowired
+    private LoginAttemptSuccessHandler loginAttemptSuccessHandler;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12, new SecureRandom(SALT.getBytes()));
+        return new BCryptPasswordEncoder(12);
     }
 
     private static final String[] PUBLIC_MATCHERS = {
@@ -40,10 +42,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             "/js/**",
             "/images/**",
             "/",
+            "/index",
             "/about/**",
             "/contact/**",
             "/error/**/*",
-            "/console/**",
             "/signup"
     };
 
@@ -57,7 +59,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         http
                 .csrf().disable().cors().disable()
-                .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
+                .formLogin().failureHandler(loginAttemptFailureHandler).successHandler(loginAttemptSuccessHandler).loginPage("/index").permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
