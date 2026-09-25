@@ -1,5 +1,6 @@
 package com.userfront.controller;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
 
@@ -16,8 +17,11 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.exception.InsufficientFundsException;
+import com.userfront.exception.InvalidAmountException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.TransactionAmount;
 
 @Controller
 @RequestMapping("/transfer")
@@ -43,12 +47,27 @@ public class TransferController {
             @ModelAttribute("transferFrom") String transferFrom,
             @ModelAttribute("transferTo") String transferTo,
             @ModelAttribute("amount") String amount,
-            Principal principal
+            Principal principal,
+            Model model
     ) throws Exception {
         User user = userService.findByUsername(principal.getName());
         PrimaryAccount primaryAccount = user.getPrimaryAccount();
         SavingsAccount savingsAccount = user.getSavingsAccount();
-        transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
+
+        BigDecimal transferAmount;
+        try {
+            transferAmount = TransactionAmount.parse(amount);
+        } catch (InvalidAmountException e) {
+            model.addAttribute("amountError", e.getMessage());
+            return "betweenAccounts";
+        }
+
+        try {
+            transactionService.betweenAccountsTransfer(transferFrom, transferTo, transferAmount, primaryAccount, savingsAccount);
+        } catch (InsufficientFundsException e) {
+            model.addAttribute("amountError", e.getMessage());
+            return "betweenAccounts";
+        }
 
         return "redirect:/userFront";
     }
@@ -114,10 +133,17 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
-    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
+    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal, Model model) {
         User user = userService.findByUsername(principal.getName());
         Recipient recipient = transactionService.findRecipientByName(recipientName);
-        transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
+
+        try {
+            transactionService.toSomeoneElseTransfer(recipient, accountType, TransactionAmount.parse(amount), user.getPrimaryAccount(), user.getSavingsAccount());
+        } catch (InvalidAmountException | InsufficientFundsException e) {
+            model.addAttribute("recipientList", transactionService.findRecipientList(principal));
+            model.addAttribute("amountError", e.getMessage());
+            return "toSomeoneElse";
+        }
 
         return "redirect:/userFront";
     }
