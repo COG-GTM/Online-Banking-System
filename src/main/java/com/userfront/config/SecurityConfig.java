@@ -1,7 +1,5 @@
 package com.userfront.config;
 
-import java.security.SecureRandom;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,11 +25,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     private UserSecurityService userSecurityService;
 
-    private static final String SALT = "salt"; // Salt should be protected carefully
-
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12, new SecureRandom(SALT.getBytes()));
+        return new BCryptPasswordEncoder(12);
     }
 
     private static final String[] PUBLIC_MATCHERS = {
@@ -43,7 +39,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             "/about/**",
             "/contact/**",
             "/error/**/*",
-            "/console/**",
             "/signup"
     };
 
