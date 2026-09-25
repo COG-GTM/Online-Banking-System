@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.SequenceGenerator;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -17,7 +18,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class PrimaryAccount {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "hibernateSequence")
+    @SequenceGenerator(name = "hibernateSequence", sequenceName = "hibernate_sequence", allocationSize = 1)
     private Long id;
     private int accountNumber;
     private BigDecimal accountBalance;
