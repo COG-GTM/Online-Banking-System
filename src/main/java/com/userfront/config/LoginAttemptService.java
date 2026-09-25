@@ -1,9 +1,7 @@
 package com.userfront.config;
 
-import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.stereotype.Service;
 
@@ -11,7 +9,7 @@ import org.springframework.stereotype.Service;
 public class LoginAttemptService {
 
     private static final int MAX_USERNAME_ATTEMPTS = 5;
-    private static final int MAX_ADDRESS_ATTEMPTS = 50;
+    private static final int MAX_ADDRESS_ATTEMPTS = 20;
     private static final long LOCKOUT_MILLIS = 15 * 60 * 1000L;
     private static final long PURGE_INTERVAL_MILLIS = 60 * 1000L;
 
@@ -24,11 +22,8 @@ public class LoginAttemptService {
     public void loginFailed(String username, String remoteAddress) {
         purgeExpired();
         for (String key : keys(username, remoteAddress)) {
-            Attempts attempts = attemptsByKey.computeIfAbsent(key, k -> new Attempts());
-            if (attempts.isExpired()) {
-                attempts.reset();
-            }
-            attempts.increment();
+            attemptsByKey.compute(key, (k, attempts) ->
+                    attempts == null || attempts.isExpired() ? Attempts.first() : attempts.next());
         }
     }
 
@@ -40,15 +35,8 @@ public class LoginAttemptService {
 
     public boolean isBlocked(String username, String remoteAddress) {
         for (String key : keys(username, remoteAddress)) {
-            Attempts attempts = attemptsByKey.get(key);
-            if (attempts == null) {
-                continue;
-            }
-            if (attempts.isExpired()) {
-                attemptsByKey.remove(key);
-                continue;
-            }
-            if (attempts.count() >= maxAttempts(key)) {
+            Attempts attempts = attemptsByKey.computeIfPresent(key, (k, current) -> current.isExpired() ? null : current);
+            if (attempts != null && attempts.count() >= maxAttempts(key)) {
                 return true;
             }
         }
@@ -71,30 +59,31 @@ public class LoginAttemptService {
             return;
         }
         lastPurge = now;
-        Iterator<Map.Entry<String, Attempts>> iterator = attemptsByKey.entrySet().iterator();
-        while (iterator.hasNext()) {
-            if (iterator.next().getValue().isExpired()) {
-                iterator.remove();
-            }
+        for (String key : attemptsByKey.keySet()) {
+            attemptsByKey.computeIfPresent(key, (k, attempts) -> attempts.isExpired() ? null : attempts);
         }
     }
 
     private static final class Attempts {
 
-        private final AtomicInteger count = new AtomicInteger();
-        private volatile long lastFailure = System.currentTimeMillis();
+        private final int count;
+        private final long lastFailure;
 
-        void increment() {
-            count.incrementAndGet();
-            lastFailure = System.currentTimeMillis();
+        private Attempts(int count, long lastFailure) {
+            this.count = count;
+            this.lastFailure = lastFailure;
         }
 
-        void reset() {
-            count.set(0);
+        static Attempts first() {
+            return new Attempts(1, System.currentTimeMillis());
+        }
+
+        Attempts next() {
+            return new Attempts(count + 1, System.currentTimeMillis());
         }
 
         int count() {
-            return count.get();
+            return count;
         }
 
         boolean isExpired() {
