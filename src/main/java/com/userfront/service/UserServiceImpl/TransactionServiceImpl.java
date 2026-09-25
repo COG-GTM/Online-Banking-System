@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.userfront.dao.AccountLocker;
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.PrimaryTransactionDao;
 import com.userfront.dao.RecipientDao;
@@ -45,6 +46,9 @@ public class TransactionServiceImpl implements TransactionService {
 	@Autowired
 	private RecipientDao recipientDao;
 	
+	@Autowired
+	private AccountLocker accountLocker;
+	
 
 	public List<PrimaryTransaction> findPrimaryTransactionList(String username){
         User user = userService.findByUsername(username);
@@ -78,10 +82,10 @@ public class TransactionServiceImpl implements TransactionService {
     
     @Transactional(rollbackFor = Exception.class)
     public void betweenAccountsTransfer(String transferFrom, String transferTo, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception {
-        primaryAccount = primaryAccountDao.findByIdForUpdate(primaryAccount.getId());
-        savingsAccount = savingsAccountDao.findByIdForUpdate(savingsAccount.getId());
-
         if (transferFrom.equalsIgnoreCase("Primary") && transferTo.equalsIgnoreCase("Savings")) {
+            primaryAccount = accountLocker.lockPrimaryAccount(primaryAccount.getId());
+            savingsAccount = accountLocker.lockSavingsAccount(savingsAccount.getId());
+
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(new BigDecimal(amount)));
             primaryAccountDao.save(primaryAccount);
@@ -92,6 +96,9 @@ public class TransactionServiceImpl implements TransactionService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else if (transferFrom.equalsIgnoreCase("Savings") && transferTo.equalsIgnoreCase("Primary")) {
+            primaryAccount = accountLocker.lockPrimaryAccount(primaryAccount.getId());
+            savingsAccount = accountLocker.lockSavingsAccount(savingsAccount.getId());
+
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(new BigDecimal(amount)));
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
             primaryAccountDao.save(primaryAccount);
@@ -130,7 +137,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
         if (accountType.equalsIgnoreCase("Primary")) {
-            primaryAccount = primaryAccountDao.findByIdForUpdate(primaryAccount.getId());
+            primaryAccount = accountLocker.lockPrimaryAccount(primaryAccount.getId());
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
             primaryAccountDao.save(primaryAccount);
 
@@ -139,7 +146,7 @@ public class TransactionServiceImpl implements TransactionService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            savingsAccount = savingsAccountDao.findByIdForUpdate(savingsAccount.getId());
+            savingsAccount = accountLocker.lockSavingsAccount(savingsAccount.getId());
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
             savingsAccountDao.save(savingsAccount);
 
