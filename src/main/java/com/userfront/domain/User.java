@@ -26,7 +26,7 @@ import com.userfront.domain.security.UserRole;
 public class User implements UserDetails{
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "userId", nullable = false, updatable = false)
     private Long userId;
     private String username;
