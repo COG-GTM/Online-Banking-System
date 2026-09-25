@@ -207,15 +207,21 @@ if (typeof jQuery === 'undefined') {
 
     state += 'Text'
 
-    if (data.resetText == null) $el.data('resetText', $el[val]())
+    if (data.resetText == null) {
+      $el.data('resetText', $el[val]())
+      this.hasTrustedResetText = true
+    }
 
     // push to event loop to allow forms to submit
     setTimeout($.proxy(function () {
-      // text coming from a data-* attribute is rendered as text, never as markup
-      var attr   = 'data-' + state.replace(/([A-Z])/g, '-$1').toLowerCase()
-      var setter = $el.is('input') ? 'val' : ($el[0].hasAttribute(attr) ? 'text' : 'html')
+      // values read from data-* are attacker-controllable and are set as text,
+      // never as markup; only the plugin's own options and the markup this
+      // plugin stashed itself are treated as html
+      var fromData = data[state] != null
+      var trusted  = !fromData || (state == 'resetText' && this.hasTrustedResetText)
+      var setter   = $el.is('input') ? 'val' : (trusted ? 'html' : 'text')
 
-      $el[setter](data[state] == null ? this.options[state] : data[state])
+      $el[setter](fromData ? data[state] : this.options[state])
 
       if (state == 'loadingText') {
         this.isLoading = true
