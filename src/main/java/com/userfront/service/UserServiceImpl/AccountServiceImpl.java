@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.security.Principal;
 import java.security.SecureRandom;
 import java.util.Date;
-import java.util.function.IntPredicate;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -43,7 +42,7 @@ public class AccountServiceImpl implements AccountService {
     public PrimaryAccount createPrimaryAccount() {
         PrimaryAccount primaryAccount = new PrimaryAccount();
         primaryAccount.setAccountBalance(new BigDecimal(0.0));
-        primaryAccount.setAccountNumber(accountGen(number -> primaryAccountDao.findByAccountNumber(number) != null));
+        primaryAccount.setAccountNumber(accountGen());
 
         primaryAccountDao.save(primaryAccount);
 
@@ -53,7 +52,7 @@ public class AccountServiceImpl implements AccountService {
     public SavingsAccount createSavingsAccount() {
         SavingsAccount savingsAccount = new SavingsAccount();
         savingsAccount.setAccountBalance(new BigDecimal(0.0));
-        savingsAccount.setAccountNumber(accountGen(number -> savingsAccountDao.findByAccountNumber(number) != null));
+        savingsAccount.setAccountNumber(accountGen());
 
         savingsAccountDao.save(savingsAccount);
 
@@ -107,10 +106,11 @@ public class AccountServiceImpl implements AccountService {
         }
     }
     
-    private int accountGen(IntPredicate taken) {
+    private int accountGen() {
         for (int attempt = 0; attempt < ACCOUNT_NUMBER_ATTEMPTS; attempt++) {
             int accountNumber = ACCOUNT_NUMBER_ORIGIN + RANDOM.nextInt(ACCOUNT_NUMBER_BOUND);
-            if (!taken.test(accountNumber)) {
+            if (primaryAccountDao.findByAccountNumber(accountNumber) == null
+                    && savingsAccountDao.findByAccountNumber(accountNumber) == null) {
                 return accountNumber;
             }
         }
