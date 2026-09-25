@@ -2,7 +2,9 @@ package com.userfront.service.UserServiceImpl;
 
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.security.SecureRandom;
 import java.util.Date;
+import java.util.function.IntPredicate;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,8 +22,11 @@ import com.userfront.service.UserService;
 
 @Service
 public class AccountServiceImpl implements AccountService {
-	
-	private static int nextAccountNumber = 11223145;
+
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final int ACCOUNT_NUMBER_ORIGIN = 100000000;
+    private static final int ACCOUNT_NUMBER_BOUND = 900000000;
+    private static final int ACCOUNT_NUMBER_ATTEMPTS = 20;
 
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
@@ -38,7 +43,7 @@ public class AccountServiceImpl implements AccountService {
     public PrimaryAccount createPrimaryAccount() {
         PrimaryAccount primaryAccount = new PrimaryAccount();
         primaryAccount.setAccountBalance(new BigDecimal(0.0));
-        primaryAccount.setAccountNumber(accountGen());
+        primaryAccount.setAccountNumber(accountGen(number -> primaryAccountDao.findByAccountNumber(number) != null));
 
         primaryAccountDao.save(primaryAccount);
 
@@ -48,7 +53,7 @@ public class AccountServiceImpl implements AccountService {
     public SavingsAccount createSavingsAccount() {
         SavingsAccount savingsAccount = new SavingsAccount();
         savingsAccount.setAccountBalance(new BigDecimal(0.0));
-        savingsAccount.setAccountNumber(accountGen());
+        savingsAccount.setAccountNumber(accountGen(number -> savingsAccountDao.findByAccountNumber(number) != null));
 
         savingsAccountDao.save(savingsAccount);
 
@@ -102,8 +107,14 @@ public class AccountServiceImpl implements AccountService {
         }
     }
     
-    private int accountGen() {
-        return ++nextAccountNumber;
+    private int accountGen(IntPredicate taken) {
+        for (int attempt = 0; attempt < ACCOUNT_NUMBER_ATTEMPTS; attempt++) {
+            int accountNumber = ACCOUNT_NUMBER_ORIGIN + RANDOM.nextInt(ACCOUNT_NUMBER_BOUND);
+            if (!taken.test(accountNumber)) {
+                return accountNumber;
+            }
+        }
+        throw new IllegalStateException("Unable to generate a unique account number");
     }
 
 	
