@@ -21,6 +21,62 @@
         })
     };
 
+    $.confirmDialog = function (options) {
+        var settings = $.extend({
+            title: "Confirm",
+            message: "Are you sure?",
+            cancelLabel: "Cancel",
+            confirmLabel: "Confirm",
+            callback: function () {}
+        }, options);
+
+        var modal = $(
+            '<div class="modal fade" tabindex="-1" role="dialog">' +
+                '<div class="modal-dialog" role="document">' +
+                    '<div class="modal-content">' +
+                        '<div class="modal-header">' +
+                            '<button type="button" class="close" data-dismiss="modal" aria-label="Close">' +
+                                '<span aria-hidden="true">&times;</span>' +
+                            '</button>' +
+                            '<h4 class="modal-title"></h4>' +
+                        '</div>' +
+                        '<div class="modal-body"></div>' +
+                        '<div class="modal-footer">' +
+                            '<button type="button" class="btn btn-default" data-dismiss="modal">' +
+                                '<i class="fa fa-times"></i> <span class="cancel-label"></span>' +
+                            '</button>' +
+                            '<button type="button" class="btn btn-primary confirm-button">' +
+                                '<i class="fa fa-check"></i> <span class="confirm-label"></span>' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>');
+
+        modal.find('.modal-title').text(settings.title);
+        modal.find('.modal-body').text(settings.message);
+        modal.find('.cancel-label').text(settings.cancelLabel);
+        modal.find('.confirm-label').text(settings.confirmLabel);
+
+        var confirmed = false;
+        modal.find('.confirm-button').on('click', function () {
+            confirmed = true;
+            modal.modal('hide');
+        });
+
+        modal.on('hidden.bs.modal', function () {
+            modal.remove();
+            settings.callback(confirmed);
+        });
+
+        modal.on('shown.bs.modal', function () {
+            modal.find('.confirm-button').trigger('focus');
+        });
+
+        $('body').append(modal);
+        modal.modal('show');
+    };
+
     $.transferDisplay = function () {
         $("#transferFrom").change(function() {
             if ($("#transferFrom").val() == 'Primary') {
@@ -45,17 +101,11 @@
 
 $(document).ready(function() {
     var confirm = function() {
-        bootbox.confirm({
+        $.confirmDialog({
             title: "Appointment Confirmation",
             message: "Do you really want to schedule this appointment?",
-            buttons: {
-                cancel: {
-                    label: '<i class="fa fa-times"></i> Cancel'
-                },
-                confirm: {
-                    label: '<i class="fa fa-check"></i> Confirm'
-                }
-            },
+            cancelLabel: "Cancel",
+            confirmLabel: "Confirm",
             callback: function (result) {
                 if (result == true) {
                     $('#appointmentForm').submit();
