@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -28,6 +30,8 @@ import com.userfront.service.UserServiceImpl.UserSecurityService;
 @EnableGlobalMethodSecurity(prePostEnabled=true)
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SecurityConfig.class);
+
     @Autowired
     private Environment env;
 
@@ -37,7 +41,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private static final String SALT = "salt"; // Salt should be protected carefully
 
     @Value("${app.cors.allowed-origins:}")
-    private List<String> allowedOrigins;
+    private String allowedOrigins;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -80,16 +84,23 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     public CorsConfigurationSource corsConfigurationSource() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
-        if (allowedOrigins == null || allowedOrigins.isEmpty()) {
-            return source;
-        }
+        List<String> origins = new ArrayList<>();
 
-        List<String> origins = new ArrayList<>(allowedOrigins);
-        origins.remove(CorsConfiguration.ALL);
+        if (allowedOrigins != null) {
+            for (String origin : allowedOrigins.split(",")) {
+                String trimmed = origin.trim();
+                if (!trimmed.isEmpty() && !CorsConfiguration.ALL.equals(trimmed)) {
+                    origins.add(trimmed);
+                }
+            }
+        }
 
         if (origins.isEmpty()) {
+            LOG.info("CORS disabled: no allowed origins configured");
             return source;
         }
+
+        LOG.info("CORS enabled for origins: {}", origins);
 
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(origins);
