@@ -6,6 +6,7 @@ import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.SavingsAccountDao;
@@ -19,6 +20,7 @@ import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
 @Service
+@Transactional
 public class AccountServiceImpl implements AccountService {
 	
 	private static int nextAccountNumber = 11223145;
@@ -34,6 +36,9 @@ public class AccountServiceImpl implements AccountService {
     
     @Autowired
     private TransactionService transactionService;
+
+    @Autowired
+    private AccountLocker accountLocker;
 
     public PrimaryAccount createPrimaryAccount() {
         PrimaryAccount primaryAccount = new PrimaryAccount();
@@ -59,7 +64,7 @@ public class AccountServiceImpl implements AccountService {
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {
-            PrimaryAccount primaryAccount = user.getPrimaryAccount();
+            PrimaryAccount primaryAccount = accountLocker.lockPrimaryAccount(user.getPrimaryAccount().getId());
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(new BigDecimal(amount)));
             primaryAccountDao.save(primaryAccount);
 
@@ -69,7 +74,7 @@ public class AccountServiceImpl implements AccountService {
             transactionService.savePrimaryDepositTransaction(primaryTransaction);
             
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            SavingsAccount savingsAccount = user.getSavingsAccount();
+            SavingsAccount savingsAccount = accountLocker.lockSavingsAccount(user.getSavingsAccount().getId());
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(new BigDecimal(amount)));
             savingsAccountDao.save(savingsAccount);
 
@@ -83,7 +88,7 @@ public class AccountServiceImpl implements AccountService {
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {
-            PrimaryAccount primaryAccount = user.getPrimaryAccount();
+            PrimaryAccount primaryAccount = accountLocker.lockPrimaryAccount(user.getPrimaryAccount().getId());
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
             primaryAccountDao.save(primaryAccount);
 
@@ -92,7 +97,7 @@ public class AccountServiceImpl implements AccountService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Withdraw from Primary Account", "Account", "Finished", amount, primaryAccount.getAccountBalance(), primaryAccount);
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            SavingsAccount savingsAccount = user.getSavingsAccount();
+            SavingsAccount savingsAccount = accountLocker.lockSavingsAccount(user.getSavingsAccount().getId());
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
             savingsAccountDao.save(savingsAccount);
 
