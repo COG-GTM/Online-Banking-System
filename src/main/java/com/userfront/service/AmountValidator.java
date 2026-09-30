@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 public final class AmountValidator {
 
     private static final int MAX_DECIMAL_PLACES = 2;
+    private static final BigDecimal MAX_AMOUNT = new BigDecimal("1000000000.00");
 
     private AmountValidator() {
     }
@@ -23,6 +24,9 @@ public final class AmountValidator {
 
         if (value.signum() <= 0) {
             throw new InvalidAmountException("Amount must be greater than zero.");
+        }
+        if (value.compareTo(MAX_AMOUNT) > 0) {
+            throw new InvalidAmountException("Amount cannot exceed " + MAX_AMOUNT.toPlainString() + ".");
         }
         if (value.stripTrailingZeros().scale() > MAX_DECIMAL_PLACES) {
             throw new InvalidAmountException("Amount cannot have more than " + MAX_DECIMAL_PLACES + " decimal places.");

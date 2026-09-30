@@ -16,6 +16,17 @@ public class AmountValidatorTest {
         assertEquals(new BigDecimal("0.01"), AmountValidator.parse("0.01"));
         assertEquals(new BigDecimal("12.50"), AmountValidator.parse(" 12.50 "));
         assertEquals(new BigDecimal("5.000"), AmountValidator.parse("5.000"));
+        assertEquals(new BigDecimal("1000000000.00"), AmountValidator.parse("1000000000.00"));
+    }
+
+    @Test(expected = InvalidAmountException.class)
+    public void rejectsAmountAboveMaximum() {
+        AmountValidator.parse("1000000000.01");
+    }
+
+    @Test(expected = InvalidAmountException.class)
+    public void rejectsHugeExponentAmount() {
+        AmountValidator.parse("1E+1000000");
     }
 
     @Test(expected = InvalidAmountException.class)
