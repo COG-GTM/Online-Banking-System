@@ -43,8 +43,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             "/about/**",
             "/contact/**",
             "/error/**/*",
-            "/console/**",
             "/signup"
+    };
+
+    private static final String[] ADMIN_ONLY_MATCHERS = {
+            "/console/**"
     };
 
     @Override
@@ -52,6 +55,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         http
                 .authorizeRequests().
 //                antMatchers("/**").
+                antMatchers(ADMIN_ONLY_MATCHERS).hasRole("ADMIN").
                 antMatchers(PUBLIC_MATCHERS).
                 permitAll().anyRequest().authenticated();
 
