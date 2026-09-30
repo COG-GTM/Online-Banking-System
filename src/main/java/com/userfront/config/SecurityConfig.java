@@ -12,8 +12,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
+import com.userfront.service.LoginAttemptService;
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
 @Configuration
@@ -26,6 +28,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
     private UserSecurityService userSecurityService;
+
+    @Autowired
+    private LoginAttemptService loginAttemptService;
+
+    private static final String LOGIN_URL = "/index";
 
     private static final String SALT = "salt"; // Salt should be protected carefully
 
@@ -57,11 +64,15 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         http
                 .csrf().disable().cors().disable()
-                .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
+                .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage(LOGIN_URL).permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
                 .rememberMe();
+
+        http.addFilterBefore(
+                new BruteForceProtectionFilter(LOGIN_URL, "/index?locked", loginAttemptService),
+                UsernamePasswordAuthenticationFilter.class);
     }
 
 
