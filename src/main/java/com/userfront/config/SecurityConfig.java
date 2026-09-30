@@ -1,8 +1,10 @@
 package com.userfront.config;
 
 import java.security.SecureRandom;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -28,6 +30,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private UserSecurityService userSecurityService;
 
     private static final String SALT = "salt"; // Salt should be protected carefully
+
+    @Value("${app.cors.allowed-origins:}")
+    private String corsAllowedOrigins;
+
+    @Value("${app.cors.allow-credentials:false}")
+    private boolean corsAllowCredentials;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -56,12 +64,19 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 permitAll().anyRequest().authenticated();
 
         http
-                .csrf().disable().cors().disable()
+                .csrf().disable()
                 .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
                 .rememberMe();
+
+        List<String> corsOrigins = CorsAllowList.parseOrigins(corsAllowedOrigins);
+        if (corsOrigins.isEmpty()) {
+            http.cors().disable();
+        } else {
+            http.cors().configurationSource(CorsAllowList.source(corsOrigins, corsAllowCredentials));
+        }
     }
 
 
