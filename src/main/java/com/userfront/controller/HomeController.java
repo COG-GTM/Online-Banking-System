@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -64,7 +65,18 @@ public class HomeController {
         	 Set<UserRole> userRoles = new HashSet<>();
              userRoles.add(new UserRole(user, roleDao.findByName("ROLE_USER")));
 
-            userService.createUser(user, userRoles);
+            User createdUser;
+            try {
+                createdUser = userService.createUser(user, userRoles);
+            } catch (DataIntegrityViolationException e) {
+                createdUser = null;
+            }
+
+            if (createdUser == null) {
+                model.addAttribute("emailExists", userService.checkEmailExists(user.getEmail()));
+                model.addAttribute("usernameExists", userService.checkUsernameExists(user.getUsername()));
+                return "signup";
+            }
 
             return "redirect:/";
         }
