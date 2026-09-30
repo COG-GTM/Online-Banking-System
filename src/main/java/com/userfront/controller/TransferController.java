@@ -16,6 +16,7 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.exception.RecipientNotFoundException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -68,6 +69,10 @@ public class TransferController {
     @RequestMapping(value = "/recipient/save", method = RequestMethod.POST)
     public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
 
+        if (recipient.getId() != null && transactionService.findRecipientById(recipient.getId(), principal) == null) {
+            throw new RecipientNotFoundException();
+        }
+
         User user = userService.findByUsername(principal.getName());
         recipient.setUser(user);
         transactionService.saveRecipient(recipient);
@@ -78,7 +83,7 @@ public class TransferController {
     @RequestMapping(value = "/recipient/edit", method = RequestMethod.GET)
     public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = findOwnedRecipient(recipientName, principal);
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
         model.addAttribute("recipientList", recipientList);
@@ -91,7 +96,9 @@ public class TransferController {
     @Transactional
     public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName);
+        if (!transactionService.deleteRecipientByName(recipientName, principal)) {
+            throw new RecipientNotFoundException();
+        }
 
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
@@ -115,10 +122,18 @@ public class TransferController {
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
     public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
+        Recipient recipient = findOwnedRecipient(recipientName, principal);
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
         transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
 
         return "redirect:/userFront";
+    }
+
+    private Recipient findOwnedRecipient(String recipientName, Principal principal) {
+        Recipient recipient = transactionService.findRecipientByName(recipientName, principal);
+        if (recipient == null) {
+            throw new RecipientNotFoundException();
+        }
+        return recipient;
     }
 }
