@@ -16,6 +16,7 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.service.AmountValidator.InvalidAmountException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -43,12 +44,18 @@ public class TransferController {
             @ModelAttribute("transferFrom") String transferFrom,
             @ModelAttribute("transferTo") String transferTo,
             @ModelAttribute("amount") String amount,
+            Model model,
             Principal principal
     ) throws Exception {
         User user = userService.findByUsername(principal.getName());
         PrimaryAccount primaryAccount = user.getPrimaryAccount();
         SavingsAccount savingsAccount = user.getSavingsAccount();
-        transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
+        try {
+            transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
+        } catch (InvalidAmountException e) {
+            model.addAttribute("amountError", e.getMessage());
+            return "betweenAccounts";
+        }
 
         return "redirect:/userFront";
     }
@@ -114,10 +121,16 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
-    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
+    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Model model, Principal principal) {
         User user = userService.findByUsername(principal.getName());
         Recipient recipient = transactionService.findRecipientByName(recipientName);
-        transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
+        try {
+            transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
+        } catch (InvalidAmountException e) {
+            model.addAttribute("recipientList", transactionService.findRecipientList(principal));
+            model.addAttribute("amountError", e.getMessage());
+            return "toSomeoneElse";
+        }
 
         return "redirect:/userFront";
     }
