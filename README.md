@@ -21,3 +21,19 @@ Online banking system detail diagram
 
 ![online banking system detail diagram](https://user-images.githubusercontent.com/34470526/37703353-999023fe-2d1f-11e8-96f6-db40724c5d14.png)
 
+
+## Configuration
+
+Database credentials are read from environment variables and are not committed:
+
+| Variable | Description |
+| --- | --- |
+| `DB_URL` | JDBC URL (defaults to `jdbc:mysql://localhost:3306/OnlineBankingSystem`) |
+| `DB_USERNAME` | Database user (use a least-privilege application account, not `root`) |
+| `DB_PASSWORD` | Database password |
+
+By default Hibernate only validates the schema (`ddl-auto=validate`) and SQL logging is off. For local development, activate the `dev` profile to let Hibernate create/update the schema and log SQL:
+
+```
+SPRING_PROFILES_ACTIVE=dev DB_USERNAME=bank_app DB_PASSWORD=... ./mvnw spring-boot:run
+```
