@@ -78,4 +78,12 @@ public class UserServiceImplTest {
         assertEquals(1, saved.getUserRoles().size());
         assertEquals("ROLE_USER", saved.getUserRoles().iterator().next().getRole().getName());
     }
+
+    @Test
+    public void checkUserExistsDetectsExistingEmail() {
+        when(userDao.findByUsername("newuser")).thenReturn(null);
+        when(userDao.findByEmail("taken@example.com")).thenReturn(new User());
+
+        assertTrue(userService.checkUserExists("newuser", "taken@example.com"));
+    }
 }
