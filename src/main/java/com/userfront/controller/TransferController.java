@@ -5,7 +5,6 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -87,20 +86,12 @@ public class TransferController {
         return "recipient";
     }
 
-    @RequestMapping(value = "/recipient/delete", method = RequestMethod.GET)
-    @Transactional
-    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
+    @RequestMapping(value = "/recipient/delete", method = RequestMethod.POST)
+    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName);
+        transactionService.deleteRecipientByName(recipientName, principal);
 
-        List<Recipient> recipientList = transactionService.findRecipientList(principal);
-
-        Recipient recipient = new Recipient();
-        model.addAttribute("recipient", recipient);
-        model.addAttribute("recipientList", recipientList);
-
-
-        return "recipient";
+        return "redirect:/transfer/recipient";
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.GET)
