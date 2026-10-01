@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -45,18 +48,19 @@ public class TransactionServiceImpl implements TransactionService {
 	private RecipientDao recipientDao;
 	
 
-	public List<PrimaryTransaction> findPrimaryTransactionList(String username){
+	public Slice<PrimaryTransaction> findPrimaryTransactionPage(String username, int page, int size) {
         User user = userService.findByUsername(username);
-        List<PrimaryTransaction> primaryTransactionList = user.getPrimaryAccount().getPrimaryTransactionList();
-
-        return primaryTransactionList;
+        return primaryTransactionDao.findByPrimaryAccountOrderByDateDescIdDesc(user.getPrimaryAccount(), transactionPage(page, size));
     }
 
-    public List<SavingsTransaction> findSavingsTransactionList(String username) {
+    public Slice<SavingsTransaction> findSavingsTransactionPage(String username, int page, int size) {
         User user = userService.findByUsername(username);
-        List<SavingsTransaction> savingsTransactionList = user.getSavingsAccount().getSavingsTransactionList();
+        return savingsTransactionDao.findBySavingsAccountOrderByDateDescIdDesc(user.getSavingsAccount(), transactionPage(page, size));
+    }
 
-        return savingsTransactionList;
+    static Pageable transactionPage(int page, int size) {
+        int boundedSize = size < 1 ? DEFAULT_TRANSACTION_PAGE_SIZE : Math.min(size, MAX_TRANSACTION_PAGE_SIZE);
+        return PageRequest.of(Math.max(page, 0), boundedSize);
     }
 
     public void savePrimaryDepositTransaction(PrimaryTransaction primaryTransaction) {

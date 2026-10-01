@@ -60,6 +60,10 @@
             </tr>
             </tbody>
         </table>
+        <ul class="pager">
+            <li class="previous" th:if="${savingsTransactionPage.hasPrevious()}"><a th:href="@{/account/savingsAccount(page=${savingsTransactionPage.number - 1})}">Newer</a></li>
+            <li class="next" th:if="${savingsTransactionPage.hasNext()}"><a th:href="@{/account/savingsAccount(page=${savingsTransactionPage.number + 1})}">Older</a></li>
+        </ul>
     </div>
 </div>
 

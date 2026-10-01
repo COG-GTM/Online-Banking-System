@@ -64,6 +64,10 @@
             </tr>
             </tbody>
         </table>
+        <ul class="pager">
+            <li class="previous" th:if="${primaryTransactionPage.hasPrevious()}"><a th:href="@{/account/primaryAccount(page=${primaryTransactionPage.number - 1})}">Newer</a></li>
+            <li class="next" th:if="${primaryTransactionPage.hasNext()}"><a th:href="@{/account/primaryAccount(page=${primaryTransactionPage.number + 1})}">Older</a></li>
+        </ul>
     </div>
 </div>
 
@@ -71,7 +75,7 @@
 <div th:replace="common/header :: body-bottom-scripts"/>
 <script>
     $(document).ready(function() {
-        $('#example').DataTable();
+        $('#example').DataTable({ "order": [] });
     } );
 </script>
 </body>

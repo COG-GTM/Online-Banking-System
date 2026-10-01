@@ -33,13 +33,17 @@ public class UserResource {
     }
 
     @RequestMapping(value = "/user/primary/transaction", method = RequestMethod.GET)
-    public List<PrimaryTransaction> getPrimaryTransactionList(@RequestParam("username") String username) {
-        return transactionService.findPrimaryTransactionList(username);
+    public List<PrimaryTransaction> getPrimaryTransactionList(@RequestParam("username") String username,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "" + TransactionService.DEFAULT_TRANSACTION_PAGE_SIZE) int size) {
+        return transactionService.findPrimaryTransactionPage(username, page, size).getContent();
     }
 
     @RequestMapping(value = "/user/savings/transaction", method = RequestMethod.GET)
-    public List<SavingsTransaction> getSavingsTransactionList(@RequestParam("username") String username) {
-        return transactionService.findSavingsTransactionList(username);
+    public List<SavingsTransaction> getSavingsTransactionList(@RequestParam("username") String username,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "" + TransactionService.DEFAULT_TRANSACTION_PAGE_SIZE) int size) {
+        return transactionService.findSavingsTransactionPage(username, page, size).getContent();
     }
 
     @RequestMapping("/user/{username}/enable")
