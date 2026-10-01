@@ -5,7 +5,6 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -68,9 +67,7 @@ public class TransferController {
     @RequestMapping(value = "/recipient/save", method = RequestMethod.POST)
     public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
 
-        User user = userService.findByUsername(principal.getName());
-        recipient.setUser(user);
-        transactionService.saveRecipient(recipient);
+        transactionService.saveRecipient(recipient, principal);
 
         return "redirect:/transfer/recipient";
     }
@@ -78,7 +75,7 @@ public class TransferController {
     @RequestMapping(value = "/recipient/edit", method = RequestMethod.GET)
     public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = transactionService.findRecipientByName(recipientName, principal);
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
         model.addAttribute("recipientList", recipientList);
@@ -88,10 +85,9 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/recipient/delete", method = RequestMethod.GET)
-    @Transactional
     public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName);
+        transactionService.deleteRecipientByName(recipientName, principal);
 
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
@@ -116,7 +112,7 @@ public class TransferController {
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
     public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = transactionService.findRecipientByName(recipientName, principal);
         transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
 
         return "redirect:/userFront";
