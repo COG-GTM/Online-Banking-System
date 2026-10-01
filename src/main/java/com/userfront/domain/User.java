@@ -12,8 +12,10 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Index;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
+import javax.persistence.Table;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -23,12 +25,14 @@ import com.userfront.domain.security.Authority;
 import com.userfront.domain.security.UserRole;
 
 @Entity
+@Table(indexes = @Index(name = "UK_user_username", columnList = "username", unique = true))
 public class User implements UserDetails{
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "userId", nullable = false, updatable = false)
     private Long userId;
+    @Column(name = "username", nullable = false)
     private String username;
     private String password;
     private String firstName;
