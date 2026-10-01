@@ -16,6 +16,8 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
 import com.userfront.service.AccountService;
+import com.userfront.service.Funds;
+import com.userfront.service.InsufficientFundsException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -81,8 +83,13 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
-    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
+        try {
+            accountService.withdraw(accountType, Funds.parseAmount(amount), principal);
+        } catch (IllegalArgumentException | InsufficientFundsException e) {
+            model.addAttribute("errorMessage", e.getMessage());
+            return "withdraw";
+        }
 
         return "redirect:/userFront";
     }
