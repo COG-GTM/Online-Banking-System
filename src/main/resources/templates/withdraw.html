@@ -11,8 +11,8 @@
                     <label for="accountType">1. Please select the account you would like to withdraw:</label>
                     <select class="form-control" th:value="${accountType}" name="accountType" id="accountType" required="required" >
                         <option disabled="disabled" selected="selected"> -- select your account -- </option>
-                        <option>Primary</option>
-                        <option>Savings</option>
+                        <option th:selected="${accountType == 'Primary'}">Primary</option>
+                        <option th:selected="${accountType == 'Savings'}">Savings</option>
                     </select>
                     <br />
                 </div>
@@ -21,7 +21,7 @@
                     <label>2. Please specify the amount you would like to withdraw: </label>
                     <span class="input-group-addon">Amount $</span>
                     <input th:value="${amount}" type="text" inputmode="decimal" pattern="\d+(\.\d{1,2})?" required="required" name="amount" id="amount" class="form-control" aria-label="Amount in dollars and cents" />
-                    <span class="help-block text-danger" th:if="${amountError}" th:text="${amountError}"></span>
+                    <p class="text-danger" th:if="${amountError}" th:text="${amountError}"></p>
                 </div>
 
                 <input type="hidden"
