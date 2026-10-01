@@ -25,6 +25,7 @@ public class RequestFilter implements Filter {
         response.setHeader("Access-Control-Allow-Headers", "x-requested-with");
         response.setHeader("Access-Control-Max-Age", "3600");
         response.setHeader("Access-Control-Allow-Credentials", "true");
+        response.setHeader("Access-Control-Expose-Headers", "X-Total-Count, X-Total-Pages, X-Page, X-Page-Size");
 
         if (!(request.getMethod().equalsIgnoreCase("OPTIONS"))) {
             try {

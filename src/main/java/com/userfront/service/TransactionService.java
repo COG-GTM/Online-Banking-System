@@ -3,6 +3,8 @@ package com.userfront.service;
 import java.security.Principal;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+
 import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.Recipient;
@@ -13,6 +15,10 @@ public interface TransactionService {
 	List<PrimaryTransaction> findPrimaryTransactionList(String username);
 
     List<SavingsTransaction> findSavingsTransactionList(String username);
+
+    Page<PrimaryTransaction> findPrimaryTransactionPage(String username, int page, int size);
+
+    Page<SavingsTransaction> findSavingsTransactionPage(String username, int page, int size);
 
     void savePrimaryDepositTransaction(PrimaryTransaction primaryTransaction);
 

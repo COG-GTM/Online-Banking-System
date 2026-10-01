@@ -2,11 +2,17 @@ package com.userfront.service.UserServiceImpl;
 
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -57,6 +63,28 @@ public class TransactionServiceImpl implements TransactionService {
         List<SavingsTransaction> savingsTransactionList = user.getSavingsAccount().getSavingsTransactionList();
 
         return savingsTransactionList;
+    }
+
+    public Page<PrimaryTransaction> findPrimaryTransactionPage(String username, int page, int size) {
+        Pageable pageable = newestFirst(page, size);
+        User user = userService.findByUsername(username);
+        if (user == null || user.getPrimaryAccount() == null) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+        return primaryTransactionDao.findByPrimaryAccount(user.getPrimaryAccount(), pageable);
+    }
+
+    public Page<SavingsTransaction> findSavingsTransactionPage(String username, int page, int size) {
+        Pageable pageable = newestFirst(page, size);
+        User user = userService.findByUsername(username);
+        if (user == null || user.getSavingsAccount() == null) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+        return savingsTransactionDao.findBySavingsAccount(user.getSavingsAccount(), pageable);
+    }
+
+    private static Pageable newestFirst(int page, int size) {
+        return PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date", "id"));
     }
 
     public void savePrimaryDepositTransaction(PrimaryTransaction primaryTransaction) {
