@@ -3,6 +3,7 @@ package com.userfront.config;
 import java.security.SecureRandom;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -27,6 +28,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     private UserSecurityService userSecurityService;
 
+    @Value("${app.security.require-ssl:true}")
+    private boolean requireSsl;
+
+    private static final long HSTS_MAX_AGE_SECONDS = 31536000;
+
     private static final String SALT = "salt"; // Salt should be protected carefully
 
     @Bean
@@ -49,6 +55,16 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
+        if (requireSsl) {
+            http.requiresChannel().anyRequest().requiresSecure();
+        }
+
+        http
+                .headers()
+                .httpStrictTransportSecurity()
+                .includeSubDomains(true)
+                .maxAgeInSeconds(HSTS_MAX_AGE_SECONDS);
+
         http
                 .authorizeRequests().
 //                antMatchers("/**").
@@ -59,9 +75,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .csrf().disable().cors().disable()
                 .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
                 .and()
-                .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
+                .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("JSESSIONID", "remember-me").permitAll()
                 .and()
-                .rememberMe();
+                .rememberMe().useSecureCookie(requireSsl);
     }
 
 
