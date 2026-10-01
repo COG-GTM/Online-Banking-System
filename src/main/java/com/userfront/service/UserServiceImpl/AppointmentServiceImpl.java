@@ -1,8 +1,8 @@
 package com.userfront.service.UserServiceImpl;
 
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.userfront.dao.AppointmentDao;
@@ -19,8 +19,8 @@ public class AppointmentServiceImpl implements AppointmentService {
        return appointmentDao.save(appointment);
     }
 
-    public List<Appointment> findAll() {
-        return appointmentDao.findAll();
+    public Page<Appointment> findAll(Pageable pageable) {
+        return appointmentDao.findAllWithUser(pageable);
     }
 
     public Appointment findAppointment(Long id) {
