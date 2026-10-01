@@ -5,6 +5,7 @@ import java.util.Set;
 
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
+import com.userfront.dto.SignupForm;
 
 public interface UserService {
 	User findByUsername(String username);
@@ -20,6 +21,8 @@ public interface UserService {
     void save (User user);
     
     User createUser(User user, Set<UserRole> userRoles);
+
+    User registerUser(SignupForm signupForm);
     
     User saveUser (User user); 
     
