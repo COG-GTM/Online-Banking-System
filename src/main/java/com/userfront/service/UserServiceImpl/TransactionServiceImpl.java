@@ -46,17 +46,19 @@ public class TransactionServiceImpl implements TransactionService {
 	
 
 	public List<PrimaryTransaction> findPrimaryTransactionList(String username){
-        User user = userService.findByUsername(username);
-        List<PrimaryTransaction> primaryTransactionList = user.getPrimaryAccount().getPrimaryTransactionList();
+        return findPrimaryTransactionList(userService.findByUsername(username));
+    }
 
-        return primaryTransactionList;
+    public List<PrimaryTransaction> findPrimaryTransactionList(User user) {
+        return user.getPrimaryAccount().getPrimaryTransactionList();
     }
 
     public List<SavingsTransaction> findSavingsTransactionList(String username) {
-        User user = userService.findByUsername(username);
-        List<SavingsTransaction> savingsTransactionList = user.getSavingsAccount().getSavingsTransactionList();
+        return findSavingsTransactionList(userService.findByUsername(username));
+    }
 
-        return savingsTransactionList;
+    public List<SavingsTransaction> findSavingsTransactionList(User user) {
+        return user.getSavingsAccount().getSavingsTransactionList();
     }
 
     public void savePrimaryDepositTransaction(PrimaryTransaction primaryTransaction) {
