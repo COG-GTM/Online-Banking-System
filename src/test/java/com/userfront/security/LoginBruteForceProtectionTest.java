@@ -1,6 +1,10 @@
 package com.userfront.security;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 
 import java.util.HashSet;
@@ -80,5 +84,12 @@ public class LoginBruteForceProtectionTest {
         }
         login("carol", PASSWORD, "10.0.0.9", "/index?locked");
         login("carol", PASSWORD, "10.0.0.10", "/userFront");
+    }
+
+    @Test
+    public void lockedPageIsPublicAndShowsMessage() throws Exception {
+        mockMvc.perform(get("/index").param("locked", ""))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Too many failed login attempts")));
     }
 }
