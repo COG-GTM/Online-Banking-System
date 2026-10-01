@@ -6,6 +6,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -13,7 +14,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class Recipient {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "hibernateSequence")
+    @SequenceGenerator(name = "hibernateSequence", sequenceName = "hibernate_sequence", allocationSize = 1)
     private Long id;
     private String name;
     private String email;
