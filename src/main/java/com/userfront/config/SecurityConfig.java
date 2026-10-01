@@ -61,7 +61,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
-                .rememberMe();
+                .rememberMe().useSecureCookie(true);
+
+        http
+                .requiresChannel().anyRequest().requiresSecure()
+                .and()
+                .headers().httpStrictTransportSecurity().includeSubDomains(true).maxAgeInSeconds(31536000);
     }
 
 
