@@ -111,6 +111,9 @@ public class TransactionServiceImplTest {
                 saved.add(args[0]);
                 return args[0];
             }
+            if (method.getName().equals("toString")) {
+                return type.getSimpleName();
+            }
             throw new UnsupportedOperationException(method.getName());
         }));
     }
