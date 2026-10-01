@@ -118,6 +118,10 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientDao.findByName(recipientName);
     }
 
+    public Recipient findRecipientByNameAndUser(String recipientName, User user) {
+        return recipientDao.findByNameAndUser(recipientName, user);
+    }
+
     public void deleteRecipientByName(String recipientName) {
         recipientDao.deleteByName(recipientName);
     }
