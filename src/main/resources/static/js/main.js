@@ -50,10 +50,12 @@ $(document).ready(function() {
             message: "Do you really want to schedule this appointment?",
             buttons: {
                 cancel: {
-                    label: '<i class="fa fa-times"></i> Cancel'
+                    label: '<i class="fa fa-times"></i> Cancel',
+                    className: 'btn-secondary'
                 },
                 confirm: {
-                    label: '<i class="fa fa-check"></i> Confirm'
+                    label: '<i class="fa fa-check"></i> Confirm',
+                    className: 'btn-primary'
                 }
             },
             callback: function (result) {
@@ -78,7 +80,8 @@ $(document).ready(function() {
         autoclose: true,
         todayBtn: true,
         startDate: "2013-02-14 10:00",
-        minuteStep: 10
+        minuteStep: 10,
+        fontAwesome: true
     });
 
     $('#submitAppointment').click(function () {

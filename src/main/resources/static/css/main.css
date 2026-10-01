@@ -286,3 +286,14 @@ hr {
 	background: #333;
 	background-image: linear-gradient(to right, #ccc, #333, #ccc);
 }
+
+.bootbox .modal-header .bootbox-close-button {
+	order: 2;
+	margin-left: auto;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	font-size: 1.5rem;
+	line-height: 1;
+	opacity: .5;
+}

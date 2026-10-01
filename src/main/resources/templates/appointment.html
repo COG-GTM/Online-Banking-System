@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
 <head th:replace="common/header :: common-header"/>
-<body roleId="page-top" data-spy="scroll" data-target=".navbar-fixed-top">
+<body roleId="page-top">
 <head th:replace="common/header :: navbar"/>
 <div class="container main">
     <div class="row">
@@ -10,18 +10,18 @@
             <form th:action="@{/appointment/create}" method="post" id="appointmentForm">
                 <input type="hidden" name="id" th:value="${appointment.id}"/>
 
-                <div class="form-group">
+                <div class="mb-3">
                     <label for="dateString">Pick a Date and Time:</label>
                     <div class="input-append date form_datetime input-group" data-date="2016-10-21T15:25:00Z">
                         <input class="form-control" type="text" value="" readonly="readonly"
                                th:value="${dateString}" name="dateString"
                                id="dateString" required="required"/>
-                        <span class="input-group-addon"><i class="fa fa-times" aria-hidden="true"></i></span>
-                        <span class="input-group-addon"><i class="fa fa-calendar" aria-hidden="true"></i></span>
+                        <span class="input-group-text input-group-addon"><i class="fa fa-times" aria-hidden="true"></i></span>
+                        <span class="input-group-text input-group-addon"><i class="fa fa-calendar" aria-hidden="true"></i></span>
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="mb-3">
                     <label for="location">Pick a location:</label>
                     <select class="form-control" th:value="${appointment.location}" name="location" id="location"
                             >
@@ -37,7 +37,7 @@
                     </select>
                 </div>
 
-                <div class="form-group">
+                <div class="mb-3">
                     <label for="description">Notes:</label>
                     <textarea th:value="${appointment.description}" class="form-control" name="description" id="description" placeholder="Description" ></textarea>
                 </div>

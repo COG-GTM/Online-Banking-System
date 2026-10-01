@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
 <head th:replace="common/header :: common-header"/>
-<body roleId="page-top" data-spy="scroll" data-target=".navbar-fixed-top">
+<body roleId="page-top">
 <head th:replace="common/header :: navbar"/>
 <div class="container main">
     <div class="row">
@@ -15,19 +15,19 @@
         <div class="col-lg-6 col-md-6">
         </div>
         <div class="col-lg-6 col-md-6">
-            <div class="panel panel-success">
-                <div class="panel-heading">
+            <div class="card mb-4 border-success">
+                <div class="card-header bg-success-subtle">
                     <div class="row">
-                        <div class="col-xs-6">
+                        <div class="col-6">
                             <h2>Savings Balance: </h2>
                         </div>
-                        <div class="col-xs-6 text-right">
+                        <div class="col-6 text-end">
                             <h1><i class="fa fa-usd" aria-hidden="true"></i> <span th:text="${savingsAccount.accountBalance}">...</span></h1>
                         </div>
                     </div>
                 </div>
-                    <div class="panel-footer">
-                        <span class="pull-right"><i class="fa fa-arrow-circle-right"></i></span>
+                    <div class="card-footer">
+                        <span class="float-end"><i class="fa fa-arrow-circle-right"></i></span>
                         <div class="clearfix"></div>
                     </div>
             </div>

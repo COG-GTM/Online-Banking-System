@@ -3,40 +3,41 @@
 <head th:replace="common/header :: common-header"/>
 <body>
 <!-- Login Section -->
-    <img class="img-responsive" src="/images/bann.png" alt="bann"/>
+    <img class="img-fluid" src="/images/bann.png" alt="bann"/>
     <div class="container">
         <div class="row ">
             <div class="main-center ">
-                <div class="bg-danger" th:if="${param.error}">
+                <div class="alert alert-danger" th:if="${param.error}">
                     Invalid username and secret.
                 </div>
-                <div class="bg-danger" th:if="${param.logout}">
+                <div class="alert alert-danger" th:if="${param.logout}">
                     You have been logged out.
                 </div>
                 <form class="form-signin" th:action="@{/index}" method="post">
                     <h2 class="form-signin-heading">Please sign in</h2>
-                    <div class="form-group">
-                        <label for="username" class="sr-only">Username</label>
+                    <div class="mb-3">
+                        <label for="username" class="visually-hidden">Username</label>
                         <input type="text" roleId="username" class="form-control" placeholder="Username" name="username"
                                id="username"
                                required="required" autofocus="autofocus"/>
                     </div>
-                    <div class="form-group">
-                        <label for="password" class="sr-only">Password</label>
+                    <div class="mb-3">
+                        <label for="password" class="visually-hidden">Password</label>
                         <input type="password" roleId="inputPassword" class="form-control" placeholder="Password"
                                id="password"
                                name="password" required="required"/>
                     </div>
-                    <div class="form-group">
-                        <input type="checkbox" name="remember-me" id="remember-me"/> &nbsp; Remember me
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" name="remember-me" id="remember-me"/>
+                        <label class="form-check-label" for="remember-me">Remember me</label>
                     </div>
-                    <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+                    <button class="btn btn-lg btn-primary w-100" type="submit">Sign in</button>
                 </form>
                 
                 <hr />
                 
-                <div class="form-group ">
-                    <a type="submit" class="btn btn-info btn-lg btn-block login-button" th:href="@{/signup}">Sign up!</a>
+                <div class="mb-3">
+                    <a type="submit" class="btn btn-info btn-lg w-100 login-button" th:href="@{/signup}">Sign up!</a>
                 </div>
             </div>
         </div>

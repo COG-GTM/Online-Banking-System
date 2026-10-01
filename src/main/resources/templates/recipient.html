@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
 <head th:replace="common/header :: common-header"/>
-<body roleId="page-top" data-spy="scroll" data-target=".navbar-fixed-top">
+<body roleId="page-top">
 <head th:replace="common/header :: navbar"/>
 <div class="container main">
     <div class="row">
@@ -10,27 +10,27 @@
             <form th:action="@{/transfer/recipient/save}" method="post">
                 <input type="hidden" name="id" th:value="${recipient.id}" />
 
-                <div class="form-group">
+                <div class="mb-3">
                     <label for="recipientName">Name</label>
                     <input type="text" class="form-control" th:value="${recipient.name}" name="name"
                            id="recipientName" placeholder="Name"/>
                 </div>
-                <div class="form-group">
+                <div class="mb-3">
                     <label for="recipientEmail">Email</label>
                     <input type="email" class="form-control" th:value="${recipient.email}" name="email"
                            id="recipientEmail" placeholder="Email"/>
                 </div>
-                <div class="form-group">
+                <div class="mb-3">
                     <label for="recipientPhone">Phone</label>
                     <input type="text" class="form-control" th:value="${recipient.phone}" name="phone"
                            id="recipientPhone" placeholder="Phone"/>
                 </div>
-                <div class="form-group">
+                <div class="mb-3">
                     <label for="recipientAccountNumber">Account Number</label>
                     <input type="text" class="form-control" th:value="${recipient.accountNumber}"
                            name="accountNumber" id="recipientAccountNumber" placeholder="Account Number"/>
                 </div>
-                <div class="form-group">
+                <div class="mb-3">
                     <label for="recipientDescription">Description</label>
                     <textarea class="form-control" th:value="${recipient.description}" name="description"
                               id="recipientDescription" placeholder="Description" th:text="${recipient.description}"></textarea>
