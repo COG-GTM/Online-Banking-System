@@ -162,14 +162,7 @@ public class User implements UserDetails{
         return "User{" +
                 "userId=" + userId +
                 ", username='" + username + '\'' +
-                ", password='" + password + '\'' +
-                ", firstName='" + firstName + '\'' +
-                ", lastName='" + lastName + '\'' +
-                ", email='" + email + '\'' +
-                ", phone='" + phone + '\'' +
-                ", appointmentList=" + appointmentList +
-                ", recipientList=" + recipientList +
-                ", userRoles=" + userRoles +
+                ", enabled=" + enabled +
                 '}';
     }
 
