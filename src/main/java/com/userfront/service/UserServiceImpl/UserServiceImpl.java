@@ -1,11 +1,12 @@
 package com.userfront.service.UserServiceImpl;
 
-import java.util.List;
 import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -100,8 +101,9 @@ public class UserServiceImpl implements UserService{
         return userDao.save(user);
     }
     
-    public List<User> findUserList() {
-        return userDao.findAll();
+    @Transactional(readOnly = true)
+    public Page<User> findUserList(Pageable pageable) {
+        return userDao.findAll(pageable);
     }
 
     public void enableUser (String username) {
