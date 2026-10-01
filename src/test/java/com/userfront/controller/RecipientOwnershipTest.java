@@ -18,6 +18,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
 import com.userfront.dao.PrimaryTransactionDao;
 import com.userfront.dao.RecipientDao;
@@ -37,8 +38,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @RunWith(SpringRunner.class)
 @DataJpaTest
@@ -86,7 +87,9 @@ public class RecipientOwnershipTest {
         TransferController controller = new TransferController();
         ReflectionTestUtils.setField(controller, "transactionService", transactionService);
         ReflectionTestUtils.setField(controller, "userService", userService);
-        mvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mvc = MockMvcBuilders.standaloneSetup(controller)
+                .setViewResolvers(new InternalResourceViewResolver("/templates/", ".html"))
+                .build();
     }
 
     @Test
@@ -135,7 +138,7 @@ public class RecipientOwnershipTest {
                 .param("accountType", "Primary").param("amount", "10.00")
                 .principal(alicePrincipal))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/userFront"));
+                .andExpect(view().name("redirect:/userFront"));
         assertEquals(new BigDecimal("90.00"), alice.getPrimaryAccount().getAccountBalance());
         assertEquals(new BigDecimal("100.00"), bob.getPrimaryAccount().getAccountBalance());
         assertEquals(1, primaryTransactionDao.count());
