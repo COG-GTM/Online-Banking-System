@@ -1,5 +1,6 @@
 package com.userfront.controller;
 
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
 
@@ -18,6 +19,7 @@ import com.userfront.domain.User;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.AmountValidator;
 
 @Controller
 @RequestMapping("/account")
@@ -66,8 +68,16 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
-    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.deposit(accountType, Double.parseDouble(amount), principal);
+    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Model model, Principal principal) {
+        BigDecimal validatedAmount;
+        try {
+            validatedAmount = AmountValidator.parse(amount);
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("amountError", e.getMessage());
+            return "deposit";
+        }
+
+        accountService.deposit(accountType, validatedAmount.doubleValue(), principal);
 
         return "redirect:/userFront";
     }
@@ -81,8 +91,16 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
-    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Model model, Principal principal) {
+        BigDecimal validatedAmount;
+        try {
+            validatedAmount = AmountValidator.parse(amount);
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("amountError", e.getMessage());
+            return "withdraw";
+        }
+
+        accountService.withdraw(accountType, validatedAmount.doubleValue(), principal);
 
         return "redirect:/userFront";
     }
