@@ -3,6 +3,8 @@ package com.userfront.resource;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +23,8 @@ import com.userfront.service.UserService;
 @PreAuthorize("hasRole('ADMIN')")
 public class UserResource {
 
+    static final int MAX_PAGE_SIZE = 100;
+
     @Autowired
     private UserService userService;
 
@@ -28,8 +32,18 @@ public class UserResource {
     private TransactionService transactionService;
 
     @RequestMapping(value = "/user/all", method = RequestMethod.GET)
-    public List<User> userList() {
-        return userService.findUserList();
+    public ResponseEntity<List<User>> userList(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "50") int size) {
+        int boundedPage = Math.max(page, 0);
+        int boundedSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Page<User> users = userService.findUserPage(boundedPage, boundedSize);
+        return ResponseEntity.ok()
+                .header("X-Total-Count", String.valueOf(users.getTotalElements()))
+                .header("X-Total-Pages", String.valueOf(users.getTotalPages()))
+                .header("X-Page", String.valueOf(users.getNumber()))
+                .header("X-Page-Size", String.valueOf(users.getSize()))
+                .body(users.getContent());
     }
 
     @RequestMapping(value = "/user/primary/transaction", method = RequestMethod.GET)

@@ -1,7 +1,8 @@
 package com.userfront.service;
 
-import java.util.List;
 import java.util.Set;
+
+import org.springframework.data.domain.Page;
 
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
@@ -23,7 +24,7 @@ public interface UserService {
     
     User saveUser (User user); 
     
-    List<User> findUserList();
+    Page<User> findUserPage(int page, int size);
 
     void enableUser (String username);
 
