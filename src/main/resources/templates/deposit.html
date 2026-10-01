@@ -10,17 +10,18 @@
                 <div class="form-group" >
                     <label for="accountType">1. Please select the account you would like to deposit:</label>
                     <select class="form-control" th:value="${accountType}" name="accountType" id="accountType" required="required" autofocus="autofocus">
-                        <option disabled="disabled" selected="selected"> -- select your account -- </option>
-                        <option>Primary</option>
-                        <option>Savings</option>
+                        <option disabled="disabled" th:selected="${#strings.isEmpty(accountType)}"> -- select your account -- </option>
+                        <option value="Primary" th:selected="${accountType == 'Primary'}">Primary</option>
+                        <option value="Savings" th:selected="${accountType == 'Savings'}">Savings</option>
                     </select>
                     <br />
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" th:classappend="${amountError} ? 'has-error'">
                     <label>2. Please specify the amount you would like to deposit: </label>
                     <span class="input-group-addon">Amount $</span>
                     <input th:value="${amount}" type="text" name="amount" id="amount" class="form-control" aria-label="Amount (to the nearest dollar)"/>
+                    <span class="help-block" th:if="${amountError}" th:text="${amountError}"></span>
                 </div>
 
                 <input type="hidden"
