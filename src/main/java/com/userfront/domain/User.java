@@ -40,10 +40,10 @@ public class User implements UserDetails{
 
     private boolean enabled=true;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     private PrimaryAccount primaryAccount;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     private SavingsAccount savingsAccount;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -53,7 +53,7 @@ public class User implements UserDetails{
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Recipient> recipientList;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private Set<UserRole> userRoles = new HashSet<>();
 
