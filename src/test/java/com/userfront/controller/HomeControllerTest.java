@@ -64,6 +64,15 @@ public class HomeControllerTest {
     }
 
     @Test
+    public void rejectsPunctuationOnlyPhone() throws Exception {
+        mockMvc.perform(signup("correct-horse-battery", "alice@example.com").param("phone", "-------"))
+                .andExpect(view().name("signup"))
+                .andExpect(model().attributeHasFieldErrors("user", "phone"));
+
+        verify(userService, never()).registerUser(any());
+    }
+
+    @Test
     public void registersValidSignupIgnoringNonFormFields() throws Exception {
         mockMvc.perform(validSignup()
                         .param("userId", "1")
@@ -81,7 +90,7 @@ public class HomeControllerTest {
     }
 
     private MockHttpServletRequestBuilder validSignup() {
-        return signup("correct-horse-battery", "alice@example.com");
+        return signup("correct-horse-battery", "alice@example.com").param("phone", "+1 (555) 123-4567");
     }
 
     private MockHttpServletRequestBuilder signup(String password, String email) {
@@ -90,7 +99,6 @@ public class HomeControllerTest {
                 .param("password", password)
                 .param("firstName", "Alice")
                 .param("lastName", "Smith")
-                .param("email", email)
-                .param("phone", "555-123-4567");
+                .param("email", email);
     }
 }

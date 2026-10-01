@@ -30,7 +30,7 @@ public class SignupForm {
     private String email;
 
     @NotBlank
-    @Pattern(regexp = "^[0-9+()\\-. ]{7,20}$", message = "must be a valid phone number")
+    @Pattern(regexp = "^(?=(?:[^0-9]*[0-9]){7,15}[^0-9]*$)[0-9+()\\-. ]{7,20}$", message = "must be a valid phone number")
     private String phone;
 
     public String getUsername() {
