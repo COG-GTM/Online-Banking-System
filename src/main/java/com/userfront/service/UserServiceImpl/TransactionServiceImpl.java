@@ -107,7 +107,13 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientDao.findByUserUsername(principal.getName());
     }
 
-    public Recipient saveRecipient(Recipient recipient) {
+    @Transactional
+    public Recipient saveRecipient(Recipient recipient, Principal principal) {
+        if (recipient.getId() != null &&
+                recipientDao.findByIdAndUserUsername(recipient.getId(), principal.getName()) == null) {
+            throw new RecipientNotFoundException();
+        }
+        recipient.setUser(userService.findByUsername(principal.getName()));
         return recipientDao.save(recipient);
     }
 
@@ -120,8 +126,8 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Transactional
-    public void deleteRecipientByName(String recipientName, Principal principal) {
-        if (recipientDao.deleteByNameAndUserUsername(recipientName, principal.getName()) == 0) {
+    public void deleteRecipientById(Long recipientId, Principal principal) {
+        if (recipientDao.deleteByIdAndUserUsername(recipientId, principal.getName()) == 0) {
             throw new RecipientNotFoundException();
         }
     }

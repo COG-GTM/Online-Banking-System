@@ -145,19 +145,24 @@ public class RecipientOwnershipTest {
     }
 
     @Test
-    public void deleteOnlyRemovesThePrincipalsRecipientWithThatName() throws Exception {
-        mvc.perform(post("/transfer/recipient/delete").param("recipientName", "Shared")
-                .principal(alicePrincipal)).andExpect(status().isOk());
+    public void deleteOnlyRemovesTheSelectedOwnedRecipientDespiteDuplicateNames() throws Exception {
+        Recipient duplicate = createRecipient("Shared", alice);
+        entityManager.flush();
+        mvc.perform(post("/transfer/recipient/delete").param("recipientId", aliceShared.getId().toString())
+                .principal(alicePrincipal))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(view().name("redirect:/transfer/recipient"));
         entityManager.flush();
         assertFalse(recipientDao.existsById(aliceShared.getId()));
+        assertTrue(recipientDao.existsById(duplicate.getId()));
         assertTrue(recipientDao.existsById(bobShared.getId()));
         assertTrue(recipientDao.existsById(bobOnly.getId()));
     }
 
     @Test
     public void deleteReturns404ForAnotherUsersOrMissingRecipient() throws Exception {
-        for (String name : Arrays.asList("Bob only", "Missing")) {
-            mvc.perform(post("/transfer/recipient/delete").param("recipientName", name)
+        for (Long id : Arrays.asList(bobOnly.getId(), Long.MAX_VALUE)) {
+            mvc.perform(post("/transfer/recipient/delete").param("recipientId", id.toString())
                     .principal(alicePrincipal)).andExpect(status().isNotFound());
         }
         assertEquals(3, recipientDao.count());
@@ -166,9 +171,41 @@ public class RecipientOwnershipTest {
 
     @Test
     public void getCannotDeleteARecipient() throws Exception {
-        mvc.perform(get("/transfer/recipient/delete").param("recipientName", "Shared")
+        mvc.perform(get("/transfer/recipient/delete").param("recipientId", aliceShared.getId().toString())
                 .principal(alicePrincipal)).andExpect(status().isMethodNotAllowed());
         assertEquals(3, recipientDao.count());
+    }
+
+    @Test
+    public void saveRejectsAnotherUsersOrMissingRecipientId() throws Exception {
+        for (Long id : Arrays.asList(bobOnly.getId(), Long.MAX_VALUE)) {
+            mvc.perform(post("/transfer/recipient/save").param("id", id.toString())
+                    .param("name", "Changed").principal(alicePrincipal))
+                    .andExpect(status().isNotFound());
+        }
+        entityManager.flush();
+        entityManager.clear();
+        Recipient unchanged = recipientDao.findByIdAndUserUsername(bobOnly.getId(), "bob");
+        assertEquals("Bob only", unchanged.getName());
+        assertEquals(3, recipientDao.count());
+    }
+
+    @Test
+    public void saveCreatesAndUpdatesOnlyThePrincipalsRecipients() throws Exception {
+        mvc.perform(post("/transfer/recipient/save").param("name", "New")
+                .param("user.userId", bob.getUserId().toString())
+                .principal(alicePrincipal)).andExpect(status().is3xxRedirection());
+        Recipient created = recipientDao.findByNameAndUserUsername("New", "alice");
+        assertEquals(alice.getUserId(), created.getUser().getUserId());
+
+        mvc.perform(post("/transfer/recipient/save").param("id", aliceShared.getId().toString())
+                .param("name", "Updated").param("user.userId", bob.getUserId().toString())
+                .principal(alicePrincipal)).andExpect(status().is3xxRedirection());
+        entityManager.flush();
+        entityManager.clear();
+        Recipient updated = recipientDao.findByIdAndUserUsername(aliceShared.getId(), "alice");
+        assertEquals("Updated", updated.getName());
+        assertTrue(recipientDao.existsById(bobShared.getId()));
     }
 
     private User createUser(String username) {

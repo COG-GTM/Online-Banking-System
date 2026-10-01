@@ -67,9 +67,7 @@ public class TransferController {
     @RequestMapping(value = "/recipient/save", method = RequestMethod.POST)
     public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
 
-        User user = userService.findByUsername(principal.getName());
-        recipient.setUser(user);
-        transactionService.saveRecipient(recipient);
+        transactionService.saveRecipient(recipient, principal);
 
         return "redirect:/transfer/recipient";
     }
@@ -87,18 +85,9 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/recipient/delete", method = RequestMethod.POST)
-    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
-
-        transactionService.deleteRecipientByName(recipientName, principal);
-
-        List<Recipient> recipientList = transactionService.findRecipientList(principal);
-
-        Recipient recipient = new Recipient();
-        model.addAttribute("recipient", recipient);
-        model.addAttribute("recipientList", recipientList);
-
-
-        return "recipient";
+    public String recipientDelete(@RequestParam(value = "recipientId") Long recipientId, Principal principal){
+        transactionService.deleteRecipientById(recipientId, principal);
+        return "redirect:/transfer/recipient";
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.GET)

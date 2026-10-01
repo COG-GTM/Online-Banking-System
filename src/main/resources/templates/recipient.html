@@ -71,7 +71,7 @@
                     <td data-th-text="${eachRecipient.description}">...</td>
                     <td>
                         <form th:action="@{/transfer/recipient/delete}" method="post">
-                            <input type="hidden" name="recipientName" th:value="${eachRecipient.name}" />
+                            <input type="hidden" name="recipientId" th:value="${eachRecipient.id}" />
                             <button type="submit" class="btn btn-link">delete</button>
                         </form>
                     </td>
