@@ -3,6 +3,9 @@ package com.userfront.service;
 import java.security.Principal;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.Recipient;
@@ -10,9 +13,9 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 
 public interface TransactionService {
-	List<PrimaryTransaction> findPrimaryTransactionList(String username);
+	Page<PrimaryTransaction> findPrimaryTransactionPage(String username, Pageable pageable);
 
-    List<SavingsTransaction> findSavingsTransactionList(String username);
+    Page<SavingsTransaction> findSavingsTransactionPage(String username, Pageable pageable);
 
     void savePrimaryDepositTransaction(PrimaryTransaction primaryTransaction);
 

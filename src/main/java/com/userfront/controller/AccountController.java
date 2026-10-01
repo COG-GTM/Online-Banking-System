@@ -1,14 +1,15 @@
 package com.userfront.controller;
 
 import java.security.Principal;
-import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.PrimaryTransaction;
@@ -16,6 +17,7 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
 import com.userfront.service.AccountService;
+import com.userfront.service.TransactionPaging;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -33,26 +35,32 @@ public class AccountController {
 	private TransactionService transactionService;
 	
 	@RequestMapping("/primaryAccount")
-	public String primaryAccount(Model model, Principal principal) {
-		List<PrimaryTransaction> primaryTransactionList = transactionService.findPrimaryTransactionList(principal.getName());
+	public String primaryAccount(Model model, Principal principal,
+			@RequestParam(value = "page", required = false) Integer page,
+			@RequestParam(value = "size", required = false) Integer size) {
+		Page<PrimaryTransaction> primaryTransactionPage = transactionService.findPrimaryTransactionPage(principal.getName(), TransactionPaging.of(page, size));
 		
 		User user = userService.findByUsername(principal.getName());
         PrimaryAccount primaryAccount = user.getPrimaryAccount();
 
         model.addAttribute("primaryAccount", primaryAccount);
-        model.addAttribute("primaryTransactionList", primaryTransactionList);
+        model.addAttribute("primaryTransactionList", primaryTransactionPage.getContent());
+        model.addAttribute("transactionPage", primaryTransactionPage);
 		
 		return "primaryAccount";
 	}
 
 	@RequestMapping("/savingsAccount")
-    public String savingsAccount(Model model, Principal principal) {
-		List<SavingsTransaction> savingsTransactionList = transactionService.findSavingsTransactionList(principal.getName());
+    public String savingsAccount(Model model, Principal principal,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size) {
+		Page<SavingsTransaction> savingsTransactionPage = transactionService.findSavingsTransactionPage(principal.getName(), TransactionPaging.of(page, size));
         User user = userService.findByUsername(principal.getName());
         SavingsAccount savingsAccount = user.getSavingsAccount();
 
         model.addAttribute("savingsAccount", savingsAccount);
-        model.addAttribute("savingsTransactionList", savingsTransactionList);
+        model.addAttribute("savingsTransactionList", savingsTransactionPage.getContent());
+        model.addAttribute("transactionPage", savingsTransactionPage);
 
         return "savingsAccount";
     }

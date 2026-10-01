@@ -61,6 +61,17 @@
             </tbody>
         </table>
     </div>
+    <nav th:if="${transactionPage.totalPages > 1}" aria-label="Transaction pages">
+        <ul class="pager">
+            <li class="previous" th:classappend="${transactionPage.first} ? 'disabled'">
+                <a th:href="${transactionPage.first} ? '#' : @{/account/savingsAccount(page=${transactionPage.number - 1},size=${transactionPage.size})}">&larr; Newer</a>
+            </li>
+            <li><span th:text="|Page ${transactionPage.number + 1} of ${transactionPage.totalPages}|">Page 1 of 1</span></li>
+            <li class="next" th:classappend="${transactionPage.last} ? 'disabled'">
+                <a th:href="${transactionPage.last} ? '#' : @{/account/savingsAccount(page=${transactionPage.number + 1},size=${transactionPage.size})}">Older &rarr;</a>
+            </li>
+        </ul>
+    </nav>
 </div>
 
 

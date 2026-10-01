@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -45,18 +47,14 @@ public class TransactionServiceImpl implements TransactionService {
 	private RecipientDao recipientDao;
 	
 
-	public List<PrimaryTransaction> findPrimaryTransactionList(String username){
+	public Page<PrimaryTransaction> findPrimaryTransactionPage(String username, Pageable pageable) {
         User user = userService.findByUsername(username);
-        List<PrimaryTransaction> primaryTransactionList = user.getPrimaryAccount().getPrimaryTransactionList();
-
-        return primaryTransactionList;
+        return primaryTransactionDao.findByPrimaryAccountOrderByDateDescIdDesc(user.getPrimaryAccount(), pageable);
     }
 
-    public List<SavingsTransaction> findSavingsTransactionList(String username) {
+    public Page<SavingsTransaction> findSavingsTransactionPage(String username, Pageable pageable) {
         User user = userService.findByUsername(username);
-        List<SavingsTransaction> savingsTransactionList = user.getSavingsAccount().getSavingsTransactionList();
-
-        return savingsTransactionList;
+        return savingsTransactionDao.findBySavingsAccountOrderByDateDescIdDesc(user.getSavingsAccount(), pageable);
     }
 
     public void savePrimaryDepositTransaction(PrimaryTransaction primaryTransaction) {
