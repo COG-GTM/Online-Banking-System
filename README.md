@@ -21,3 +21,11 @@ Online banking system detail diagram
 
 ![online banking system detail diagram](https://user-images.githubusercontent.com/34470526/37703353-999023fe-2d1f-11e8-96f6-db40724c5d14.png)
 
+
+## Running
+
+HTTPS is required by default: every request is redirected to HTTPS, HSTS is sent, and the session and remember-me cookies are marked `Secure`.
+
+- **TLS at a reverse proxy / load balancer:** have the proxy set `X-Forwarded-Proto` (and `X-Forwarded-For`); `server.use-forward-headers=true` makes the app treat those requests as secure.
+- **TLS in the app:** provide a keystore through the environment, e.g. `SERVER_SSL_ENABLED=true SERVER_SSL_KEY_STORE=file:/path/keystore.p12 SERVER_SSL_KEY_STORE_PASSWORD=... SERVER_SSL_KEY_STORE_TYPE=PKCS12 SERVER_PORT=8443`.
+- **Local plain-HTTP development:** run with `-Dspring.profiles.active=dev` (`application-dev.properties` sets `app.security.require-ssl=false`). Never enable this profile in a deployed environment.
