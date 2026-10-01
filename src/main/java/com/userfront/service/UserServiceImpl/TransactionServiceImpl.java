@@ -2,11 +2,16 @@ package com.userfront.service.UserServiceImpl;
 
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -45,11 +50,16 @@ public class TransactionServiceImpl implements TransactionService {
 	private RecipientDao recipientDao;
 	
 
-	public List<PrimaryTransaction> findPrimaryTransactionList(String username){
-        User user = userService.findByUsername(username);
-        List<PrimaryTransaction> primaryTransactionList = user.getPrimaryAccount().getPrimaryTransactionList();
+	public Page<PrimaryTransaction> findPrimaryTransactionPage(String username, int page, int size) {
+        int pageSize = size <= 0 ? DEFAULT_TRANSACTION_PAGE_SIZE : Math.min(size, MAX_TRANSACTION_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), pageSize);
 
-        return primaryTransactionList;
+        User user = userService.findByUsername(username);
+        if (user == null || user.getPrimaryAccount() == null) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+
+        return primaryTransactionDao.findByPrimaryAccountOrderByDateDescIdDesc(user.getPrimaryAccount(), pageable);
     }
 
     public List<SavingsTransaction> findSavingsTransactionList(String username) {

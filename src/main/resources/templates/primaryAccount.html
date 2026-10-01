@@ -65,13 +65,27 @@
             </tbody>
         </table>
     </div>
+
+    <ul class="pager" th:if="${primaryTransactionPage.totalPages > 1}">
+        <li class="previous" th:classappend="${primaryTransactionPage.first} ? 'disabled'">
+            <a th:href="${primaryTransactionPage.first} ? '#' : @{/account/primaryAccount(page=${primaryTransactionPage.number - 1},size=${primaryTransactionPage.size})}">&larr; Newer</a>
+        </li>
+        <li>
+            Page <span th:text="${primaryTransactionPage.number + 1}">1</span>
+            of <span th:text="${primaryTransactionPage.totalPages}">1</span>
+            (<span th:text="${primaryTransactionPage.totalElements}">0</span> transactions)
+        </li>
+        <li class="next" th:classappend="${primaryTransactionPage.last} ? 'disabled'">
+            <a th:href="${primaryTransactionPage.last} ? '#' : @{/account/primaryAccount(page=${primaryTransactionPage.number + 1},size=${primaryTransactionPage.size})}">Older &rarr;</a>
+        </li>
+    </ul>
 </div>
 
 
 <div th:replace="common/header :: body-bottom-scripts"/>
 <script>
     $(document).ready(function() {
-        $('#example').DataTable();
+        $('#example').DataTable({"order": []});
     } );
 </script>
 </body>

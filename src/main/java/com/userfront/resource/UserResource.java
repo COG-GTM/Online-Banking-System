@@ -3,6 +3,8 @@ package com.userfront.resource;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,8 +35,17 @@ public class UserResource {
     }
 
     @RequestMapping(value = "/user/primary/transaction", method = RequestMethod.GET)
-    public List<PrimaryTransaction> getPrimaryTransactionList(@RequestParam("username") String username) {
-        return transactionService.findPrimaryTransactionList(username);
+    public ResponseEntity<List<PrimaryTransaction>> getPrimaryTransactionList(@RequestParam("username") String username,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "" + TransactionService.DEFAULT_TRANSACTION_PAGE_SIZE) int size) {
+        Page<PrimaryTransaction> transactions = transactionService.findPrimaryTransactionPage(username, page, size);
+
+        return ResponseEntity.ok()
+                .header("X-Total-Count", String.valueOf(transactions.getTotalElements()))
+                .header("X-Total-Pages", String.valueOf(transactions.getTotalPages()))
+                .header("X-Page", String.valueOf(transactions.getNumber()))
+                .header("X-Page-Size", String.valueOf(transactions.getSize()))
+                .body(transactions.getContent());
     }
 
     @RequestMapping(value = "/user/savings/transaction", method = RequestMethod.GET)

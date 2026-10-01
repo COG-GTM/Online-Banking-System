@@ -4,11 +4,13 @@ import java.security.Principal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.PrimaryTransaction;
@@ -33,14 +35,17 @@ public class AccountController {
 	private TransactionService transactionService;
 	
 	@RequestMapping("/primaryAccount")
-	public String primaryAccount(Model model, Principal principal) {
-		List<PrimaryTransaction> primaryTransactionList = transactionService.findPrimaryTransactionList(principal.getName());
+	public String primaryAccount(Model model, Principal principal,
+			@RequestParam(value = "page", defaultValue = "0") int page,
+			@RequestParam(value = "size", defaultValue = "" + TransactionService.DEFAULT_TRANSACTION_PAGE_SIZE) int size) {
+		Page<PrimaryTransaction> primaryTransactionPage = transactionService.findPrimaryTransactionPage(principal.getName(), page, size);
 		
 		User user = userService.findByUsername(principal.getName());
         PrimaryAccount primaryAccount = user.getPrimaryAccount();
 
         model.addAttribute("primaryAccount", primaryAccount);
-        model.addAttribute("primaryTransactionList", primaryTransactionList);
+        model.addAttribute("primaryTransactionList", primaryTransactionPage.getContent());
+        model.addAttribute("primaryTransactionPage", primaryTransactionPage);
 		
 		return "primaryAccount";
 	}
