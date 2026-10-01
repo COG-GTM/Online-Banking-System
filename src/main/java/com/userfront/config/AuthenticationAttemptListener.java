@@ -1,0 +1,47 @@
+package com.userfront.config;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
+import org.springframework.security.authentication.event.AuthenticationFailureBadCredentialsEvent;
+import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
+import org.springframework.stereotype.Component;
+
+import com.userfront.service.LoginAttemptService;
+
+@Component
+public class AuthenticationAttemptListener {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AuthenticationAttemptListener.class);
+
+    private final LoginAttemptService loginAttemptService;
+
+    public AuthenticationAttemptListener(LoginAttemptService loginAttemptService) {
+        this.loginAttemptService = loginAttemptService;
+    }
+
+    @EventListener
+    public void onFailure(AuthenticationFailureBadCredentialsEvent event) {
+        String ip = ipOf(event.getAuthentication());
+        loginAttemptService.loginFailed(usernameOf(event.getAuthentication()), ip);
+        LOG.warn("Failed sign-in attempt from {}", ip);
+    }
+
+    @EventListener
+    public void onSuccess(AuthenticationSuccessEvent event) {
+        loginAttemptService.loginSucceeded(usernameOf(event.getAuthentication()), ipOf(event.getAuthentication()));
+    }
+
+    private static String usernameOf(Authentication authentication) {
+        return authentication == null ? null : authentication.getName();
+    }
+
+    private static String ipOf(Authentication authentication) {
+        if (authentication == null || !(authentication.getDetails() instanceof WebAuthenticationDetails)) {
+            return null;
+        }
+        return ((WebAuthenticationDetails) authentication.getDetails()).getRemoteAddress();
+    }
+}
