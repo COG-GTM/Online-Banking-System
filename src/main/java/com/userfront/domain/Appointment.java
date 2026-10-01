@@ -3,11 +3,14 @@ package com.userfront.domain;
 import java.util.Date;
 
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 public class Appointment {
@@ -20,7 +23,8 @@ public class Appointment {
     private String description;
     private boolean confirmed;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnore
     @JoinColumn(name = "user_id")
     private User user;
 
@@ -79,7 +83,7 @@ public class Appointment {
                 ", date=" + date +
                 ", location='" + location + '\'' +
                 ", description='" + description + '\'' +
-                ", user=" + user +
+                ", userId=" + (user == null ? null : user.getUserId()) +
                 '}';
     }
 }
