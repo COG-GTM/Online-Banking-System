@@ -5,6 +5,7 @@ import java.security.Principal;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -30,6 +31,7 @@ public class AccountServiceImpl implements AccountService {
     private SavingsAccountDao savingsAccountDao;
 
     @Autowired
+    @Lazy
     private UserService userService;
     
     @Autowired
