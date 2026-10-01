@@ -32,7 +32,9 @@ Database credentials are read from environment variables and are not committed:
 | `DB_USERNAME` | Database user (use a least-privilege application account, not `root`) |
 | `DB_PASSWORD` | Database password |
 
-By default Hibernate only validates the schema (`ddl-auto=validate`) and SQL logging is off. For local development, activate the `dev` profile to let Hibernate create/update the schema and log SQL:
+By default Hibernate only validates the schema (`ddl-auto=validate`) and SQL logging is off. For local development, activate the `dev` profile to let Hibernate create/update the schema and log SQL. Schema generation does not seed reference data: user signup requires a `ROLE_USER` row in the `role` table.
+
+Example:
 
 ```
 SPRING_PROFILES_ACTIVE=dev DB_USERNAME=bank_app DB_PASSWORD=... ./mvnw spring-boot:run
