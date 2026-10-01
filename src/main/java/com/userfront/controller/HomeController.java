@@ -59,6 +59,7 @@ public class HomeController {
                 model.addAttribute("usernameExists", true);
             }
 
+            user.setPassword(null);
             return "signup";
         } else {
         	 Set<UserRole> userRoles = new HashSet<>();
