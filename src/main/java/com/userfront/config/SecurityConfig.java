@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
@@ -47,6 +48,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             "/signup"
     };
 
+    private static final RequestMatcher CSRF_PROTECTED_MATCHER =
+            new AntPathRequestMatcher("/transfer/recipient/delete", "POST");
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
@@ -56,7 +60,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 permitAll().anyRequest().authenticated();
 
         http
-                .csrf().disable().cors().disable()
+                .csrf().requireCsrfProtectionMatcher(CSRF_PROTECTED_MATCHER)
+                .and()
+                .cors().disable()
                 .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
