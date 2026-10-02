@@ -1,7 +1,7 @@
 package com.userfront.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -46,18 +46,18 @@ public class TransferControllerTest {
 
     @Test
     public void deleteViaGetIsRejected() throws Exception {
-        mockMvc.perform(get("/transfer/recipient/delete").param("recipientName", "Bob").principal(alice))
+        mockMvc.perform(get("/transfer/recipient/delete").param("recipientId", "42").principal(alice))
                 .andExpect(status().isMethodNotAllowed());
 
-        verify(transactionService, never()).deleteRecipientByName(anyString(), any(Principal.class));
+        verify(transactionService, never()).deleteRecipientById(anyLong(), any(Principal.class));
     }
 
     @Test
     public void deleteViaPostIsScopedToPrincipal() throws Exception {
-        mockMvc.perform(post("/transfer/recipient/delete").param("recipientName", "Bob").principal(alice))
+        mockMvc.perform(post("/transfer/recipient/delete").param("recipientId", "42").principal(alice))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/transfer/recipient"));
 
-        verify(transactionService).deleteRecipientByName("Bob", alice);
+        verify(transactionService).deleteRecipientById(42L, alice);
     }
 }

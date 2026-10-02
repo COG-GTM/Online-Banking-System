@@ -89,9 +89,9 @@ public class TransferController {
 
     @RequestMapping(value = "/recipient/delete", method = RequestMethod.POST)
     @Transactional
-    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Principal principal){
+    public String recipientDelete(@RequestParam(value = "recipientId") Long recipientId, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName, principal);
+        transactionService.deleteRecipientById(recipientId, principal);
 
         return "redirect:/transfer/recipient";
     }

@@ -24,12 +24,12 @@ public class TransactionServiceImplTest {
     private TransactionServiceImpl transactionService;
 
     @Test
-    public void deleteRecipientByNameIsScopedToPrincipal() {
+    public void deleteRecipientByIdIsScopedToPrincipal() {
         Principal alice = () -> "alice";
 
-        transactionService.deleteRecipientByName("Bob", alice);
+        transactionService.deleteRecipientById(42L, alice);
 
-        verify(recipientDao).deleteByNameAndUserUsername("Bob", "alice");
+        verify(recipientDao).deleteByIdAndUserUsername(42L, "alice");
         verifyNoMoreInteractions(recipientDao);
     }
 }
