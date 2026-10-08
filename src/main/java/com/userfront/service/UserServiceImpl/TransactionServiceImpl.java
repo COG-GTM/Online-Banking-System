@@ -117,7 +117,7 @@ public class TransactionServiceImpl implements TransactionService {
             recipient = new Recipient();
             recipient.setUser(userService.findByUsername(principal.getName()));
         } else {
-            recipient = findOwnedRecipient(submitted.getId(), principal);
+            recipient = findRecipientById(submitted.getId(), principal);
         }
 
         recipient.setName(submitted.getName());
@@ -129,19 +129,11 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName, Principal principal) {
-        Recipient recipient = recipientDao.findFirstByNameAndUserUsername(recipientName, principal.getName());
-        if (recipient == null) {
-            throw new RecipientNotFoundException();
-        }
-        return recipient;
-    }
-
     public void deleteRecipientById(Long recipientId, Principal principal) {
-        recipientDao.delete(findOwnedRecipient(recipientId, principal));
+        recipientDao.delete(findRecipientById(recipientId, principal));
     }
 
-    private Recipient findOwnedRecipient(Long recipientId, Principal principal) {
+    public Recipient findRecipientById(Long recipientId, Principal principal) {
         Recipient recipient = recipientDao.findByIdAndUserUsername(recipientId, principal.getName());
         if (recipient == null) {
             throw new RecipientNotFoundException();
