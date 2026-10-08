@@ -4,9 +4,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
 import java.util.Collections;
-import java.util.List;
 
 import org.junit.Test;
 
@@ -16,7 +17,7 @@ import com.userfront.domain.Appointment;
 import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
-import com.userfront.resource.dto.UserSummary;
+import com.userfront.service.UserService;
 
 public class UserResourceSerializationTest {
 
@@ -47,10 +48,26 @@ public class UserResourceSerializationTest {
         return user;
     }
 
+    private UserResource userResource() throws Exception {
+        UserService userService = (UserService) Proxy.newProxyInstance(
+                UserService.class.getClassLoader(),
+                new Class<?>[] { UserService.class },
+                (proxy, method, args) -> {
+                    if (method.getName().equals("findUserList")) {
+                        return Collections.singletonList(user());
+                    }
+                    throw new UnsupportedOperationException(method.getName());
+                });
+        UserResource resource = new UserResource();
+        Field field = UserResource.class.getDeclaredField("userService");
+        field.setAccessible(true);
+        field.set(resource, userService);
+        return resource;
+    }
+
     @Test
     public void userListResponseOmitsPasswordAndKeepsAdminFields() throws Exception {
-        List<UserSummary> body = Collections.singletonList(UserSummary.from(user()));
-        String json = mapper.writeValueAsString(body);
+        String json = mapper.writeValueAsString(userResource().userList());
 
         assertFalse(json, json.contains(HASH));
         assertFalse(json, json.contains("\"password\""));
