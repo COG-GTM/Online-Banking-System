@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.userfront.domain.Recipient;
+import com.userfront.domain.User;
 import com.userfront.service.RecipientNotFoundException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
@@ -77,10 +78,10 @@ public class TransferControllerTest {
 
     @Test
     public void editOfOtherUsersRecipientReturns404() throws Exception {
-        when(transactionService.findRecipientByName(eq("Bob"), any(Principal.class)))
+        when(transactionService.findRecipientById(eq(99L), any(Principal.class)))
                 .thenThrow(new RecipientNotFoundException());
 
-        mockMvc.perform(get("/transfer/recipient/edit").param("recipientName", "Bob").principal(alice))
+        mockMvc.perform(get("/transfer/recipient/edit").param("recipientId", "99").principal(alice))
                 .andExpect(status().isNotFound());
     }
 
@@ -95,13 +96,29 @@ public class TransferControllerTest {
 
     @Test
     public void transferToOtherUsersRecipientReturns404() throws Exception {
-        when(transactionService.findRecipientByName(eq("Bob"), any(Principal.class)))
+        when(transactionService.findRecipientById(eq(99L), any(Principal.class)))
                 .thenThrow(new RecipientNotFoundException());
 
-        mockMvc.perform(post("/transfer/toSomeoneElse").param("recipientName", "Bob")
+        mockMvc.perform(post("/transfer/toSomeoneElse").param("recipientId", "99")
                 .param("accountType", "Primary").param("amount", "10").principal(alice))
                 .andExpect(status().isNotFound());
 
         verify(transactionService, never()).toSomeoneElseTransfer(any(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    public void transferUsesTheSelectedRecipientId() throws Exception {
+        Recipient selected = new Recipient();
+        selected.setId(8L);
+        selected.setName("Bob");
+        User user = new User();
+        when(userService.findByUsername("alice")).thenReturn(user);
+        when(transactionService.findRecipientById(8L, alice)).thenReturn(selected);
+
+        mockMvc.perform(post("/transfer/toSomeoneElse").param("recipientId", "8")
+                .param("accountType", "Primary").param("amount", "10").principal(alice))
+                .andExpect(status().is3xxRedirection());
+
+        verify(transactionService).toSomeoneElseTransfer(selected, "Primary", "10", null, null);
     }
 }

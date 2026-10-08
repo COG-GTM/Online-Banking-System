@@ -27,7 +27,7 @@ public interface TransactionService {
 
     Recipient saveRecipient(Recipient recipient, Principal principal);
 
-    Recipient findRecipientByName(String recipientName, Principal principal);
+    Recipient findRecipientById(Long recipientId, Principal principal);
 
     void deleteRecipientById(Long recipientId, Principal principal);
     

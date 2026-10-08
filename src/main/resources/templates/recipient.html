@@ -64,7 +64,7 @@
                 </thead>
                 <tbody>
                 <tr data-th-each="eachRecipient : ${recipientList}">
-                    <td><a data-th-text="${eachRecipient.name}" th:href="@{/transfer/recipient/edit?recipientName=}+${eachRecipient.name}">...</a></td>
+                    <td><a data-th-text="${eachRecipient.name}" th:href="@{/transfer/recipient/edit(recipientId=${eachRecipient.id})}">...</a></td>
                     <td data-th-text="${eachRecipient.email}">...</td>
                     <td data-th-text="${eachRecipient.phone}">...</td>
                     <td data-th-text="${eachRecipient.accountNumber}">...</td>
