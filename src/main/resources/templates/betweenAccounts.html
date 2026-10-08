@@ -31,6 +31,7 @@
                     <label>3. Please specify the amount you would like to transfer: </label>
                     <span class="input-group-addon">Amount $</span>
                     <input th:value="${amount}" type="text" name="amount" id="amount" class="form-control" aria-label="Amount (to the nearest dollar)"  />
+                    <p class="text-danger" th:if="${amountError}" th:text="${amountError}"></p>
                 </div>
 
                 <input type="hidden"
