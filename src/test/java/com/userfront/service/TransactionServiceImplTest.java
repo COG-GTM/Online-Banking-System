@@ -37,18 +37,18 @@ public class TransactionServiceImplTest {
     private final Principal alice = () -> "alice";
 
     @Test
-    public void findRecipientByNameIsScopedToPrincipal() {
+    public void findRecipientByIdIsScopedToPrincipal() {
         Recipient owned = recipient(7L, "Bob", user("alice"));
-        when(recipientDao.findFirstByNameAndUserUsername("Bob", "alice")).thenReturn(owned);
+        when(recipientDao.findByIdAndUserUsername(7L, "alice")).thenReturn(owned);
 
-        assertSame(owned, transactionService.findRecipientByName("Bob", alice));
+        assertSame(owned, transactionService.findRecipientById(7L, alice));
     }
 
     @Test(expected = RecipientNotFoundException.class)
-    public void findRecipientByNameRejectsOtherUsersRecipient() {
-        when(recipientDao.findFirstByNameAndUserUsername("Bob", "alice")).thenReturn(null);
+    public void findRecipientByIdRejectsOtherUsersRecipient() {
+        when(recipientDao.findByIdAndUserUsername(9L, "alice")).thenReturn(null);
 
-        transactionService.findRecipientByName("Bob", alice);
+        transactionService.findRecipientById(9L, alice);
     }
 
     @Test
