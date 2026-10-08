@@ -21,6 +21,8 @@ public class TransactionAmountTest {
     public void rejectsHugeExponentsBeforeConstructingBigDecimal() {
         assertRejected("1E999999999");
         assertRejected("1e999999999");
+        assertRejected("1E100000000");
+        assertRejected("1E-100000000");
         assertRejected("1E-999999999");
         assertRejected("1E+2147483647");
         assertRejected("0.1E-600000000");

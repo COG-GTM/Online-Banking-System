@@ -29,7 +29,9 @@ import com.userfront.validation.InvalidAmountException;
 @RunWith(MockitoJUnitRunner.class)
 public class TransactionServiceImplTest {
 
-    private static final String HUGE_EXPONENT = "1E999999999";
+    // 1E999999999 overflows BigInteger and fails fast; 1E+/-100000000 are the
+    // values that actually pinned a thread for over a minute before the fix.
+    private static final String[] HUGE_EXPONENTS = {"1E999999999", "1E100000000", "1E-100000000"};
 
     @Mock
     private PrimaryAccountDao primaryAccountDao;
@@ -68,15 +70,17 @@ public class TransactionServiceImplTest {
 
     @Test(timeout = 5000)
     public void betweenAccountsTransferRejectsHugeExponentWithoutArithmetic() throws Exception {
-        try {
-            transactionService.betweenAccountsTransfer("Primary", "Savings", HUGE_EXPONENT, primaryAccount, savingsAccount);
-            fail("Expected InvalidAmountException");
-        } catch (InvalidAmountException expected) {
-        }
-        try {
-            transactionService.betweenAccountsTransfer("Savings", "Primary", HUGE_EXPONENT, primaryAccount, savingsAccount);
-            fail("Expected InvalidAmountException");
-        } catch (InvalidAmountException expected) {
+        for (String amount : HUGE_EXPONENTS) {
+            try {
+                transactionService.betweenAccountsTransfer("Primary", "Savings", amount, primaryAccount, savingsAccount);
+                fail("Expected InvalidAmountException for " + amount);
+            } catch (InvalidAmountException expected) {
+            }
+            try {
+                transactionService.betweenAccountsTransfer("Savings", "Primary", amount, primaryAccount, savingsAccount);
+                fail("Expected InvalidAmountException for " + amount);
+            } catch (InvalidAmountException expected) {
+            }
         }
 
         assertUnchanged();
@@ -92,11 +96,13 @@ public class TransactionServiceImplTest {
 
     @Test(timeout = 5000)
     public void toSomeoneElseTransferRejectsHugeExponentWithoutArithmetic() {
-        for (String accountType : new String[] {"Primary", "Savings"}) {
-            try {
-                transactionService.toSomeoneElseTransfer(new Recipient(), accountType, HUGE_EXPONENT, primaryAccount, savingsAccount);
-                fail("Expected InvalidAmountException");
-            } catch (InvalidAmountException expected) {
+        for (String amount : HUGE_EXPONENTS) {
+            for (String accountType : new String[] {"Primary", "Savings"}) {
+                try {
+                    transactionService.toSomeoneElseTransfer(new Recipient(), accountType, amount, primaryAccount, savingsAccount);
+                    fail("Expected InvalidAmountException for " + amount);
+                } catch (InvalidAmountException expected) {
+                }
             }
         }
 
