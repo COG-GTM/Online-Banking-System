@@ -3,6 +3,7 @@ package com.userfront.controller;
 import java.security.Principal;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.WebDataBinder;
@@ -41,9 +42,7 @@ public class UserController {
 
         User emailOwner = userService.findByEmail(newUser.getEmail());
         if (emailOwner != null && !emailOwner.getUserId().equals(user.getUserId())) {
-            model.addAttribute("emailExists", true);
-            model.addAttribute("user", user);
-            return "profile";
+            return rejectEmailConflict(newUser, user, model);
         }
 
         user.setFirstName(newUser.getFirstName());
@@ -51,13 +50,23 @@ public class UserController {
         user.setEmail(newUser.getEmail());
         user.setPhone(newUser.getPhone());
 
-        model.addAttribute("user", user);
+        try {
+            userService.saveUser(user);
+        } catch (DataIntegrityViolationException e) {
+            return rejectEmailConflict(newUser, user, model);
+        }
 
-        userService.saveUser(user);
+        model.addAttribute("user", user);
 
         return "profile";
     }
 
-
+    private String rejectEmailConflict(User submitted, User current, Model model) {
+        submitted.setUsername(current.getUsername());
+        submitted.setPrimaryAccount(current.getPrimaryAccount());
+        submitted.setSavingsAccount(current.getSavingsAccount());
+        model.addAttribute("emailExists", true);
+        model.addAttribute("user", submitted);
+        return "profile";
+    }
 }
-

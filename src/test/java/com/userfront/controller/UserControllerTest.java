@@ -1,5 +1,8 @@
 package com.userfront.controller;
 
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -19,6 +22,7 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
@@ -107,16 +111,42 @@ public class UserControllerTest {
         when(userService.findByEmail("bob@example.com")).thenReturn(bob);
 
         mockMvc.perform(post("/user/profile").principal(principal("alice"))
-                .param("firstName", "Alice")
-                .param("lastName", "A")
+                .param("firstName", "Alicia")
+                .param("lastName", "Smith")
                 .param("email", "bob@example.com")
-                .param("phone", "1"))
+                .param("phone", "555-0100"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("profile"))
-                .andExpect(model().attribute("emailExists", true));
+                .andExpect(model().attribute("emailExists", true))
+                .andExpect(model().attribute("user", submittedValuesFor("alice", "bob@example.com")));
 
         verify(userService, never()).saveUser(any(User.class));
         assertEquals("alice@example.com", alice.getEmail());
+        assertEquals(null, alice.getFirstName());
+    }
+
+    @Test
+    public void reportsConcurrentEmailClaimAsConflict() throws Exception {
+        when(userService.findByUsername("alice")).thenReturn(alice);
+        when(userService.saveUser(alice)).thenThrow(new DataIntegrityViolationException("uk_email"));
+
+        mockMvc.perform(post("/user/profile").principal(principal("alice"))
+                .param("firstName", "Alicia")
+                .param("lastName", "Smith")
+                .param("email", "shared@example.com")
+                .param("phone", "555-0100"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("profile"))
+                .andExpect(model().attribute("emailExists", true))
+                .andExpect(model().attribute("user", submittedValuesFor("alice", "shared@example.com")));
+    }
+
+    private static org.hamcrest.Matcher<Object> submittedValuesFor(String username, String email) {
+        return allOf(hasProperty("username", is(username)),
+                hasProperty("firstName", is("Alicia")),
+                hasProperty("lastName", is("Smith")),
+                hasProperty("phone", is("555-0100")),
+                hasProperty("email", is(email)));
     }
 
     private static Principal principal(String name) {
