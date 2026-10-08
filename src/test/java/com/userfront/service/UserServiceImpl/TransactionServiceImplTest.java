@@ -6,8 +6,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+
+import javax.persistence.EntityManager;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -29,7 +32,7 @@ import com.userfront.service.InsufficientFundsException;
 import com.userfront.service.InvalidTransferException;
 import com.userfront.service.UserService;
 
-@RunWith(MockitoJUnitRunner.class)
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class TransactionServiceImplTest {
 
     @Mock private UserService userService;
@@ -38,6 +41,7 @@ public class TransactionServiceImplTest {
     @Mock private PrimaryAccountDao primaryAccountDao;
     @Mock private SavingsAccountDao savingsAccountDao;
     @Mock private RecipientDao recipientDao;
+    @Mock private EntityManager entityManager;
 
     @InjectMocks private TransactionServiceImpl service;
 
@@ -48,11 +52,15 @@ public class TransactionServiceImplTest {
     @Before
     public void setUp() {
         primary = new PrimaryAccount();
+        primary.setId(1L);
         primary.setAccountBalance(new BigDecimal("100.00"));
         savings = new SavingsAccount();
+        savings.setId(2L);
         savings.setAccountBalance(new BigDecimal("40.00"));
         recipient = new Recipient();
         recipient.setName("bob");
+        when(primaryAccountDao.findByIdForUpdate(1L)).thenReturn(primary);
+        when(savingsAccountDao.findByIdForUpdate(2L)).thenReturn(savings);
     }
 
     @Test
@@ -60,8 +68,22 @@ public class TransactionServiceImplTest {
         service.toSomeoneElseTransfer(recipient, "Primary", "25.50", primary, savings);
 
         assertEquals(new BigDecimal("74.50"), primary.getAccountBalance());
+        verify(primaryAccountDao).findByIdForUpdate(1L);
         verify(primaryAccountDao).save(primary);
         verify(primaryTransactionDao).save(any(PrimaryTransaction.class));
+    }
+
+    @Test
+    public void toSomeoneElseChecksTheLockedBalanceNotTheCallersCopy() {
+        PrimaryAccount stale = new PrimaryAccount();
+        stale.setId(1L);
+        stale.setAccountBalance(new BigDecimal("1000.00"));
+        primary.setAccountBalance(new BigDecimal("10.00"));
+
+        expectRejected(() -> service.toSomeoneElseTransfer(recipient, "Primary", "80", stale, savings),
+                InsufficientFundsException.class);
+        assertEquals(new BigDecimal("10.00"), primary.getAccountBalance());
+        verify(primaryAccountDao, never()).save(any(PrimaryAccount.class));
     }
 
     @Test

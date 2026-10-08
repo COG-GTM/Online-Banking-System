@@ -6,6 +6,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +49,9 @@ public class TransactionServiceImpl implements TransactionService {
 	
 	@Autowired
 	private RecipientDao recipientDao;
+
+	@PersistenceContext
+	private EntityManager entityManager;
 	
 
 	public List<PrimaryTransaction> findPrimaryTransactionList(String username){
@@ -86,6 +92,8 @@ public class TransactionServiceImpl implements TransactionService {
             throw new InvalidTransferException("Invalid Transfer");
         }
         BigDecimal value = TransferAmount.parse(amount);
+        primaryAccount = lockPrimary(primaryAccount);
+        savingsAccount = lockSavings(savingsAccount);
 
         if (primaryToSavings) {
             TransferAmount.requireCovered(primaryAccount.getAccountBalance(), value);
@@ -145,6 +153,7 @@ public class TransactionServiceImpl implements TransactionService {
         BigDecimal value = TransferAmount.parse(amount);
 
         if (fromPrimary) {
+            primaryAccount = lockPrimary(primaryAccount);
             TransferAmount.requireCovered(primaryAccount.getAccountBalance(), value);
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(value));
             primaryAccountDao.save(primaryAccount);
@@ -154,6 +163,7 @@ public class TransactionServiceImpl implements TransactionService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", value.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else {
+            savingsAccount = lockSavings(savingsAccount);
             TransferAmount.requireCovered(savingsAccount.getAccountBalance(), value);
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(value));
             savingsAccountDao.save(savingsAccount);
@@ -163,5 +173,25 @@ public class TransactionServiceImpl implements TransactionService {
             SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", value.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
             savingsTransactionDao.save(savingsTransaction);
         }
+    }
+
+    private PrimaryAccount lockPrimary(PrimaryAccount account) {
+        PrimaryAccount locked = account == null ? null : primaryAccountDao.findByIdForUpdate(account.getId());
+        if (locked == null) {
+            throw new InvalidTransferException("Account not found.");
+        }
+        // The row is locked now, but an instance already in the persistence context keeps its stale state.
+        entityManager.refresh(locked);
+        return locked;
+    }
+
+    private SavingsAccount lockSavings(SavingsAccount account) {
+        SavingsAccount locked = account == null ? null : savingsAccountDao.findByIdForUpdate(account.getId());
+        if (locked == null) {
+            throw new InvalidTransferException("Account not found.");
+        }
+        // The row is locked now, but an instance already in the persistence context keeps its stale state.
+        entityManager.refresh(locked);
+        return locked;
     }
 }
