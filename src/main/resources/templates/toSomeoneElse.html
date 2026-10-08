@@ -10,8 +10,8 @@
                 <div class="form-group" >
                     <label for="recipientName">1. Please choose the recipient:</label>
                     <select class="form-control" th:value="${recipientName}"  name="recipientName" id="recipientName" required="required">
-                        <option disabled="disabled" selected="selected"> -- select the recipient -- </option>
-                        <option data-th-each="eachRecipient : ${recipientList}" data-th-text="${eachRecipient.name}"></option>
+                        <option disabled="disabled" th:selected="${#strings.isEmpty(recipientName)}"> -- select the recipient -- </option>
+                        <option data-th-each="eachRecipient : ${recipientList}" data-th-text="${eachRecipient.name}" th:selected="${eachRecipient.name == recipientName}"></option>
                     </select>
                     <br />
                 </div>
@@ -19,9 +19,9 @@
                 <div class="form-group" >
                     <label for="accountType">2. Please select the account you would like to transfer from:</label>
                     <select class="form-control" th:value="${accountType}" name="accountType" id="accountType" required="required">
-                        <option disabled="disabled" selected="selected"> -- select your account -- </option>
-                        <option>Primary</option>
-                        <option>Savings</option>
+                        <option disabled="disabled" th:selected="${#strings.isEmpty(accountType)}"> -- select your account -- </option>
+                        <option th:selected="${accountType == 'Primary'}">Primary</option>
+                        <option th:selected="${accountType == 'Savings'}">Savings</option>
                     </select>
                     <br />
                 </div>
@@ -30,6 +30,7 @@
                     <label>3. Please specify the amount you would like to transfer: </label>
                     <span class="input-group-addon">Amount $</span>
                     <input th:value="${amount}" type="text" name="amount" id="amount" class="form-control" aria-label="Amount (to the nearest dollar)" />
+                    <p class="text-danger" th:if="${amountError}" th:text="${amountError}"></p>
                 </div>
 
                 <input type="hidden"
