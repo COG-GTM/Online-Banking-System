@@ -6,17 +6,17 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
  * Balance updates rely on transactions and row locks, which MyISAM silently ignores.
- * Tables created by earlier deployments with the MyISAM engine are converted to InnoDB at startup.
+ * Tables created by earlier deployments with the MyISAM engine are converted to InnoDB at startup,
+ * after all singletons are created but before the embedded web server starts accepting requests.
  */
 @Component
-public class InnoDbAccountTablesMigration implements ApplicationRunner {
+public class InnoDbAccountTablesMigration implements SmartInitializingSingleton {
 
     private static final Logger LOG = LoggerFactory.getLogger(InnoDbAccountTablesMigration.class);
 
@@ -30,10 +30,11 @@ public class InnoDbAccountTablesMigration implements ApplicationRunner {
     }
 
     @Override
-    public void run(ApplicationArguments args) {
+    public void afterSingletonsInstantiated() {
         String product = jdbcTemplate.execute(
                 (Connection connection) -> connection.getMetaData().getDatabaseProductName());
-        if (product == null || !product.toLowerCase().contains("mysql")) {
+        String name = product == null ? "" : product.toLowerCase();
+        if (!name.contains("mysql") && !name.contains("mariadb")) {
             return;
         }
         for (String table : TABLES) {
