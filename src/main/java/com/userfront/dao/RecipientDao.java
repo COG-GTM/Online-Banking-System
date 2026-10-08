@@ -9,7 +9,7 @@ import com.userfront.domain.Recipient;
 public interface RecipientDao extends CrudRepository<Recipient, Long> {
     List<Recipient> findAll();
 
-    Recipient findByName(String recipientName);
+    Recipient findFirstByNameAndUserUsername(String recipientName, String username);
 
-    void deleteByName(String recipientName);
+    Recipient findByIdAndUserUsername(Long id, String username);
 }
