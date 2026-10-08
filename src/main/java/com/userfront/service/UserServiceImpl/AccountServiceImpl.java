@@ -65,25 +65,25 @@ public class AccountServiceImpl implements AccountService {
     public void deposit(String accountType, BigDecimal amount, Principal principal) {
         BigDecimal validAmount = validateAmount(amount);
         User user = userService.findByUsername(principal.getName());
+        Date date = new Date();
 
+        // Ledger rows are saved before the balance update so their ids are allocated before the account row is locked.
         if ("Primary".equalsIgnoreCase(accountType)) {
-            PrimaryAccount primaryAccount = primaryAccountDao.findByIdForUpdate(user.getPrimaryAccount().getId());
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(validAmount));
-            primaryAccountDao.save(primaryAccount);
-
-            Date date = new Date();
-
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Deposit to Primary Account", "Account", "Finished", validAmount.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryAccount primaryAccount = user.getPrimaryAccount();
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Deposit to Primary Account", "Account", "Finished", validAmount.doubleValue(), null, primaryAccount);
             transactionService.savePrimaryDepositTransaction(primaryTransaction);
-            
+            if (primaryAccountDao.creditBalance(primaryAccount.getId(), validAmount) != 1) {
+                throw new IllegalStateException("Primary account not found.");
+            }
+            primaryTransaction.setAvailableBalance(primaryAccountDao.findBalanceById(primaryAccount.getId()));
         } else if ("Savings".equalsIgnoreCase(accountType)) {
-            SavingsAccount savingsAccount = savingsAccountDao.findByIdForUpdate(user.getSavingsAccount().getId());
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(validAmount));
-            savingsAccountDao.save(savingsAccount);
-
-            Date date = new Date();
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Deposit to savings Account", "Account", "Finished", validAmount.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsAccount savingsAccount = user.getSavingsAccount();
+            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Deposit to savings Account", "Account", "Finished", validAmount.doubleValue(), null, savingsAccount);
             transactionService.saveSavingsDepositTransaction(savingsTransaction);
+            if (savingsAccountDao.creditBalance(savingsAccount.getId(), validAmount) != 1) {
+                throw new IllegalStateException("Savings account not found.");
+            }
+            savingsTransaction.setAvailableBalance(savingsAccountDao.findBalanceById(savingsAccount.getId()));
         } else {
             throw new IllegalArgumentException("Unknown account type.");
         }
@@ -93,26 +93,24 @@ public class AccountServiceImpl implements AccountService {
     public void withdraw(String accountType, BigDecimal amount, Principal principal) {
         BigDecimal validAmount = validateAmount(amount);
         User user = userService.findByUsername(principal.getName());
+        Date date = new Date();
 
         if ("Primary".equalsIgnoreCase(accountType)) {
-            PrimaryAccount primaryAccount = primaryAccountDao.findByIdForUpdate(user.getPrimaryAccount().getId());
-            requireSufficientFunds(primaryAccount.getAccountBalance(), validAmount);
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(validAmount));
-            primaryAccountDao.save(primaryAccount);
-
-            Date date = new Date();
-
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Withdraw from Primary Account", "Account", "Finished", validAmount.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryAccount primaryAccount = user.getPrimaryAccount();
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Withdraw from Primary Account", "Account", "Finished", validAmount.doubleValue(), null, primaryAccount);
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
+            if (primaryAccountDao.debitBalanceIfSufficient(primaryAccount.getId(), validAmount) != 1) {
+                throw new IllegalArgumentException("Insufficient funds.");
+            }
+            primaryTransaction.setAvailableBalance(primaryAccountDao.findBalanceById(primaryAccount.getId()));
         } else if ("Savings".equalsIgnoreCase(accountType)) {
-            SavingsAccount savingsAccount = savingsAccountDao.findByIdForUpdate(user.getSavingsAccount().getId());
-            requireSufficientFunds(savingsAccount.getAccountBalance(), validAmount);
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(validAmount));
-            savingsAccountDao.save(savingsAccount);
-
-            Date date = new Date();
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Withdraw from savings Account", "Account", "Finished", validAmount.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsAccount savingsAccount = user.getSavingsAccount();
+            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Withdraw from savings Account", "Account", "Finished", validAmount.doubleValue(), null, savingsAccount);
             transactionService.saveSavingsWithdrawTransaction(savingsTransaction);
+            if (savingsAccountDao.debitBalanceIfSufficient(savingsAccount.getId(), validAmount) != 1) {
+                throw new IllegalArgumentException("Insufficient funds.");
+            }
+            savingsTransaction.setAvailableBalance(savingsAccountDao.findBalanceById(savingsAccount.getId()));
         } else {
             throw new IllegalArgumentException("Unknown account type.");
         }
@@ -142,12 +140,6 @@ public class AccountServiceImpl implements AccountService {
         return amount.setScale(AMOUNT_SCALE, RoundingMode.UNNECESSARY);
     }
 
-    private static void requireSufficientFunds(BigDecimal balance, BigDecimal amount) {
-        if (balance == null || balance.compareTo(amount) < 0) {
-            throw new IllegalArgumentException("Insufficient funds.");
-        }
-    }
-    
     private int accountGen() {
         return ++nextAccountNumber;
     }
