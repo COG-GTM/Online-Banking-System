@@ -3,8 +3,10 @@ package com.userfront.service.UserServiceImpl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 
@@ -26,8 +28,11 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.service.InvalidTransferException;
 
-@RunWith(MockitoJUnitRunner.class)
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class TransactionServiceImplTest {
+
+    private static final Long PRIMARY_ID = 1L;
+    private static final Long SAVINGS_ID = 2L;
 
     @Mock
     private PrimaryAccountDao primaryAccountDao;
@@ -51,8 +56,10 @@ public class TransactionServiceImplTest {
     @Before
     public void setUp() {
         primaryAccount = new PrimaryAccount();
+        primaryAccount.setId(PRIMARY_ID);
         primaryAccount.setAccountBalance(new BigDecimal("100.00"));
         savingsAccount = new SavingsAccount();
+        savingsAccount.setId(SAVINGS_ID);
         savingsAccount.setAccountBalance(new BigDecimal("50.00"));
         recipient = new Recipient();
         recipient.setName("bob");
@@ -61,7 +68,7 @@ public class TransactionServiceImplTest {
     @Test
     public void toSomeoneElseRejectsNegativeAmount() {
         assertRejected(() -> transactionService.toSomeoneElseTransfer(recipient, "Primary", "-1000000", primaryAccount, savingsAccount));
-        assertBalancesUnchanged();
+        assertNoWrites();
     }
 
     @Test
@@ -69,28 +76,34 @@ public class TransactionServiceImplTest {
         for (String amount : new String[] {"0", "0.00", "abc", "", "   ", null, "1.001", "1,000", "-0.01", "NaN", "123456789012345678"}) {
             assertRejected(() -> transactionService.toSomeoneElseTransfer(recipient, "Savings", amount, primaryAccount, savingsAccount));
         }
-        assertBalancesUnchanged();
+        assertNoWrites();
     }
 
     @Test
-    public void toSomeoneElseRejectsOverdraft() {
+    public void toSomeoneElseRejectsWhenAtomicDebitFindsInsufficientFunds() {
+        when(primaryAccountDao.debitIfSufficientFunds(PRIMARY_ID, new BigDecimal("100.01"))).thenReturn(0);
+
         assertRejected(() -> transactionService.toSomeoneElseTransfer(recipient, "Primary", "100.01", primaryAccount, savingsAccount));
-        assertRejected(() -> transactionService.toSomeoneElseTransfer(recipient, "Savings", "50.01", primaryAccount, savingsAccount));
-        assertBalancesUnchanged();
+
+        verify(primaryTransactionDao, never()).save(any());
+        assertEquals(new BigDecimal("100.00"), primaryAccount.getAccountBalance());
     }
 
     @Test
-    public void toSomeoneElseRejectsUnknownRecipient() {
+    public void toSomeoneElseRejectsUnknownRecipientAndAccountType() {
         assertRejected(() -> transactionService.toSomeoneElseTransfer(null, "Primary", "10", primaryAccount, savingsAccount));
-        assertBalancesUnchanged();
+        assertRejected(() -> transactionService.toSomeoneElseTransfer(recipient, "Checking", "10", primaryAccount, savingsAccount));
+        assertNoWrites();
     }
 
     @Test
     public void toSomeoneElseDebitsValidAmount() {
+        when(primaryAccountDao.debitIfSufficientFunds(PRIMARY_ID, new BigDecimal("100.00"))).thenReturn(1);
+        when(primaryAccountDao.findBalanceById(PRIMARY_ID)).thenReturn(new BigDecimal("0.00"));
+
         transactionService.toSomeoneElseTransfer(recipient, "Primary", "100.00", primaryAccount, savingsAccount);
 
-        assertEquals(0, primaryAccount.getAccountBalance().compareTo(BigDecimal.ZERO));
-        verify(primaryAccountDao).save(primaryAccount);
+        assertEquals(new BigDecimal("0.00"), primaryAccount.getAccountBalance());
         verify(primaryTransactionDao).save(any(PrimaryTransaction.class));
     }
 
@@ -98,30 +111,46 @@ public class TransactionServiceImplTest {
     public void betweenAccountsRejectsNegativeAmount() {
         assertRejected(() -> transactionService.betweenAccountsTransfer("Primary", "Savings", "-500", primaryAccount, savingsAccount));
         assertRejected(() -> transactionService.betweenAccountsTransfer("Savings", "Primary", "-500", primaryAccount, savingsAccount));
-        assertBalancesUnchanged();
+        assertNoWrites();
     }
 
     @Test
-    public void betweenAccountsRejectsOverdraft() {
-        assertRejected(() -> transactionService.betweenAccountsTransfer("Primary", "Savings", "100.01", primaryAccount, savingsAccount));
+    public void betweenAccountsRejectsSameAccountWithInvalidTransferException() {
+        assertRejected(() -> transactionService.betweenAccountsTransfer("Primary", "Primary", "10", primaryAccount, savingsAccount));
+        assertNoWrites();
+    }
+
+    @Test
+    public void betweenAccountsDoesNotCreditWhenDebitFails() {
+        when(savingsAccountDao.debitIfSufficientFunds(SAVINGS_ID, new BigDecimal("50.01"))).thenReturn(0);
+
         assertRejected(() -> transactionService.betweenAccountsTransfer("Savings", "Primary", "50.01", primaryAccount, savingsAccount));
-        assertBalancesUnchanged();
+
+        verify(primaryAccountDao, never()).credit(anyLong(), any());
+        verify(savingsTransactionDao, never()).save(any());
     }
 
     @Test
     public void betweenAccountsMovesValidAmount() throws Exception {
+        when(savingsAccountDao.debitIfSufficientFunds(SAVINGS_ID, new BigDecimal("50"))).thenReturn(1);
+        when(primaryAccountDao.findBalanceById(PRIMARY_ID)).thenReturn(new BigDecimal("150.00"));
+        when(savingsAccountDao.findBalanceById(SAVINGS_ID)).thenReturn(new BigDecimal("0.00"));
+
         transactionService.betweenAccountsTransfer("Savings", "Primary", "50", primaryAccount, savingsAccount);
 
-        assertEquals(0, primaryAccount.getAccountBalance().compareTo(new BigDecimal("150.00")));
-        assertEquals(0, savingsAccount.getAccountBalance().compareTo(BigDecimal.ZERO));
+        verify(primaryAccountDao).credit(PRIMARY_ID, new BigDecimal("50"));
+        assertEquals(new BigDecimal("150.00"), primaryAccount.getAccountBalance());
+        assertEquals(new BigDecimal("0.00"), savingsAccount.getAccountBalance());
         verify(savingsTransactionDao).save(any(SavingsTransaction.class));
     }
 
-    private void assertBalancesUnchanged() {
+    private void assertNoWrites() {
         assertEquals(new BigDecimal("100.00"), primaryAccount.getAccountBalance());
         assertEquals(new BigDecimal("50.00"), savingsAccount.getAccountBalance());
-        verify(primaryAccountDao, never()).save(any());
-        verify(savingsAccountDao, never()).save(any());
+        verify(primaryAccountDao, never()).debitIfSufficientFunds(anyLong(), any());
+        verify(savingsAccountDao, never()).debitIfSufficientFunds(anyLong(), any());
+        verify(primaryAccountDao, never()).credit(anyLong(), any());
+        verify(savingsAccountDao, never()).credit(anyLong(), any());
         verify(primaryTransactionDao, never()).save(any());
         verify(savingsTransactionDao, never()).save(any());
     }
