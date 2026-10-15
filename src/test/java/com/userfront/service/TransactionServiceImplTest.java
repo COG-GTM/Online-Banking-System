@@ -22,6 +22,8 @@ import com.userfront.domain.User;
 import com.userfront.dto.RecipientForm;
 import com.userfront.service.UserServiceImpl.TransactionServiceImpl;
 
+import java.security.Principal;
+
 @RunWith(MockitoJUnitRunner.class)
 public class TransactionServiceImplTest {
 
@@ -95,5 +97,31 @@ public class TransactionServiceImplTest {
         } finally {
             verify(recipientDao, never()).save(any(Recipient.class));
         }
+    }
+
+    @Test
+    public void recipientLookupByNameIsScopedToCaller() {
+        Recipient own = new Recipient();
+        when(recipientDao.findFirstByNameAndUserUsername("Landlord", "alice")).thenReturn(own);
+        Principal alicePrincipal = () -> "alice";
+
+        assertSame(own, transactionService.findRecipientByName("Landlord", alicePrincipal));
+    }
+
+    @Test(expected = RecipientNotFoundException.class)
+    public void otherUsersRecipientNameIsRejected() {
+        when(recipientDao.findFirstByNameAndUserUsername("Landlord", "bob")).thenReturn(null);
+        Principal bobPrincipal = () -> "bob";
+
+        transactionService.findRecipientByName("Landlord", bobPrincipal);
+    }
+
+    @Test
+    public void deleteByNameIsScopedToCaller() {
+        Principal bobPrincipal = () -> "bob";
+
+        transactionService.deleteRecipientByName("Landlord", bobPrincipal);
+
+        verify(recipientDao).deleteByNameAndUserUsername("Landlord", "bob");
     }
 }

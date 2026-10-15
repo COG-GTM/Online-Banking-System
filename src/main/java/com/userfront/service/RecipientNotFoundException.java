@@ -9,4 +9,8 @@ public class RecipientNotFoundException extends RuntimeException {
     public RecipientNotFoundException(Long id) {
         super("Recipient " + id + " not found");
     }
+
+    public RecipientNotFoundException(String name) {
+        super("Recipient '" + name + "' not found");
+    }
 }
