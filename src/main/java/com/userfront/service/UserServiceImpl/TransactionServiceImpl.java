@@ -111,7 +111,12 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientList;
     }
 
-    public Recipient saveRecipient(Recipient recipient) {
+    public Recipient saveRecipient(Recipient recipient, Principal principal) {
+        if (recipient.getId() != null
+                && recipientDao.findByIdAndUserUsername(recipient.getId(), principal.getName()) == null) {
+            throw new RecipientNotFoundException();
+        }
+        recipient.setUser(userService.findByUsername(principal.getName()));
         return recipientDao.save(recipient);
     }
 
