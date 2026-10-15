@@ -100,28 +100,42 @@ public class TransactionServiceImplTest {
     }
 
     @Test
-    public void recipientLookupByNameIsScopedToCaller() {
+    public void recipientLookupIsScopedToCaller() {
         Recipient own = new Recipient();
-        when(recipientDao.findFirstByNameAndUserUsername("Landlord", "alice")).thenReturn(own);
+        when(recipientDao.findByIdAndUserUsername(7L, "alice")).thenReturn(own);
         Principal alicePrincipal = () -> "alice";
 
-        assertSame(own, transactionService.findRecipientByName("Landlord", alicePrincipal));
+        assertSame(own, transactionService.findRecipient(7L, alicePrincipal));
     }
 
     @Test(expected = RecipientNotFoundException.class)
-    public void otherUsersRecipientNameIsRejected() {
-        when(recipientDao.findFirstByNameAndUserUsername("Landlord", "bob")).thenReturn(null);
+    public void otherUsersRecipientLookupIsRejected() {
+        when(recipientDao.findByIdAndUserUsername(7L, "bob")).thenReturn(null);
         Principal bobPrincipal = () -> "bob";
 
-        transactionService.findRecipientByName("Landlord", bobPrincipal);
+        transactionService.findRecipient(7L, bobPrincipal);
     }
 
     @Test
-    public void deleteByNameIsScopedToCaller() {
+    public void ownRecipientIsDeleted() {
+        Recipient own = new Recipient();
+        when(recipientDao.findByIdAndUserUsername(7L, "alice")).thenReturn(own);
+        Principal alicePrincipal = () -> "alice";
+
+        transactionService.deleteRecipient(7L, alicePrincipal);
+
+        verify(recipientDao).delete(own);
+    }
+
+    @Test(expected = RecipientNotFoundException.class)
+    public void otherUsersRecipientIsNotDeleted() {
+        when(recipientDao.findByIdAndUserUsername(7L, "bob")).thenReturn(null);
         Principal bobPrincipal = () -> "bob";
 
-        transactionService.deleteRecipientByName("Landlord", bobPrincipal);
-
-        verify(recipientDao).deleteByNameAndUserUsername("Landlord", "bob");
+        try {
+            transactionService.deleteRecipient(7L, bobPrincipal);
+        } finally {
+            verify(recipientDao, never()).delete(any(Recipient.class));
+        }
     }
 }
