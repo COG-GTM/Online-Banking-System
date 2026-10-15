@@ -40,8 +40,7 @@ public class UserController {
     public String profilePost(@ModelAttribute("user") User newUser, Principal principal, Model model) {
         User user = userService.findByUsername(principal.getName());
 
-        User emailOwner = userService.findByEmail(newUser.getEmail());
-        if (emailOwner != null && !emailOwner.getUserId().equals(user.getUserId())) {
+        if (emailTakenByAnotherUser(newUser.getEmail(), user)) {
             return rejectEmailConflict(newUser, user, model);
         }
 
@@ -53,12 +52,20 @@ public class UserController {
         try {
             userService.saveUser(user);
         } catch (DataIntegrityViolationException e) {
-            return rejectEmailConflict(newUser, user, model);
+            if (emailTakenByAnotherUser(newUser.getEmail(), user)) {
+                return rejectEmailConflict(newUser, user, model);
+            }
+            throw e;
         }
 
         model.addAttribute("user", user);
 
         return "profile";
+    }
+
+    private boolean emailTakenByAnotherUser(String email, User current) {
+        User emailOwner = userService.findByEmail(email);
+        return emailOwner != null && !emailOwner.getUserId().equals(current.getUserId());
     }
 
     private String rejectEmailConflict(User submitted, User current, Model model) {

@@ -4,6 +4,8 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +28,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
+import org.springframework.web.util.NestedServletException;
 
 import com.userfront.domain.User;
 import com.userfront.service.UserService;
@@ -129,6 +132,7 @@ public class UserControllerTest {
     public void reportsConcurrentEmailClaimAsConflict() throws Exception {
         when(userService.findByUsername("alice")).thenReturn(alice);
         when(userService.saveUser(alice)).thenThrow(new DataIntegrityViolationException("uk_email"));
+        when(userService.findByEmail("shared@example.com")).thenReturn(null, bob);
 
         mockMvc.perform(post("/user/profile").principal(principal("alice"))
                 .param("firstName", "Alicia")
@@ -139,6 +143,22 @@ public class UserControllerTest {
                 .andExpect(view().name("profile"))
                 .andExpect(model().attribute("emailExists", true))
                 .andExpect(model().attribute("user", submittedValuesFor("alice", "shared@example.com")));
+    }
+
+    @Test
+    public void otherIntegrityViolationsAreNotReportedAsEmailConflict() throws Exception {
+        when(userService.findByUsername("alice")).thenReturn(alice);
+        when(userService.saveUser(alice)).thenThrow(new DataIntegrityViolationException("email not null"));
+
+        try {
+            mockMvc.perform(post("/user/profile").principal(principal("alice"))
+                    .param("firstName", "Alicia")
+                    .param("lastName", "Smith")
+                    .param("phone", "555-0100"));
+            fail("expected DataIntegrityViolationException to propagate");
+        } catch (NestedServletException e) {
+            assertTrue(e.getCause() instanceof DataIntegrityViolationException);
+        }
     }
 
     private static org.hamcrest.Matcher<Object> submittedValuesFor(String username, String email) {
