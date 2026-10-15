@@ -2,6 +2,7 @@ package com.userfront.service.UserServiceImpl;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
@@ -19,7 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessResourceFailureException;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.SavingsAccountDao;
@@ -79,15 +80,16 @@ public class AccountServiceImplTest {
     }
 
     @Test
-    public void numberReservedConcurrentlyIsRetriedInsteadOfFailingSignup() {
+    public void databaseErrorsPropagateInsteadOfBeingRetried() {
         when(accountNumberAllocator.reserve(anyInt()))
-                .thenThrow(new DataIntegrityViolationException("duplicate key"))
-                .thenReturn(true);
-
-        accountService.createPrimaryAccount();
-
-        verify(accountNumberAllocator, times(2)).reserve(anyInt());
-        verify(primaryAccountDao).save(any(PrimaryAccount.class));
+                .thenThrow(new DataAccessResourceFailureException("table missing"));
+        try {
+            accountService.createPrimaryAccount();
+            fail("expected the database error to propagate");
+        } catch (DataAccessResourceFailureException expected) {
+            verify(accountNumberAllocator, times(1)).reserve(anyInt());
+            verify(primaryAccountDao, never()).save(any(PrimaryAccount.class));
+        }
     }
 
     @Test(expected = IllegalStateException.class)

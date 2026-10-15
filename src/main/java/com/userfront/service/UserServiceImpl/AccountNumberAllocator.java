@@ -1,27 +1,33 @@
 package com.userfront.service.UserServiceImpl;
 
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
+import java.sql.Savepoint;
+import java.sql.Timestamp;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.SavingsAccountDao;
-import com.userfront.domain.AccountNumberReservation;
 
 /**
- * Reserves account numbers in one table shared by primary and savings accounts.
- * The reservation commits in its own transaction, so a number claimed concurrently
- * fails on the primary key and the caller can retry without poisoning the signup.
+ * Claims account numbers in one table shared by primary and savings accounts.
+ * The claim joins the caller's signup transaction, so it uses the signup's connection
+ * and disappears if the signup rolls back. A number claimed concurrently fails on the
+ * primary key and is rolled back to a savepoint, leaving the signup transaction usable.
  */
 @Component
 public class AccountNumberAllocator {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    static final String INSERT_RESERVATION =
+            "insert into account_number_reservation (account_number, reserved_at) values (?, ?)";
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
@@ -29,15 +35,22 @@ public class AccountNumberAllocator {
     @Autowired
     private SavingsAccountDao savingsAccountDao;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.MANDATORY)
     public boolean reserve(int accountNumber) {
-        if (entityManager.find(AccountNumberReservation.class, accountNumber) != null
-                || primaryAccountDao.findByAccountNumber(accountNumber) != null
+        if (primaryAccountDao.findByAccountNumber(accountNumber) != null
                 || savingsAccountDao.findByAccountNumber(accountNumber) != null) {
             return false;
         }
-        entityManager.persist(new AccountNumberReservation(accountNumber));
-        entityManager.flush();
-        return true;
+        return jdbcTemplate.execute((ConnectionCallback<Boolean>) connection -> {
+            Savepoint savepoint = connection.setSavepoint();
+            try {
+                jdbcTemplate.update(INSERT_RESERVATION, accountNumber, new Timestamp(System.currentTimeMillis()));
+            } catch (DuplicateKeyException alreadyReserved) {
+                connection.rollback(savepoint);
+                return false;
+            }
+            connection.releaseSavepoint(savepoint);
+            return true;
+        });
     }
 }

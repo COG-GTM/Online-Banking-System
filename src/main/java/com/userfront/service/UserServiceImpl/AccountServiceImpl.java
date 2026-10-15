@@ -5,10 +5,7 @@ import java.security.Principal;
 import java.security.SecureRandom;
 import java.util.Date;
 
-import javax.persistence.PersistenceException;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -116,12 +113,8 @@ public class AccountServiceImpl implements AccountService {
     private int accountGen() {
         for (int attempt = 0; attempt < ACCOUNT_NUMBER_MAX_ATTEMPTS; attempt++) {
             int candidate = ACCOUNT_NUMBER_MIN + RANDOM.nextInt(ACCOUNT_NUMBER_MAX - ACCOUNT_NUMBER_MIN + 1);
-            try {
-                if (accountNumberAllocator.reserve(candidate)) {
-                    return candidate;
-                }
-            } catch (DataAccessException | PersistenceException claimedConcurrently) {
-                // another signup reserved the same number first; draw again
+            if (accountNumberAllocator.reserve(candidate)) {
+                return candidate;
             }
         }
         throw new IllegalStateException("Could not allocate a unique account number");
