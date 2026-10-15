@@ -16,12 +16,8 @@ public interface SavingsAccountDao extends CrudRepository<SavingsAccount, Long> 
     SavingsAccount findByAccountNumber (int accountNumber);
 
     @Modifying
-    @Query("update SavingsAccount a set a.accountBalance = a.accountBalance + :amount where a.id = :id")
-    int credit(@Param("id") Long id, @Param("amount") BigDecimal amount);
-
-    @Modifying
-    @Query("update SavingsAccount a set a.accountBalance = a.accountBalance - :amount where a.id = :id and a.accountBalance >= :amount")
-    int debitIfCovered(@Param("id") Long id, @Param("amount") BigDecimal amount);
+    @Query("update SavingsAccount a set a.accountBalance = :updated where a.id = :id and a.accountBalance = :expected")
+    int compareAndSetBalance(@Param("id") Long id, @Param("expected") BigDecimal expected, @Param("updated") BigDecimal updated);
 
     @Query("select a.accountBalance from SavingsAccount a where a.id = :id")
     BigDecimal findBalanceById(@Param("id") Long id);
