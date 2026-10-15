@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -83,12 +84,22 @@ public class TransferControllerTest {
     }
 
     @Test
-    public void editOfOtherUsersRecipientNameReturns404() throws Exception {
-        when(transactionService.findRecipientByName(eq("Landlord"), any(Principal.class)))
-                .thenThrow(new RecipientNotFoundException("Landlord"));
+    public void editOfOtherUsersRecipientReturns404() throws Exception {
+        when(transactionService.findRecipient(eq(7L), any(Principal.class)))
+                .thenThrow(new RecipientNotFoundException(7L));
 
         mockMvc.perform(get("/transfer/recipient/edit").principal(principal)
-                .param("recipientName", "Landlord"))
+                .param("recipientId", "7"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void deleteOfOtherUsersRecipientReturns404() throws Exception {
+        doThrow(new RecipientNotFoundException(7L))
+                .when(transactionService).deleteRecipient(eq(7L), any(Principal.class));
+
+        mockMvc.perform(get("/transfer/recipient/delete").principal(principal)
+                .param("recipientId", "7"))
                 .andExpect(status().isNotFound());
     }
 }
