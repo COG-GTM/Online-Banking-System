@@ -1,7 +1,6 @@
 package com.userfront.service.UserServiceImpl;
 
 import java.util.List;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.userfront.dao.RoleDao;
 import com.userfront.dao.UserDao;
 import com.userfront.domain.User;
+import com.userfront.domain.security.Role;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.AccountService;
 import com.userfront.service.UserService;
@@ -48,25 +48,30 @@ public class UserServiceImpl implements UserService{
     }
     
     
-    public User createUser(User user, Set<UserRole> userRoles) {
+    public User createUser(User user) {
         User localUser = userDao.findByUsername(user.getUsername());
 
         if (localUser != null) {
             LOG.info("User with username {} already exist. Nothing will be done. ", user.getUsername());
         } else {
-            String encryptedPassword = passwordEncoder.encode(user.getPassword());
-            user.setPassword(encryptedPassword);
+            User newUser = new User();
+            newUser.setUsername(user.getUsername());
+            newUser.setFirstName(user.getFirstName());
+            newUser.setLastName(user.getLastName());
+            newUser.setEmail(user.getEmail());
+            newUser.setPhone(user.getPhone());
+            newUser.setPassword(passwordEncoder.encode(user.getPassword()));
 
-            for (UserRole ur : userRoles) {
-                roleDao.save(ur.getRole());
+            Role userRole = roleDao.findByName("ROLE_USER");
+            if (userRole == null) {
+                throw new IllegalStateException("Default role ROLE_USER is not configured");
             }
+            newUser.getUserRoles().add(new UserRole(newUser, userRole));
 
-            user.getUserRoles().addAll(userRoles);
+            newUser.setPrimaryAccount(accountService.createPrimaryAccount());
+            newUser.setSavingsAccount(accountService.createSavingsAccount());
 
-            user.setPrimaryAccount(accountService.createPrimaryAccount());
-            user.setSavingsAccount(accountService.createSavingsAccount());
-
-            localUser = userDao.save(user);
+            localUser = userDao.save(newUser);
         }
 
         return localUser;
