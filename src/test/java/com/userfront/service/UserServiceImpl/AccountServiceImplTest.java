@@ -19,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.SavingsAccountDao;
@@ -27,6 +28,9 @@ import com.userfront.domain.SavingsAccount;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AccountServiceImplTest {
+
+    @Mock
+    private AccountNumberAllocator accountNumberAllocator;
 
     @Mock
     private PrimaryAccountDao primaryAccountDao;
@@ -39,6 +43,7 @@ public class AccountServiceImplTest {
 
     @Test
     public void accountNumbersAreNineDigitsUniqueAndNotSequential() {
+        when(accountNumberAllocator.reserve(anyInt())).thenReturn(true);
         int count = 50;
         for (int i = 0; i < count; i++) {
             accountService.createPrimaryAccount();
@@ -61,28 +66,37 @@ public class AccountServiceImplTest {
     }
 
     @Test
-    public void numberAlreadyUsedInEitherTableIsSkipped() {
-        when(primaryAccountDao.findByAccountNumber(anyInt()))
-                .thenReturn(new PrimaryAccount())
-                .thenReturn(null);
-        when(savingsAccountDao.findByAccountNumber(anyInt()))
-                .thenReturn(new SavingsAccount())
-                .thenReturn(null);
+    public void numberAlreadyTakenIsSkipped() {
+        when(accountNumberAllocator.reserve(anyInt())).thenReturn(false, false, true);
 
         accountService.createSavingsAccount();
 
-        verify(primaryAccountDao, times(3)).findByAccountNumber(anyInt());
-        verify(savingsAccountDao, times(3)).findByAccountNumber(anyInt());
-        verify(savingsAccountDao).save(any(SavingsAccount.class));
+        ArgumentCaptor<Integer> tried = ArgumentCaptor.forClass(Integer.class);
+        verify(accountNumberAllocator, times(3)).reserve(tried.capture());
+        ArgumentCaptor<SavingsAccount> saved = ArgumentCaptor.forClass(SavingsAccount.class);
+        verify(savingsAccountDao).save(saved.capture());
+        assertEquals(tried.getAllValues().get(2).intValue(), saved.getValue().getAccountNumber());
+    }
+
+    @Test
+    public void numberReservedConcurrentlyIsRetriedInsteadOfFailingSignup() {
+        when(accountNumberAllocator.reserve(anyInt()))
+                .thenThrow(new DataIntegrityViolationException("duplicate key"))
+                .thenReturn(true);
+
+        accountService.createPrimaryAccount();
+
+        verify(accountNumberAllocator, times(2)).reserve(anyInt());
+        verify(primaryAccountDao).save(any(PrimaryAccount.class));
     }
 
     @Test(expected = IllegalStateException.class)
     public void failsRatherThanReusingANumberWhenNoneIsFree() {
-        when(primaryAccountDao.findByAccountNumber(anyInt())).thenReturn(new PrimaryAccount());
+        when(accountNumberAllocator.reserve(anyInt())).thenReturn(false);
         try {
             accountService.createPrimaryAccount();
         } finally {
-            verify(primaryAccountDao, times(AccountServiceImpl.ACCOUNT_NUMBER_MAX_ATTEMPTS)).findByAccountNumber(anyInt());
+            verify(accountNumberAllocator, times(AccountServiceImpl.ACCOUNT_NUMBER_MAX_ATTEMPTS)).reserve(anyInt());
             verify(primaryAccountDao, never()).save(any(PrimaryAccount.class));
         }
     }
