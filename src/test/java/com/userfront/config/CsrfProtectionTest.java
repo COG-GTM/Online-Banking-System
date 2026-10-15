@@ -3,6 +3,7 @@ package com.userfront.config;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -10,7 +11,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -40,10 +43,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
+import com.userfront.controller.AccountController;
 import com.userfront.controller.TransferController;
 import com.userfront.dao.UserDao;
 import com.userfront.resource.AppointmentResource;
 import com.userfront.resource.UserResource;
+import com.userfront.service.AccountService;
 import com.userfront.service.AppointmentService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
@@ -56,7 +61,8 @@ public class CsrfProtectionTest {
 
     @Configuration
     @EnableWebMvc
-    @Import({SecurityConfig.class, UserResource.class, AppointmentResource.class, TransferController.class})
+    @Import({SecurityConfig.class, UserResource.class, AppointmentResource.class, TransferController.class,
+            AccountController.class})
     static class TestConfig {
 
         @Bean
@@ -67,6 +73,11 @@ public class CsrfProtectionTest {
         @Bean
         public TransactionService transactionService() {
             return mock(TransactionService.class);
+        }
+
+        @Bean
+        public AccountService accountService() {
+            return mock(AccountService.class);
         }
 
         @Bean
@@ -100,6 +111,9 @@ public class CsrfProtectionTest {
     @Autowired
     private AppointmentService appointmentService;
 
+    @Autowired
+    private AccountService accountService;
+
     private MockMvc mockMvc;
 
     private MockHttpSession adminSession;
@@ -108,7 +122,7 @@ public class CsrfProtectionTest {
 
     @Before
     public void setUp() {
-        reset(userService, transactionService, appointmentService);
+        reset(userService, transactionService, appointmentService, accountService);
         mockMvc = MockMvcBuilders.webAppContextSetup(context).addFilters(springSecurityFilterChain).build();
         adminSession = sessionFor("admin", "ROLE_ADMIN");
         userSession = sessionFor("alice", "ROLE_USER");
@@ -212,5 +226,40 @@ public class CsrfProtectionTest {
                 .andExpect(result -> assertNull(result.getResponse().getRedirectedUrl()));
         mockMvc.perform(post("/logout").session(userSession)).andExpect(status().isForbidden());
         mockMvc.perform(withToken(post("/logout"), userSession)).andExpect(redirectedUrl("/index?logout"));
+    }
+
+    @Test
+    public void withdrawAndDepositRejectPostWithoutToken() throws Exception {
+        mockMvc.perform(post("/account/withdraw").param("accountType", "Primary").param("amount", "500")
+                .session(userSession)).andExpect(status().isForbidden());
+        mockMvc.perform(post("/account/deposit").param("accountType", "Primary").param("amount", "500")
+                .session(userSession)).andExpect(status().isForbidden());
+        verify(accountService, never()).withdraw(anyString(), anyDouble(), any());
+        verify(accountService, never()).deposit(anyString(), anyDouble(), any());
+
+        mockMvc.perform(withToken(post("/account/withdraw"), userSession).param("accountType", "Primary")
+                .param("amount", "500")).andExpect(status().is3xxRedirection());
+        verify(accountService).withdraw(org.mockito.ArgumentMatchers.eq("Primary"),
+                org.mockito.ArgumentMatchers.eq(500d), any());
+    }
+
+    @Test
+    public void corsPreflightAllowsAdminPortalWithCsrfHeader() throws Exception {
+        mockMvc.perform(options("/api/user/bob/disable")
+                .header("Origin", "http://localhost:4200")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "x-xsrf-token"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4200"))
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+    }
+
+    @Test
+    public void corsPreflightRejectsOtherOrigins() throws Exception {
+        mockMvc.perform(options("/api/user/bob/disable")
+                .header("Origin", "https://evil.example")
+                .header("Access-Control-Request-Method", "POST"))
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
     }
 }
