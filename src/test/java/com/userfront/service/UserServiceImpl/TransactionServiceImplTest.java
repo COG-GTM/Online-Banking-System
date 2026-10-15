@@ -36,6 +36,7 @@ public class TransactionServiceImplTest {
         ReflectionTestUtils.setField(service, "savingsAccountDao", recordingDao(SavingsAccountDao.class));
         ReflectionTestUtils.setField(service, "primaryTransactionDao", recordingDao(PrimaryTransactionDao.class));
         ReflectionTestUtils.setField(service, "savingsTransactionDao", recordingDao(SavingsTransactionDao.class));
+        ReflectionTestUtils.setField(service, "accountLocks", passThroughLocks());
 
         primary = new PrimaryAccount();
         primary.setAccountBalance(new BigDecimal("100.00"));
@@ -157,5 +158,19 @@ public class TransactionServiceImplTest {
             }
             throw new UnsupportedOperationException(method.getName());
         }));
+    }
+
+    private static AccountLocks passThroughLocks() {
+        return new AccountLocks() {
+            @Override
+            public PrimaryAccount lock(PrimaryAccount account) {
+                return account;
+            }
+
+            @Override
+            public SavingsAccount lock(SavingsAccount account) {
+                return account;
+            }
+        };
     }
 }

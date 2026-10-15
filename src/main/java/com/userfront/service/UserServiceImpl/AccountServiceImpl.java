@@ -37,6 +37,9 @@ public class AccountServiceImpl implements AccountService {
     @Autowired
     private TransactionService transactionService;
 
+    @Autowired
+    private AccountLocks accountLocks;
+
     public PrimaryAccount createPrimaryAccount() {
         PrimaryAccount primaryAccount = new PrimaryAccount();
         primaryAccount.setAccountBalance(new BigDecimal(0.0));
@@ -63,7 +66,7 @@ public class AccountServiceImpl implements AccountService {
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {
-            PrimaryAccount primaryAccount = user.getPrimaryAccount();
+            PrimaryAccount primaryAccount = accountLocks.lock(user.getPrimaryAccount());
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(amount));
             primaryAccountDao.save(primaryAccount);
 
@@ -73,7 +76,7 @@ public class AccountServiceImpl implements AccountService {
             transactionService.savePrimaryDepositTransaction(primaryTransaction);
             
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            SavingsAccount savingsAccount = user.getSavingsAccount();
+            SavingsAccount savingsAccount = accountLocks.lock(user.getSavingsAccount());
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(amount));
             savingsAccountDao.save(savingsAccount);
 
@@ -89,7 +92,7 @@ public class AccountServiceImpl implements AccountService {
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {
-            PrimaryAccount primaryAccount = user.getPrimaryAccount();
+            PrimaryAccount primaryAccount = accountLocks.lock(user.getPrimaryAccount());
             TransactionAmount.requireCovered(primaryAccount.getAccountBalance(), amount);
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(amount));
             primaryAccountDao.save(primaryAccount);
@@ -99,7 +102,7 @@ public class AccountServiceImpl implements AccountService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Withdraw from Primary Account", "Account", "Finished", amount.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            SavingsAccount savingsAccount = user.getSavingsAccount();
+            SavingsAccount savingsAccount = accountLocks.lock(user.getSavingsAccount());
             TransactionAmount.requireCovered(savingsAccount.getAccountBalance(), amount);
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(amount));
             savingsAccountDao.save(savingsAccount);

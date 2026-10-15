@@ -27,6 +27,9 @@ import com.userfront.validation.TransactionAmount;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
+
+    @Autowired
+    private AccountLocks accountLocks;
 	
 	@Autowired
 	private UserService userService;
@@ -80,6 +83,8 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public void betweenAccountsTransfer(String transferFrom, String transferTo, BigDecimal amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception {
         amount = TransactionAmount.requireValid(amount);
+        primaryAccount = accountLocks.lock(primaryAccount);
+        savingsAccount = accountLocks.lock(savingsAccount);
         if (transferFrom.equalsIgnoreCase("Primary") && transferTo.equalsIgnoreCase("Savings")) {
             TransactionAmount.requireCovered(primaryAccount.getAccountBalance(), amount);
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(amount));
@@ -132,6 +137,7 @@ public class TransactionServiceImpl implements TransactionService {
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, BigDecimal amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
         amount = TransactionAmount.requireValid(amount);
         if (accountType.equalsIgnoreCase("Primary")) {
+            primaryAccount = accountLocks.lock(primaryAccount);
             TransactionAmount.requireCovered(primaryAccount.getAccountBalance(), amount);
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(amount));
             primaryAccountDao.save(primaryAccount);
@@ -141,6 +147,7 @@ public class TransactionServiceImpl implements TransactionService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", amount.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
+            savingsAccount = accountLocks.lock(savingsAccount);
             TransactionAmount.requireCovered(savingsAccount.getAccountBalance(), amount);
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(amount));
             savingsAccountDao.save(savingsAccount);

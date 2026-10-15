@@ -43,6 +43,7 @@ public class AccountServiceImplTest {
         ReflectionTestUtils.setField(service, "transactionService", stub(TransactionService.class, null));
         ReflectionTestUtils.setField(service, "primaryAccountDao", stub(PrimaryAccountDao.class, null));
         ReflectionTestUtils.setField(service, "savingsAccountDao", stub(SavingsAccountDao.class, null));
+        ReflectionTestUtils.setField(service, "accountLocks", passThroughLocks());
     }
 
     @Test
@@ -95,5 +96,19 @@ public class AccountServiceImplTest {
             }
             return args != null && args.length > 0 ? args[0] : null;
         }));
+    }
+
+    private static AccountLocks passThroughLocks() {
+        return new AccountLocks() {
+            @Override
+            public PrimaryAccount lock(PrimaryAccount account) {
+                return account;
+            }
+
+            @Override
+            public SavingsAccount lock(SavingsAccount account) {
+                return account;
+            }
+        };
     }
 }
