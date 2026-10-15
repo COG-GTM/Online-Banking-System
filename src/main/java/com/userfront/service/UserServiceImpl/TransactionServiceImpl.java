@@ -22,6 +22,7 @@ import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.service.exception.RecipientNotFoundException;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -110,16 +111,28 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientList;
     }
 
-    public Recipient saveRecipient(Recipient recipient) {
+    public Recipient saveRecipient(Recipient recipient, Principal principal) {
+        String username = principal.getName();
+        if (recipient.getId() != null
+                && recipientDao.findByIdAndUserUsername(recipient.getId(), username) == null) {
+            throw new RecipientNotFoundException();
+        }
+        recipient.setUser(userService.findByUsername(username));
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName) {
-        return recipientDao.findByName(recipientName);
+    public Recipient findRecipientByName(String recipientName, Principal principal) {
+        Recipient recipient = recipientDao.findFirstByNameAndUserUsername(recipientName, principal.getName());
+        if (recipient == null) {
+            throw new RecipientNotFoundException();
+        }
+        return recipient;
     }
 
-    public void deleteRecipientByName(String recipientName) {
-        recipientDao.deleteByName(recipientName);
+    public void deleteRecipientByName(String recipientName, Principal principal) {
+        if (recipientDao.deleteByNameAndUserUsername(recipientName, principal.getName()) == 0) {
+            throw new RecipientNotFoundException();
+        }
     }
     
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
