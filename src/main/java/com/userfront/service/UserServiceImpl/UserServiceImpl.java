@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.userfront.dao.RoleDao;
 import com.userfront.dao.UserDao;
 import com.userfront.domain.User;
+import com.userfront.domain.security.Role;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.AccountService;
 import com.userfront.service.UserService;
@@ -61,7 +62,11 @@ public class UserServiceImpl implements UserService{
             newUser.setPhone(user.getPhone());
             newUser.setPassword(passwordEncoder.encode(user.getPassword()));
 
-            newUser.getUserRoles().add(new UserRole(newUser, roleDao.findByName("ROLE_USER")));
+            Role userRole = roleDao.findByName("ROLE_USER");
+            if (userRole == null) {
+                throw new IllegalStateException("Default role ROLE_USER is not configured");
+            }
+            newUser.getUserRoles().add(new UserRole(newUser, userRole));
 
             newUser.setPrimaryAccount(accountService.createPrimaryAccount());
             newUser.setSavingsAccount(accountService.createSavingsAccount());
