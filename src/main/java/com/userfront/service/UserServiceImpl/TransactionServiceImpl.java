@@ -133,16 +133,16 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName, Principal principal) {
-        Recipient recipient = recipientDao.findFirstByNameAndUserUsername(recipientName, principal.getName());
+    public Recipient findRecipient(Long recipientId, Principal principal) {
+        Recipient recipient = recipientDao.findByIdAndUserUsername(recipientId, principal.getName());
         if (recipient == null) {
-            throw new RecipientNotFoundException(recipientName);
+            throw new RecipientNotFoundException(recipientId);
         }
         return recipient;
     }
 
-    public void deleteRecipientByName(String recipientName, Principal principal) {
-        recipientDao.deleteByNameAndUserUsername(recipientName, principal.getName());
+    public void deleteRecipient(Long recipientId, Principal principal) {
+        recipientDao.delete(findRecipient(recipientId, principal));
     }
     
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
