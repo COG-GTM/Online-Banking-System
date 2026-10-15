@@ -7,6 +7,7 @@ import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.SavingsAccountDao;
@@ -43,6 +44,7 @@ public class AccountServiceImpl implements AccountService {
     @Autowired
     private TransactionService transactionService;
 
+    @Transactional
     public PrimaryAccount createPrimaryAccount() {
         PrimaryAccount primaryAccount = new PrimaryAccount();
         primaryAccount.setAccountBalance(new BigDecimal(0.0));
@@ -53,6 +55,7 @@ public class AccountServiceImpl implements AccountService {
         return primaryAccountDao.findByAccountNumber(primaryAccount.getAccountNumber());
     }
 
+    @Transactional
     public SavingsAccount createSavingsAccount() {
         SavingsAccount savingsAccount = new SavingsAccount();
         savingsAccount.setAccountBalance(new BigDecimal(0.0));
