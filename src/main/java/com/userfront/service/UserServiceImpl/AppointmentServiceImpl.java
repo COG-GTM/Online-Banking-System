@@ -3,7 +3,9 @@ package com.userfront.service.UserServiceImpl;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.userfront.dao.AppointmentDao;
 import com.userfront.domain.Appointment;
@@ -29,6 +31,9 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     public void confirmAppointment(Long id) {
         Appointment appointment = findAppointment(id);
+        if (appointment == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found");
+        }
         appointment.setConfirmed(true);
         appointmentDao.save(appointment);
     }
