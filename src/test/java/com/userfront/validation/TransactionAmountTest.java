@@ -44,4 +44,16 @@ public class TransactionAmountTest {
         }
         assertEquals(new BigDecimal("2.50"), TransactionAmount.requireValid(new BigDecimal("2.500")));
     }
+
+    @Test
+    public void requireCoveredRejectsAmountsAboveBalance() {
+        TransactionAmount.requireCovered(new BigDecimal("10.00"), new BigDecimal("10.00"));
+        for (BigDecimal balance : new BigDecimal[] {new BigDecimal("9.99"), new BigDecimal("-5.00"), null}) {
+            try {
+                TransactionAmount.requireCovered(balance, new BigDecimal("10.00"));
+                fail("expected insufficient funds for balance " + balance);
+            } catch (InsufficientFundsException expected) {
+            }
+        }
+    }
 }

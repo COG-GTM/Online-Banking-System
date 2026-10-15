@@ -1,6 +1,5 @@
 package com.userfront.controller;
 
-import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
 
@@ -70,14 +69,12 @@ public class AccountController {
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
     public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Model model, Principal principal) {
-        BigDecimal validAmount;
         try {
-            validAmount = TransactionAmount.parse(amount);
+            accountService.deposit(accountType, TransactionAmount.parse(amount), principal);
         } catch (InvalidAmountException e) {
             model.addAttribute("amountError", e.getMessage());
             return "deposit";
         }
-        accountService.deposit(accountType, validAmount, principal);
 
         return "redirect:/userFront";
     }
@@ -92,14 +89,12 @@ public class AccountController {
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
     public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Model model, Principal principal) {
-        BigDecimal validAmount;
         try {
-            validAmount = TransactionAmount.parse(amount);
+            accountService.withdraw(accountType, TransactionAmount.parse(amount), principal);
         } catch (InvalidAmountException e) {
             model.addAttribute("amountError", e.getMessage());
             return "withdraw";
         }
-        accountService.withdraw(accountType, validAmount, principal);
 
         return "redirect:/userFront";
     }

@@ -18,6 +18,7 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.validation.InsufficientFundsException;
 import com.userfront.validation.InvalidAmountException;
 
 public class AccountServiceImplTest {
@@ -66,6 +67,22 @@ public class AccountServiceImplTest {
                 fail("negative withdrawal accepted");
             } catch (InvalidAmountException expected) {
             }
+        }
+        assertEquals(new BigDecimal("100.00"), primary.getAccountBalance());
+        assertEquals(new BigDecimal("50.00"), savings.getAccountBalance());
+    }
+
+    @Test
+    public void withdrawRejectsOverdraft() {
+        try {
+            service.withdraw("Primary", new BigDecimal("100.01"), principal);
+            fail("primary overdraft accepted");
+        } catch (InsufficientFundsException expected) {
+        }
+        try {
+            service.withdraw("Savings", new BigDecimal("1000"), principal);
+            fail("savings overdraft accepted");
+        } catch (InsufficientFundsException expected) {
         }
         assertEquals(new BigDecimal("100.00"), primary.getAccountBalance());
         assertEquals(new BigDecimal("50.00"), savings.getAccountBalance());

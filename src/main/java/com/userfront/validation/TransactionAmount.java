@@ -36,4 +36,10 @@ public final class TransactionAmount {
         }
         return amount.setScale(SCALE);
     }
+
+    public static void requireCovered(BigDecimal balance, BigDecimal amount) {
+        if (balance == null || balance.compareTo(amount) < 0) {
+            throw new InsufficientFundsException("Insufficient funds: the amount exceeds the available balance.");
+        }
+    }
 }

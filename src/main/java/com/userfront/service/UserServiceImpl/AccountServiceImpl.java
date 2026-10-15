@@ -6,6 +6,7 @@ import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.SavingsAccountDao;
@@ -56,6 +57,7 @@ public class AccountServiceImpl implements AccountService {
         return savingsAccountDao.findByAccountNumber(savingsAccount.getAccountNumber());
     }
     
+    @Transactional
     public void deposit(String accountType, BigDecimal amount, Principal principal) {
         amount = TransactionAmount.requireValid(amount);
         User user = userService.findByUsername(principal.getName());
@@ -81,12 +83,14 @@ public class AccountServiceImpl implements AccountService {
         }
     }
     
+    @Transactional
     public void withdraw(String accountType, BigDecimal amount, Principal principal) {
         amount = TransactionAmount.requireValid(amount);
         User user = userService.findByUsername(principal.getName());
 
         if (accountType.equalsIgnoreCase("Primary")) {
             PrimaryAccount primaryAccount = user.getPrimaryAccount();
+            TransactionAmount.requireCovered(primaryAccount.getAccountBalance(), amount);
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(amount));
             primaryAccountDao.save(primaryAccount);
 
@@ -96,6 +100,7 @@ public class AccountServiceImpl implements AccountService {
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
             SavingsAccount savingsAccount = user.getSavingsAccount();
+            TransactionAmount.requireCovered(savingsAccount.getAccountBalance(), amount);
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(amount));
             savingsAccountDao.save(savingsAccount);
 

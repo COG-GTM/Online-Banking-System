@@ -19,6 +19,7 @@ import com.userfront.dao.SavingsTransactionDao;
 import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
+import com.userfront.validation.InsufficientFundsException;
 import com.userfront.validation.InvalidAmountException;
 
 public class TransactionServiceImplTest {
@@ -97,6 +98,46 @@ public class TransactionServiceImplTest {
 
         assertEquals(new BigDecimal("30.00"), savings.getAccountBalance());
         assertEquals(new BigDecimal("100.00"), primary.getAccountBalance());
+    }
+
+    @Test
+    public void betweenAccountsTransferRejectsOverdraftInBothDirections() throws Exception {
+        try {
+            service.betweenAccountsTransfer("Primary", "Savings", new BigDecimal("100.01"), primary, savings);
+            fail("primary overdraft accepted");
+        } catch (InsufficientFundsException expected) {
+        }
+        try {
+            service.betweenAccountsTransfer("Savings", "Primary", new BigDecimal("50.01"), primary, savings);
+            fail("savings overdraft accepted");
+        } catch (InsufficientFundsException expected) {
+        }
+        assertUnchanged();
+    }
+
+    @Test
+    public void betweenAccountsTransferAllowsFullBalance() throws Exception {
+        service.betweenAccountsTransfer("Savings", "Primary", new BigDecimal("50"), primary, savings);
+
+        assertEquals(new BigDecimal("150.00"), primary.getAccountBalance());
+        assertEquals(new BigDecimal("0.00"), savings.getAccountBalance());
+    }
+
+    @Test
+    public void toSomeoneElseTransferRejectsOverdraft() {
+        Recipient recipient = new Recipient();
+        recipient.setName("bob");
+        try {
+            service.toSomeoneElseTransfer(recipient, "Primary", new BigDecimal("500000"), primary, savings);
+            fail("primary overdraft accepted");
+        } catch (InsufficientFundsException expected) {
+        }
+        try {
+            service.toSomeoneElseTransfer(recipient, "Savings", new BigDecimal("50.01"), primary, savings);
+            fail("savings overdraft accepted");
+        } catch (InsufficientFundsException expected) {
+        }
+        assertUnchanged();
     }
 
     private void assertUnchanged() {

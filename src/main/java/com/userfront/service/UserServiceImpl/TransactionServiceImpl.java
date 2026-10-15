@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.PrimaryTransactionDao;
@@ -76,9 +77,11 @@ public class TransactionServiceImpl implements TransactionService {
         savingsTransactionDao.save(savingsTransaction);
     }
     
+    @Transactional
     public void betweenAccountsTransfer(String transferFrom, String transferTo, BigDecimal amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception {
         amount = TransactionAmount.requireValid(amount);
         if (transferFrom.equalsIgnoreCase("Primary") && transferTo.equalsIgnoreCase("Savings")) {
+            TransactionAmount.requireCovered(primaryAccount.getAccountBalance(), amount);
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(amount));
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(amount));
             primaryAccountDao.save(primaryAccount);
@@ -89,6 +92,7 @@ public class TransactionServiceImpl implements TransactionService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", amount.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else if (transferFrom.equalsIgnoreCase("Savings") && transferTo.equalsIgnoreCase("Primary")) {
+            TransactionAmount.requireCovered(savingsAccount.getAccountBalance(), amount);
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(amount));
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(amount));
             primaryAccountDao.save(primaryAccount);
@@ -124,9 +128,11 @@ public class TransactionServiceImpl implements TransactionService {
         recipientDao.deleteByName(recipientName);
     }
     
+    @Transactional
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, BigDecimal amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
         amount = TransactionAmount.requireValid(amount);
         if (accountType.equalsIgnoreCase("Primary")) {
+            TransactionAmount.requireCovered(primaryAccount.getAccountBalance(), amount);
             primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(amount));
             primaryAccountDao.save(primaryAccount);
 
@@ -135,6 +141,7 @@ public class TransactionServiceImpl implements TransactionService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", amount.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
+            TransactionAmount.requireCovered(savingsAccount.getAccountBalance(), amount);
             savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(amount));
             savingsAccountDao.save(savingsAccount);
 
