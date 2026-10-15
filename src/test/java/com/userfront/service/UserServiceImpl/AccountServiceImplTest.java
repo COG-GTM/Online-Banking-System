@@ -89,7 +89,7 @@ public class AccountServiceImplTest {
 
     @Test
     public void overdraftWithdrawThrowsAndRecordsNoTransaction() {
-        when(primaryAccountDao.debitIfCovered(1L, new BigDecimal("100.01"))).thenReturn(0);
+        when(primaryAccountDao.findBalanceById(1L)).thenReturn(new BigDecimal("100.00"));
 
         try {
             service.withdraw("Primary", new BigDecimal("100.01"), principal);
@@ -97,14 +97,15 @@ public class AccountServiceImplTest {
         } catch (InsufficientFundsException expected) {
         }
 
+        verify(primaryAccountDao, never()).compareAndSetBalance(anyLong(), any(BigDecimal.class), any(BigDecimal.class));
         verify(transactionService, never()).savePrimaryWithdrawTransaction(any(PrimaryTransaction.class));
         verify(primaryAccountDao, never()).save(any(PrimaryAccount.class));
     }
 
     @Test
-    public void coveredWithdrawDebitsAtomicallyAndRecordsNewBalance() {
-        when(savingsAccountDao.debitIfCovered(2L, new BigDecimal("20.00"))).thenReturn(1);
-        when(savingsAccountDao.findBalanceById(2L)).thenReturn(new BigDecimal("30.00"));
+    public void coveredWithdrawSwapsBalanceAndRecordsItsOwnNewBalance() {
+        when(savingsAccountDao.findBalanceById(2L)).thenReturn(new BigDecimal("50.00"));
+        when(savingsAccountDao.compareAndSetBalance(2L, new BigDecimal("50.00"), new BigDecimal("30.00"))).thenReturn(1);
 
         service.withdraw("Savings", new BigDecimal("20"), principal);
 
@@ -116,15 +117,34 @@ public class AccountServiceImplTest {
     }
 
     @Test
-    public void depositCreditsAndRecordsNewBalance() {
-        when(primaryAccountDao.credit(1L, new BigDecimal("25.50"))).thenReturn(1);
-        when(primaryAccountDao.findBalanceById(1L)).thenReturn(new BigDecimal("125.50"));
+    public void depositRecordsItsOwnBalanceEvenWhenAConcurrentUpdateWinsFirst() {
+        when(primaryAccountDao.findBalanceById(1L))
+            .thenReturn(new BigDecimal("100.00"))
+            .thenReturn(new BigDecimal("80.00"));
+        when(primaryAccountDao.compareAndSetBalance(1L, new BigDecimal("100.00"), new BigDecimal("125.50"))).thenReturn(0);
+        when(primaryAccountDao.compareAndSetBalance(1L, new BigDecimal("80.00"), new BigDecimal("105.50"))).thenReturn(1);
 
         service.deposit("primary", new BigDecimal("25.5"), principal);
 
         ArgumentCaptor<PrimaryTransaction> tx = ArgumentCaptor.forClass(PrimaryTransaction.class);
         verify(transactionService).savePrimaryDepositTransaction(tx.capture());
-        assertEquals(new BigDecimal("125.50"), tx.getValue().getAvailableBalance());
+        assertEquals(new BigDecimal("105.50"), tx.getValue().getAvailableBalance());
+    }
+
+    @Test
+    public void withdrawRechecksFundsAfterLosingARace() {
+        when(primaryAccountDao.findBalanceById(1L))
+            .thenReturn(new BigDecimal("100.00"))
+            .thenReturn(new BigDecimal("30.00"));
+        when(primaryAccountDao.compareAndSetBalance(1L, new BigDecimal("100.00"), new BigDecimal("40.00"))).thenReturn(0);
+
+        try {
+            service.withdraw("Primary", new BigDecimal("60"), principal);
+            throw new AssertionError("overdraft accepted after concurrent debit");
+        } catch (InsufficientFundsException expected) {
+        }
+
+        verify(transactionService, never()).savePrimaryWithdrawTransaction(any(PrimaryTransaction.class));
     }
 
     @Test(expected = InvalidTransactionException.class)
@@ -132,8 +152,7 @@ public class AccountServiceImplTest {
         try {
             service.withdraw("Checking", new BigDecimal("1"), principal);
         } finally {
-            verify(primaryAccountDao, never()).debitIfCovered(anyLong(), any(BigDecimal.class));
-            verify(savingsAccountDao, never()).debitIfCovered(anyLong(), any(BigDecimal.class));
+            verifyNoMoreInteractions(primaryAccountDao, savingsAccountDao, transactionService);
         }
     }
 }

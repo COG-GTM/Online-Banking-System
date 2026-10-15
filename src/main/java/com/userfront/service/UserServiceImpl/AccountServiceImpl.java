@@ -3,6 +3,7 @@ package com.userfront.service.UserServiceImpl;
 import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.Date;
+import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,8 @@ import com.userfront.service.UserService;
 public class AccountServiceImpl implements AccountService {
 	
 	private static int nextAccountNumber = 11223145;
+
+    private static final int MAX_BALANCE_UPDATE_ATTEMPTS = 10;
 
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
@@ -66,15 +69,13 @@ public class AccountServiceImpl implements AccountService {
 
         if (isPrimary(accountType)) {
             PrimaryAccount primaryAccount = user.getPrimaryAccount();
-            requireUpdated(primaryAccountDao.credit(primaryAccount.getId(), value));
-            BigDecimal balance = primaryAccountDao.findBalanceById(primaryAccount.getId());
+            BigDecimal balance = adjustBalance(primaryAccountDao::findBalanceById, primaryAccountDao::compareAndSetBalance, primaryAccount.getId(), value);
 
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(new Date(), "Deposit to Primary Account", "Account", "Finished", value.doubleValue(), balance, primaryAccount);
             transactionService.savePrimaryDepositTransaction(primaryTransaction);
         } else if (isSavings(accountType)) {
             SavingsAccount savingsAccount = user.getSavingsAccount();
-            requireUpdated(savingsAccountDao.credit(savingsAccount.getId(), value));
-            BigDecimal balance = savingsAccountDao.findBalanceById(savingsAccount.getId());
+            BigDecimal balance = adjustBalance(savingsAccountDao::findBalanceById, savingsAccountDao::compareAndSetBalance, savingsAccount.getId(), value);
 
             SavingsTransaction savingsTransaction = new SavingsTransaction(new Date(), "Deposit to savings Account", "Account", "Finished", value.doubleValue(), balance, savingsAccount);
             transactionService.saveSavingsDepositTransaction(savingsTransaction);
@@ -83,10 +84,6 @@ public class AccountServiceImpl implements AccountService {
         }
     }
 
-    /*
-     * The debit is a single conditional UPDATE (balance >= amount), so the check and the update
-     * are atomic in the database even without row locks (the MySQL5Dialect tables are MyISAM).
-     */
     @Transactional
     public void withdraw(String accountType, BigDecimal amount, Principal principal) {
         BigDecimal value = TransactionAmount.requireValid(amount);
@@ -94,15 +91,13 @@ public class AccountServiceImpl implements AccountService {
 
         if (isPrimary(accountType)) {
             PrimaryAccount primaryAccount = user.getPrimaryAccount();
-            requireCovered(primaryAccountDao.debitIfCovered(primaryAccount.getId(), value));
-            BigDecimal balance = primaryAccountDao.findBalanceById(primaryAccount.getId());
+            BigDecimal balance = adjustBalance(primaryAccountDao::findBalanceById, primaryAccountDao::compareAndSetBalance, primaryAccount.getId(), value.negate());
 
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(new Date(), "Withdraw from Primary Account", "Account", "Finished", value.doubleValue(), balance, primaryAccount);
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
         } else if (isSavings(accountType)) {
             SavingsAccount savingsAccount = user.getSavingsAccount();
-            requireCovered(savingsAccountDao.debitIfCovered(savingsAccount.getId(), value));
-            BigDecimal balance = savingsAccountDao.findBalanceById(savingsAccount.getId());
+            BigDecimal balance = adjustBalance(savingsAccountDao::findBalanceById, savingsAccountDao::compareAndSetBalance, savingsAccount.getId(), value.negate());
 
             SavingsTransaction savingsTransaction = new SavingsTransaction(new Date(), "Withdraw from savings Account", "Account", "Finished", value.doubleValue(), balance, savingsAccount);
             transactionService.saveSavingsWithdrawTransaction(savingsTransaction);
@@ -111,16 +106,31 @@ public class AccountServiceImpl implements AccountService {
         }
     }
 
-    private static void requireUpdated(int rows) {
-        if (rows != 1) {
-            throw new IllegalStateException("Account not found.");
+    /*
+     * Compare-and-set on the balance column: each UPDATE is atomic on its own (the MySQL5Dialect
+     * tables are MyISAM, so there are no row locks), it can never drive the balance negative, and
+     * the balance it writes is exactly the one recorded in this operation's ledger row.
+     */
+    private static BigDecimal adjustBalance(Function<Long, BigDecimal> balanceOf, BalanceSwap swap, Long accountId, BigDecimal delta) {
+        for (int attempt = 0; attempt < MAX_BALANCE_UPDATE_ATTEMPTS; attempt++) {
+            BigDecimal current = balanceOf.apply(accountId);
+            if (current == null) {
+                throw new IllegalStateException("Account not found.");
+            }
+            BigDecimal updated = current.add(delta);
+            if (updated.signum() < 0) {
+                throw new InsufficientFundsException();
+            }
+            if (swap.compareAndSet(accountId, current, updated) == 1) {
+                return updated;
+            }
         }
+        throw new InvalidTransactionException("The account is busy. Please try again.");
     }
 
-    private static void requireCovered(int rows) {
-        if (rows != 1) {
-            throw new InsufficientFundsException();
-        }
+    @FunctionalInterface
+    private interface BalanceSwap {
+        int compareAndSet(Long accountId, BigDecimal expected, BigDecimal updated);
     }
 
     private static boolean isPrimary(String accountType) {
