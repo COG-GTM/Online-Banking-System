@@ -20,6 +20,7 @@ import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.service.RecipientNotFoundException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -118,8 +119,12 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientDao.findByName(recipientName);
     }
 
-    public void deleteRecipientByName(String recipientName) {
-        recipientDao.deleteByName(recipientName);
+    public void deleteRecipient(Long recipientId, Principal principal) {
+        Recipient recipient = recipientDao.findByIdAndUserUsername(recipientId, principal.getName());
+        if (recipient == null) {
+            throw new RecipientNotFoundException();
+        }
+        recipientDao.delete(recipient);
     }
     
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
