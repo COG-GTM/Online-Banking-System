@@ -16,6 +16,7 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.dto.RecipientForm;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -66,11 +67,10 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/recipient/save", method = RequestMethod.POST)
-    public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
+    public String recipientPost(@ModelAttribute("recipient") RecipientForm recipientForm, Principal principal) {
 
         User user = userService.findByUsername(principal.getName());
-        recipient.setUser(user);
-        transactionService.saveRecipient(recipient);
+        transactionService.saveRecipient(recipientForm, user);
 
         return "redirect:/transfer/recipient";
     }
