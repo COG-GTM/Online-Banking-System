@@ -2,6 +2,10 @@ package com.userfront.service.UserServiceImpl;
 
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,6 +16,8 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.userfront.dao.AppointmentDao;
 import com.userfront.domain.Appointment;
@@ -42,5 +48,18 @@ public class AppointmentServiceImplTest {
 
         assertTrue(appointment.isConfirmed());
         verify(appointmentDao).save(appointment);
+    }
+
+    @Test
+    public void confirmMissingAppointmentIsNotFound() {
+        when(appointmentDao.findById(999L)).thenReturn(Optional.empty());
+
+        try {
+            appointmentService.confirmAppointment(999L);
+            fail("expected ResponseStatusException");
+        } catch (ResponseStatusException e) {
+            assertEquals(HttpStatus.NOT_FOUND, e.getStatus());
+        }
+        verify(appointmentDao, never()).save(any(Appointment.class));
     }
 }
