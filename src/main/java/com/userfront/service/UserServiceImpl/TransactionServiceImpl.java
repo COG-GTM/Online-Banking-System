@@ -22,6 +22,7 @@ import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.service.exception.RecipientNotFoundException;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -110,16 +111,35 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientList;
     }
 
-    public Recipient saveRecipient(Recipient recipient) {
+    public Recipient saveRecipient(Recipient form, Principal principal) {
+        Recipient recipient;
+        if (form.getId() == null) {
+            recipient = new Recipient();
+            recipient.setUser(userService.findByUsername(principal.getName()));
+        } else {
+            recipient = findRecipientById(form.getId(), principal);
+        }
+        recipient.setName(form.getName());
+        recipient.setEmail(form.getEmail());
+        recipient.setPhone(form.getPhone());
+        recipient.setAccountNumber(form.getAccountNumber());
+        recipient.setDescription(form.getDescription());
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName) {
-        return recipientDao.findByName(recipientName);
+    public Recipient findRecipientById(Long recipientId, Principal principal) {
+        Recipient recipient = recipientId == null ? null
+                : recipientDao.findByIdAndUserUsername(recipientId, principal.getName());
+        if (recipient == null) {
+            throw new RecipientNotFoundException();
+        }
+        return recipient;
     }
 
-    public void deleteRecipientByName(String recipientName) {
-        recipientDao.deleteByName(recipientName);
+    public void deleteRecipientById(Long recipientId, Principal principal) {
+        if (recipientId == null || recipientDao.deleteByIdAndUserUsername(recipientId, principal.getName()) == 0) {
+            throw new RecipientNotFoundException();
+        }
     }
     
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
