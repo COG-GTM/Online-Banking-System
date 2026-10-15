@@ -20,6 +20,8 @@ import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.dto.RecipientForm;
+import com.userfront.service.RecipientNotFoundException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -110,7 +112,24 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientList;
     }
 
-    public Recipient saveRecipient(Recipient recipient) {
+    public Recipient saveRecipient(RecipientForm form, User user) {
+        Recipient recipient;
+        if (form.getId() == null) {
+            recipient = new Recipient();
+            recipient.setUser(user);
+        } else {
+            recipient = recipientDao.findByIdAndUserUsername(form.getId(), user.getUsername());
+            if (recipient == null) {
+                throw new RecipientNotFoundException(form.getId());
+            }
+        }
+
+        recipient.setName(form.getName());
+        recipient.setEmail(form.getEmail());
+        recipient.setPhone(form.getPhone());
+        recipient.setAccountNumber(form.getAccountNumber());
+        recipient.setDescription(form.getDescription());
+
         return recipientDao.save(recipient);
     }
 
