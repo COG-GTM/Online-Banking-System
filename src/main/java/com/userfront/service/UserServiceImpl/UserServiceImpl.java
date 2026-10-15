@@ -1,7 +1,6 @@
 package com.userfront.service.UserServiceImpl;
 
 import java.util.List;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +47,7 @@ public class UserServiceImpl implements UserService{
     }
     
     
-    public User createUser(User user, Set<UserRole> userRoles) {
+    public User createUser(User user) {
         User localUser = userDao.findByUsername(user.getUsername());
 
         if (localUser != null) {
@@ -62,10 +61,7 @@ public class UserServiceImpl implements UserService{
             newUser.setPhone(user.getPhone());
             newUser.setPassword(passwordEncoder.encode(user.getPassword()));
 
-            for (UserRole ur : userRoles) {
-                roleDao.save(ur.getRole());
-                newUser.getUserRoles().add(new UserRole(newUser, ur.getRole()));
-            }
+            newUser.getUserRoles().add(new UserRole(newUser, roleDao.findByName("ROLE_USER")));
 
             newUser.setPrimaryAccount(accountService.createPrimaryAccount());
             newUser.setSavingsAccount(accountService.createSavingsAccount());
