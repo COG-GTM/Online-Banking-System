@@ -1,5 +1,6 @@
 package com.userfront.service.UserServiceImpl;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -10,6 +11,7 @@ import java.security.Principal;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -35,72 +37,88 @@ public class TransactionServiceImplTest {
     private TransactionServiceImpl transactionService;
 
     @Test
-    public void findRecipientByNameIsScopedToCaller() {
+    public void findRecipientByIdIsScopedToCaller() {
         Recipient own = new Recipient();
-        when(recipientDao.findFirstByNameAndUserUsername("Landlord", "alice")).thenReturn(own);
+        when(recipientDao.findByIdAndUserUsername(7L, "alice")).thenReturn(own);
 
-        assertSame(own, transactionService.findRecipientByName("Landlord", alice));
+        assertSame(own, transactionService.findRecipientById(7L, alice));
     }
 
     @Test(expected = RecipientNotFoundException.class)
-    public void findRecipientByNameRejectsOtherUsersRecipient() {
-        when(recipientDao.findFirstByNameAndUserUsername("BobsPayee", "alice")).thenReturn(null);
+    public void findRecipientByIdRejectsOtherUsersRecipient() {
+        when(recipientDao.findByIdAndUserUsername(42L, "alice")).thenReturn(null);
 
-        transactionService.findRecipientByName("BobsPayee", alice);
+        transactionService.findRecipientById(42L, alice);
+    }
+
+    @Test(expected = RecipientNotFoundException.class)
+    public void findRecipientByIdRejectsMissingId() {
+        transactionService.findRecipientById(null, alice);
     }
 
     @Test
-    public void deleteRecipientByNameIsScopedToCaller() {
-        when(recipientDao.deleteByNameAndUserUsername("Landlord", "alice")).thenReturn(1L);
+    public void deleteRecipientByIdIsScopedToCaller() {
+        when(recipientDao.deleteByIdAndUserUsername(7L, "alice")).thenReturn(1L);
 
-        transactionService.deleteRecipientByName("Landlord", alice);
+        transactionService.deleteRecipientById(7L, alice);
 
-        verify(recipientDao).deleteByNameAndUserUsername("Landlord", "alice");
+        verify(recipientDao).deleteByIdAndUserUsername(7L, "alice");
     }
 
     @Test(expected = RecipientNotFoundException.class)
-    public void deleteRecipientByNameRejectsUnknownName() {
-        when(recipientDao.deleteByNameAndUserUsername("BobsPayee", "alice")).thenReturn(0L);
+    public void deleteRecipientByIdRejectsOtherUsersRecipient() {
+        when(recipientDao.deleteByIdAndUserUsername(42L, "alice")).thenReturn(0L);
 
-        transactionService.deleteRecipientByName("BobsPayee", alice);
+        transactionService.deleteRecipientById(42L, alice);
     }
 
     @Test
     public void saveNewRecipientIsOwnedByCaller() {
         User user = new User();
-        Recipient recipient = new Recipient();
         when(userService.findByUsername("alice")).thenReturn(user);
-        when(recipientDao.save(recipient)).thenReturn(recipient);
+        Recipient form = form(null, "Landlord", "ACC-1");
 
-        transactionService.saveRecipient(recipient, alice);
+        transactionService.saveRecipient(form, alice);
 
-        assertSame(user, recipient.getUser());
-        verify(recipientDao).save(recipient);
+        ArgumentCaptor<Recipient> saved = ArgumentCaptor.forClass(Recipient.class);
+        verify(recipientDao).save(saved.capture());
+        assertSame(user, saved.getValue().getUser());
+        assertEquals("ACC-1", saved.getValue().getAccountNumber());
     }
 
     @Test
-    public void saveExistingOwnRecipientIsAllowed() {
-        Recipient recipient = new Recipient();
-        recipient.setId(7L);
-        when(recipientDao.findByIdAndUserUsername(7L, "alice")).thenReturn(new Recipient());
+    public void saveExistingRecipientUpdatesTheOwnedRow() {
+        User user = new User();
+        Recipient owned = form(7L, "Old", "OLD");
+        owned.setUser(user);
+        when(recipientDao.findByIdAndUserUsername(7L, "alice")).thenReturn(owned);
 
-        transactionService.saveRecipient(recipient, alice);
+        transactionService.saveRecipient(form(7L, "New", "NEW"), alice);
 
-        verify(recipientDao).save(recipient);
+        verify(recipientDao).save(owned);
+        assertEquals("New", owned.getName());
+        assertEquals("NEW", owned.getAccountNumber());
+        assertSame(user, owned.getUser());
     }
 
     @Test
     public void saveRejectsOtherUsersRecipientId() {
-        Recipient recipient = new Recipient();
-        recipient.setId(42L);
         when(recipientDao.findByIdAndUserUsername(42L, "alice")).thenReturn(null);
 
         try {
-            transactionService.saveRecipient(recipient, alice);
+            transactionService.saveRecipient(form(42L, "Hijack", "ATTACKER"), alice);
         } catch (RecipientNotFoundException expected) {
             verify(recipientDao, never()).save(any(Recipient.class));
             return;
         }
         throw new AssertionError("expected RecipientNotFoundException");
+    }
+
+    private static Recipient form(Long id, String name, String accountNumber) {
+        Recipient r = new Recipient();
+        r.setId(id);
+        r.setName(name);
+        r.setAccountNumber(accountNumber);
+        return r;
     }
 }

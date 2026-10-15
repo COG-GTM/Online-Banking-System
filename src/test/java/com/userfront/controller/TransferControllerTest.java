@@ -55,9 +55,9 @@ public class TransferControllerTest {
     @Test
     public void editLoadsCallersOwnRecipient() throws Exception {
         Recipient own = new Recipient();
-        when(transactionService.findRecipientByName("Landlord", alice)).thenReturn(own);
+        when(transactionService.findRecipientById(7L, alice)).thenReturn(own);
 
-        mockMvc.perform(get("/transfer/recipient/edit").param("recipientName", "Landlord").principal(alice))
+        mockMvc.perform(get("/transfer/recipient/edit").param("recipientId", "7").principal(alice))
                 .andExpect(status().isOk())
                 .andExpect(view().name("recipient"))
                 .andExpect(model().attribute("recipient", own));
@@ -65,19 +65,19 @@ public class TransferControllerTest {
 
     @Test
     public void editOfOtherUsersRecipientIs404() throws Exception {
-        when(transactionService.findRecipientByName("BobsPayee", alice)).thenThrow(new RecipientNotFoundException());
+        when(transactionService.findRecipientById(42L, alice)).thenThrow(new RecipientNotFoundException());
 
-        mockMvc.perform(get("/transfer/recipient/edit").param("recipientName", "BobsPayee").principal(alice))
+        mockMvc.perform(get("/transfer/recipient/edit").param("recipientId", "42").principal(alice))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     public void transferToOtherUsersRecipientIs404AndMovesNoMoney() throws Exception {
         when(userService.findByUsername("alice")).thenReturn(new User());
-        when(transactionService.findRecipientByName("BobsPayee", alice)).thenThrow(new RecipientNotFoundException());
+        when(transactionService.findRecipientById(42L, alice)).thenThrow(new RecipientNotFoundException());
 
         mockMvc.perform(post("/transfer/toSomeoneElse")
-                        .param("recipientName", "BobsPayee").param("accountType", "Primary").param("amount", "10")
+                        .param("recipientId", "42").param("accountType", "Primary").param("amount", "10")
                         .principal(alice))
                 .andExpect(status().isNotFound());
 
@@ -93,10 +93,10 @@ public class TransferControllerTest {
         user.setSavingsAccount(savings);
         Recipient own = new Recipient();
         when(userService.findByUsername("alice")).thenReturn(user);
-        when(transactionService.findRecipientByName("Landlord", alice)).thenReturn(own);
+        when(transactionService.findRecipientById(7L, alice)).thenReturn(own);
 
         mockMvc.perform(post("/transfer/toSomeoneElse")
-                        .param("recipientName", "Landlord").param("accountType", "Primary").param("amount", "10")
+                        .param("recipientId", "7").param("accountType", "Primary").param("amount", "10")
                         .principal(alice))
                 .andExpect(status().is3xxRedirection());
 
@@ -106,9 +106,9 @@ public class TransferControllerTest {
     @Test
     public void deleteOfOtherUsersRecipientIs404() throws Exception {
         org.mockito.Mockito.doThrow(new RecipientNotFoundException())
-                .when(transactionService).deleteRecipientByName("BobsPayee", alice);
+                .when(transactionService).deleteRecipientById(42L, alice);
 
-        mockMvc.perform(get("/transfer/recipient/delete").param("recipientName", "BobsPayee").principal(alice))
+        mockMvc.perform(get("/transfer/recipient/delete").param("recipientId", "42").principal(alice))
                 .andExpect(status().isNotFound());
     }
 }

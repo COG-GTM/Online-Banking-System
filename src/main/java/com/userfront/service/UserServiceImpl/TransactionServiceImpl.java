@@ -111,26 +111,33 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientList;
     }
 
-    public Recipient saveRecipient(Recipient recipient, Principal principal) {
-        String username = principal.getName();
-        if (recipient.getId() != null
-                && recipientDao.findByIdAndUserUsername(recipient.getId(), username) == null) {
-            throw new RecipientNotFoundException();
+    public Recipient saveRecipient(Recipient form, Principal principal) {
+        Recipient recipient;
+        if (form.getId() == null) {
+            recipient = new Recipient();
+            recipient.setUser(userService.findByUsername(principal.getName()));
+        } else {
+            recipient = findRecipientById(form.getId(), principal);
         }
-        recipient.setUser(userService.findByUsername(username));
+        recipient.setName(form.getName());
+        recipient.setEmail(form.getEmail());
+        recipient.setPhone(form.getPhone());
+        recipient.setAccountNumber(form.getAccountNumber());
+        recipient.setDescription(form.getDescription());
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName, Principal principal) {
-        Recipient recipient = recipientDao.findFirstByNameAndUserUsername(recipientName, principal.getName());
+    public Recipient findRecipientById(Long recipientId, Principal principal) {
+        Recipient recipient = recipientId == null ? null
+                : recipientDao.findByIdAndUserUsername(recipientId, principal.getName());
         if (recipient == null) {
             throw new RecipientNotFoundException();
         }
         return recipient;
     }
 
-    public void deleteRecipientByName(String recipientName, Principal principal) {
-        if (recipientDao.deleteByNameAndUserUsername(recipientName, principal.getName()) == 0) {
+    public void deleteRecipientById(Long recipientId, Principal principal) {
+        if (recipientId == null || recipientDao.deleteByIdAndUserUsername(recipientId, principal.getName()) == 0) {
             throw new RecipientNotFoundException();
         }
     }
