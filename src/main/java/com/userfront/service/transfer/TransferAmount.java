@@ -21,10 +21,4 @@ public final class TransferAmount {
         }
         return amount;
     }
-
-    public static void requireCovered(BigDecimal balance, BigDecimal amount) {
-        if (balance == null || balance.compareTo(amount) < 0) {
-            throw new InsufficientFundsException("Insufficient funds for this transfer.");
-        }
-    }
 }

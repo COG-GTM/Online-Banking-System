@@ -38,14 +38,4 @@ public class TransferAmountTest {
     public void rejectsBlankAndNull() {
         TransferAmount.parse(null);
     }
-
-    @Test(expected = InsufficientFundsException.class)
-    public void requireCoveredRejectsOverdraft() {
-        TransferAmount.requireCovered(new BigDecimal("10"), new BigDecimal("10.01"));
-    }
-
-    @Test
-    public void requireCoveredAllowsExactBalance() {
-        TransferAmount.requireCovered(new BigDecimal("10.00"), new BigDecimal("10"));
-    }
 }

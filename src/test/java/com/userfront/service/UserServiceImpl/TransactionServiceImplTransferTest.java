@@ -1,13 +1,18 @@
 package com.userfront.service.UserServiceImpl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Collections;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -16,6 +21,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.security.access.AccessDeniedException;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.PrimaryTransactionDao;
@@ -26,6 +32,7 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
+import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
 import com.userfront.service.UserService;
 import com.userfront.service.transfer.InsufficientFundsException;
@@ -75,27 +82,26 @@ public class TransactionServiceImplTransferTest {
     public void toSomeoneElseRejectsNegativeAmountWithoutTouchingBalance() {
         expectInvalid(() -> service.toSomeoneElseTransfer(ownRecipient, "Primary", "-1000000", primary, savings));
 
-        assertEquals(new BigDecimal("100.00"), primary.getAccountBalance());
         verifyNoInteractions(primaryAccountDao, primaryTransactionDao, savingsAccountDao, savingsTransactionDao);
     }
 
     @Test
-    public void toSomeoneElseRejectsOverdraft() {
+    public void toSomeoneElseRejectsWhenConditionalDebitFindsInsufficientFunds() {
+        when(savingsAccountDao.debitIfCovered(2L, new BigDecimal("50.01"))).thenReturn(0);
+
         try {
             service.toSomeoneElseTransfer(ownRecipient, "Savings", "50.01", primary, savings);
             fail("expected InsufficientFundsException");
         } catch (InsufficientFundsException expected) {
         }
 
-        assertEquals(new BigDecimal("50.00"), savings.getAccountBalance());
-        verifyNoInteractions(savingsAccountDao, savingsTransactionDao);
+        verifyNoInteractions(savingsTransactionDao);
     }
 
     @Test
     public void toSomeoneElseRejectsMissingRecipientBeforeMutating() {
         expectInvalid(() -> service.toSomeoneElseTransfer(null, "Primary", "10", primary, savings));
 
-        assertEquals(new BigDecimal("100.00"), primary.getAccountBalance());
         verifyNoInteractions(primaryAccountDao, primaryTransactionDao);
     }
 
@@ -123,10 +129,13 @@ public class TransactionServiceImplTransferTest {
 
     @Test
     public void toSomeoneElseDebitsValidAmountAndRecordsLedger() {
+        BigDecimal value = new BigDecimal("40.50");
+        when(primaryAccountDao.debitIfCovered(1L, value)).thenReturn(1);
+        when(primaryAccountDao.findBalanceById(1L)).thenReturn(new BigDecimal("59.50"));
+
         service.toSomeoneElseTransfer(ownRecipient, "Primary", "40.50", primary, savings);
 
-        assertEquals(new BigDecimal("59.50"), primary.getAccountBalance());
-        verify(primaryAccountDao).save(primary);
+        verify(primaryAccountDao, never()).save(any());
         ArgumentCaptor<PrimaryTransaction> ledger = ArgumentCaptor.forClass(PrimaryTransaction.class);
         verify(primaryTransactionDao).save(ledger.capture());
         assertEquals(40.50, ledger.getValue().getAmount(), 0.0001);
@@ -137,22 +146,20 @@ public class TransactionServiceImplTransferTest {
     public void betweenAccountsRejectsNegativeAmount() {
         expectInvalid(() -> service.betweenAccountsTransfer("Savings", "Primary", "-500", primary, savings));
 
-        assertEquals(new BigDecimal("100.00"), primary.getAccountBalance());
-        assertEquals(new BigDecimal("50.00"), savings.getAccountBalance());
         verifyNoInteractions(primaryAccountDao, savingsAccountDao);
     }
 
     @Test
-    public void betweenAccountsRejectsOverdraft() {
+    public void betweenAccountsRejectsOverdraftWithoutCrediting() {
+        when(primaryAccountDao.debitIfCovered(1L, new BigDecimal("100.01"))).thenReturn(0);
+
         try {
             service.betweenAccountsTransfer("Primary", "Savings", "100.01", primary, savings);
             fail("expected InsufficientFundsException");
         } catch (InsufficientFundsException expected) {
         }
 
-        assertEquals(new BigDecimal("100.00"), primary.getAccountBalance());
-        assertEquals(new BigDecimal("50.00"), savings.getAccountBalance());
-        verify(primaryAccountDao, never()).save(any());
+        verifyNoInteractions(savingsAccountDao, primaryTransactionDao);
     }
 
     @Test
@@ -161,14 +168,74 @@ public class TransactionServiceImplTransferTest {
     }
 
     @Test
-    public void betweenAccountsMovesExactBalance() {
-        service.betweenAccountsTransfer("Primary", "Savings", "100", primary, savings);
+    public void betweenAccountsMovesFundsAndRecordsLedger() {
+        BigDecimal value = new BigDecimal("30");
+        when(savingsAccountDao.debitIfCovered(2L, value)).thenReturn(1);
+        when(savingsAccountDao.findBalanceById(2L)).thenReturn(new BigDecimal("20.00"));
 
-        assertEquals(0, primary.getAccountBalance().signum());
-        assertEquals(new BigDecimal("150.00"), savings.getAccountBalance());
-        verify(primaryAccountDao).save(primary);
-        verify(savingsAccountDao).save(savings);
-        verify(primaryTransactionDao).save(any(PrimaryTransaction.class));
+        service.betweenAccountsTransfer("Savings", "Primary", "30", primary, savings);
+
+        verify(primaryAccountDao).credit(1L, value);
+        ArgumentCaptor<SavingsTransaction> ledger = ArgumentCaptor.forClass(SavingsTransaction.class);
+        verify(savingsTransactionDao).save(ledger.capture());
+        assertEquals(new BigDecimal("20.00"), ledger.getValue().getAvailableBalance());
+    }
+
+    @Test
+    public void findRecipientByNameIsScopedToCaller() {
+        when(recipientDao.findByNameAndUserUsername("Bob", "alice")).thenReturn(Collections.singletonList(ownRecipient));
+        when(recipientDao.findByNameAndUserUsername("Bob", "mallory")).thenReturn(Collections.emptyList());
+
+        assertSame(ownRecipient, service.findRecipientByName("Bob", "alice"));
+        assertNull(service.findRecipientByName("Bob", "mallory"));
+    }
+
+    @Test
+    public void findRecipientByNameRejectsAmbiguousPayee() {
+        when(recipientDao.findByNameAndUserUsername("Sam", "alice")).thenReturn(Arrays.asList(new Recipient(), new Recipient()));
+
+        expectInvalid(() -> service.findRecipientByName("Sam", "alice"));
+    }
+
+    @Test
+    public void saveRecipientRejectsOverwritingAnotherUsersRecipient() {
+        User alice = new User();
+        alice.setUsername("alice");
+        Recipient tampered = new Recipient();
+        tampered.setId(42L);
+        when(recipientDao.findByIdAndUserUsername(42L, "alice")).thenReturn(null);
+
+        try {
+            service.saveRecipient(tampered, alice);
+            fail("expected AccessDeniedException");
+        } catch (AccessDeniedException expected) {
+        }
+
+        verify(recipientDao, never()).save(any());
+    }
+
+    @Test
+    public void saveRecipientUpdatesOwnRecipientAndCreatesNewOnes() {
+        User alice = new User();
+        alice.setUsername("alice");
+        Recipient existing = new Recipient();
+        existing.setId(7L);
+        when(recipientDao.findByIdAndUserUsername(7L, "alice")).thenReturn(existing);
+        Recipient fresh = new Recipient();
+
+        service.saveRecipient(existing, alice);
+        service.saveRecipient(fresh, alice);
+
+        verify(recipientDao).save(existing);
+        verify(recipientDao).save(fresh);
+        assertSame(alice, fresh.getUser());
+    }
+
+    @Test
+    public void deleteRecipientIsScopedToCaller() {
+        service.deleteRecipientByName("Bob", "mallory");
+
+        verify(recipientDao).deleteByNameAndUserUsername("Bob", "mallory");
     }
 
     private static void expectInvalid(Runnable call) {

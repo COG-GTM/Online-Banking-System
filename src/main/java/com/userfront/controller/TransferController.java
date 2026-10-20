@@ -6,6 +6,7 @@ import java.util.List;
 import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -80,8 +81,7 @@ public class TransferController {
     public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
 
         User user = userService.findByUsername(principal.getName());
-        recipient.setUser(user);
-        transactionService.saveRecipient(recipient);
+        transactionService.saveRecipient(recipient, user);
 
         return "redirect:/transfer/recipient";
     }
@@ -89,8 +89,11 @@ public class TransferController {
     @RequestMapping(value = "/recipient/edit", method = RequestMethod.GET)
     public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
+        Recipient recipient = recipientList.stream()
+                .filter(r -> r.getName().equals(recipientName))
+                .findFirst()
+                .orElseThrow(() -> new AccessDeniedException("Unknown recipient."));
 
         model.addAttribute("recipientList", recipientList);
         model.addAttribute("recipient", recipient);
@@ -102,7 +105,7 @@ public class TransferController {
     @Transactional
     public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName);
+        transactionService.deleteRecipientByName(recipientName, principal.getName());
 
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
@@ -127,8 +130,8 @@ public class TransferController {
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
     public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Model model, HttpServletResponse response, Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName, principal.getName());
         try {
+            Recipient recipient = transactionService.findRecipientByName(recipientName, principal.getName());
             transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
         } catch (InvalidTransferException e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);

@@ -93,4 +93,15 @@ public class TransferControllerTest {
                 .andExpect(view().name("betweenAccounts"))
                 .andExpect(model().attribute("errorMessage", "Insufficient funds for this transfer."));
     }
+
+    @Test
+    public void toSomeoneElseAmbiguousPayeeReRendersFormWith400() throws Exception {
+        when(transactionService.findRecipientByName("Sam", "alice"))
+                .thenThrow(new InvalidTransferException("More than one payee is named \"Sam\"; rename one before transferring."));
+
+        mockMvc.perform(post("/transfer/toSomeoneElse").principal(alice)
+                .param("recipientName", "Sam").param("accountType", "Primary").param("amount", "10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(view().name("toSomeoneElse"));
+    }
 }

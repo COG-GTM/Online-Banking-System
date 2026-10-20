@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.service.transfer.InsufficientFundsException;
 import com.userfront.service.transfer.InvalidTransferException;
 import com.userfront.service.transfer.TransferAmount;
 
@@ -86,29 +88,21 @@ public class TransactionServiceImpl implements TransactionService {
             throw new InvalidTransferException("Invalid Transfer");
         }
         BigDecimal value = TransferAmount.parse(amount);
+        Date date = new Date();
+        String description = "Between account transfer from "+transferFrom+" to "+transferTo;
 
         if (primaryToSavings) {
-            TransferAmount.requireCovered(primaryAccount.getAccountBalance(), value);
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(value));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(value));
-            primaryAccountDao.save(primaryAccount);
-            savingsAccountDao.save(savingsAccount);
+            requireDebited(primaryAccountDao.debitIfCovered(primaryAccount.getId(), value));
+            savingsAccountDao.credit(savingsAccount.getId(), value);
+            BigDecimal primaryBalance = primaryAccountDao.findBalanceById(primaryAccount.getId());
 
-            Date date = new Date();
-
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", value.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
-            primaryTransactionDao.save(primaryTransaction);
+            primaryTransactionDao.save(new PrimaryTransaction(date, description, "Account", "Finished", value.doubleValue(), primaryBalance, primaryAccount));
         } else {
-            TransferAmount.requireCovered(savingsAccount.getAccountBalance(), value);
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(value));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(value));
-            primaryAccountDao.save(primaryAccount);
-            savingsAccountDao.save(savingsAccount);
+            requireDebited(savingsAccountDao.debitIfCovered(savingsAccount.getId(), value));
+            primaryAccountDao.credit(primaryAccount.getId(), value);
+            BigDecimal savingsBalance = savingsAccountDao.findBalanceById(savingsAccount.getId());
 
-            Date date = new Date();
-
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", value.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
-            savingsTransactionDao.save(savingsTransaction);
+            savingsTransactionDao.save(new SavingsTransaction(date, description, "Transfer", "Finished", value.doubleValue(), savingsBalance, savingsAccount));
         }
     }
     
@@ -121,20 +115,26 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientList;
     }
 
-    public Recipient saveRecipient(Recipient recipient) {
+    public Recipient saveRecipient(Recipient recipient, User user) {
+        if (recipient.getId() != null
+                && recipientDao.findByIdAndUserUsername(recipient.getId(), user.getUsername()) == null) {
+            throw new AccessDeniedException("Recipient does not belong to the current user.");
+        }
+        recipient.setUser(user);
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName) {
-        return recipientDao.findByName(recipientName);
-    }
-
     public Recipient findRecipientByName(String recipientName, String username) {
-        return recipientDao.findFirstByNameAndUserUsername(recipientName, username);
+        List<Recipient> matches = recipientDao.findByNameAndUserUsername(recipientName, username);
+        if (matches.size() > 1) {
+            throw new InvalidTransferException("More than one payee is named \"" + recipientName + "\"; rename one before transferring.");
+        }
+        return matches.isEmpty() ? null : matches.get(0);
     }
 
-    public void deleteRecipientByName(String recipientName) {
-        recipientDao.deleteByName(recipientName);
+    @Transactional
+    public void deleteRecipientByName(String recipientName, String username) {
+        recipientDao.deleteByNameAndUserUsername(recipientName, username);
     }
     
     @Transactional
@@ -147,25 +147,25 @@ public class TransactionServiceImpl implements TransactionService {
             throw new InvalidTransferException("Invalid account type.");
         }
         BigDecimal value = TransferAmount.parse(amount);
+        Date date = new Date();
+        String description = "Transfer to recipient "+recipient.getName();
 
         if (fromPrimary) {
-            TransferAmount.requireCovered(primaryAccount.getAccountBalance(), value);
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(value));
-            primaryAccountDao.save(primaryAccount);
+            requireDebited(primaryAccountDao.debitIfCovered(primaryAccount.getId(), value));
+            BigDecimal primaryBalance = primaryAccountDao.findBalanceById(primaryAccount.getId());
 
-            Date date = new Date();
-
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", value.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
-            primaryTransactionDao.save(primaryTransaction);
+            primaryTransactionDao.save(new PrimaryTransaction(date, description, "Transfer", "Finished", value.doubleValue(), primaryBalance, primaryAccount));
         } else {
-            TransferAmount.requireCovered(savingsAccount.getAccountBalance(), value);
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(value));
-            savingsAccountDao.save(savingsAccount);
+            requireDebited(savingsAccountDao.debitIfCovered(savingsAccount.getId(), value));
+            BigDecimal savingsBalance = savingsAccountDao.findBalanceById(savingsAccount.getId());
 
-            Date date = new Date();
+            savingsTransactionDao.save(new SavingsTransaction(date, description, "Transfer", "Finished", value.doubleValue(), savingsBalance, savingsAccount));
+        }
+    }
 
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", value.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
-            savingsTransactionDao.save(savingsTransaction);
+    private static void requireDebited(int updatedRows) {
+        if (updatedRows != 1) {
+            throw new InsufficientFundsException("Insufficient funds for this transfer.");
         }
     }
 
