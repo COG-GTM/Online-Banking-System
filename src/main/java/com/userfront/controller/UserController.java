@@ -29,17 +29,18 @@ public class UserController {
     }
 
     @RequestMapping(value = "/profile", method = RequestMethod.POST)
-    public String profilePost(@ModelAttribute("user") User newUser, Model model) {
-        User user = userService.findByUsername(newUser.getUsername());
-        user.setUsername(newUser.getUsername());
-        user.setFirstName(newUser.getFirstName());
-        user.setLastName(newUser.getLastName());
-        user.setEmail(newUser.getEmail());
-        user.setPhone(newUser.getPhone());
+    public String profilePost(@ModelAttribute("user") User newUser, Principal principal, Model model) {
+        String username = principal.getName();
+
+        if (userService.isEmailTakenByAnotherUser(newUser.getEmail(), username)) {
+            model.addAttribute("emailExists", true);
+            model.addAttribute("user", userService.findByUsername(username));
+            return "profile";
+        }
+
+        User user = userService.updateProfile(username, newUser);
 
         model.addAttribute("user", user);
-
-        userService.saveUser(user);
 
         return "profile";
     }

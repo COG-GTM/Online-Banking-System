@@ -22,6 +22,10 @@ public interface UserService {
     User createUser(User user, Set<UserRole> userRoles);
     
     User saveUser (User user); 
+
+    User updateProfile(String username, User profileUpdate);
+
+    boolean isEmailTakenByAnotherUser(String email, String username);
     
     List<User> findUserList();
 

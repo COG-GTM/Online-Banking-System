@@ -6,6 +6,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -98,6 +99,25 @@ public class UserServiceImpl implements UserService{
 
     public User saveUser (User user) {
         return userDao.save(user);
+    }
+
+    public User updateProfile(String username, User profileUpdate) {
+        User user = userDao.findByUsername(username);
+        if (user == null) {
+            throw new UsernameNotFoundException("User not found: " + username);
+        }
+
+        user.setFirstName(profileUpdate.getFirstName());
+        user.setLastName(profileUpdate.getLastName());
+        user.setEmail(profileUpdate.getEmail());
+        user.setPhone(profileUpdate.getPhone());
+
+        return userDao.save(user);
+    }
+
+    public boolean isEmailTakenByAnotherUser(String email, String username) {
+        User existing = findByEmail(email);
+        return existing != null && !existing.getUsername().equals(username);
     }
     
     public List<User> findUserList() {
