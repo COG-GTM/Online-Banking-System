@@ -24,8 +24,6 @@ public interface UserService {
     User saveUser (User user); 
 
     User updateProfile(String username, User profileUpdate);
-
-    boolean isEmailTakenByAnotherUser(String email, String username);
     
     List<User> findUserList();
 

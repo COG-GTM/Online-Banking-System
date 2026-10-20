@@ -1,8 +1,8 @@
 package com.userfront.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,10 +15,14 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
+import com.userfront.domain.PrimaryAccount;
+import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.service.EmailAlreadyExistsException;
 import com.userfront.service.UserService;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -42,6 +46,15 @@ public class UserControllerTest {
         return form;
     }
 
+    private User storedAttacker() {
+        User current = new User();
+        current.setUsername("attacker");
+        current.setFirstName("Old");
+        current.setPrimaryAccount(new PrimaryAccount());
+        current.setSavingsAccount(new SavingsAccount());
+        return current;
+    }
+
     @Test
     public void profilePostUpdatesAuthenticatedUserIgnoringSubmittedUsername() {
         User form = profileForm("victim", "attacker@example.com");
@@ -58,14 +71,23 @@ public class UserControllerTest {
         verify(userService, never()).findByUsername("victim");
         verify(userService, never()).saveUser(any(User.class));
         assertEquals(updated, model.asMap().get("user"));
+        assertNull(model.asMap().get("emailExists"));
     }
 
     @Test
-    public void profilePostRejectsEmailOwnedByAnotherUser() {
-        User form = profileForm("attacker", "victim@example.com");
-        User current = new User();
-        current.setUsername("attacker");
-        when(userService.isEmailTakenByAnotherUser("victim@example.com", "attacker")).thenReturn(true);
+    public void profilePostRejectsEmailOwnedByAnotherUserAndKeepsSubmittedEdits() {
+        assertEmailRejected(new EmailAlreadyExistsException("victim@example.com"));
+    }
+
+    @Test
+    public void profilePostReportsDuplicateEmailWhenUniqueConstraintFails() {
+        assertEmailRejected(new DataIntegrityViolationException("duplicate email"));
+    }
+
+    private void assertEmailRejected(RuntimeException failure) {
+        User form = profileForm("victim", "victim@example.com");
+        User current = storedAttacker();
+        when(userService.updateProfile("attacker", form)).thenThrow(failure);
         when(userService.findByUsername("attacker")).thenReturn(current);
 
         Model model = new ExtendedModelMap();
@@ -73,7 +95,13 @@ public class UserControllerTest {
 
         assertEquals("profile", view);
         assertEquals(Boolean.TRUE, model.asMap().get("emailExists"));
-        assertEquals(current, model.asMap().get("user"));
-        verify(userService, never()).updateProfile(anyString(), any(User.class));
+        User shown = (User) model.asMap().get("user");
+        assertEquals("attacker", shown.getUsername());
+        assertEquals("Evil", shown.getFirstName());
+        assertEquals("555-0000", shown.getPhone());
+        assertEquals(current.getPrimaryAccount(), shown.getPrimaryAccount());
+        assertEquals(current.getSavingsAccount(), shown.getSavingsAccount());
+        verify(userService, never()).findByUsername("victim");
+        verify(userService, never()).saveUser(any(User.class));
     }
 }

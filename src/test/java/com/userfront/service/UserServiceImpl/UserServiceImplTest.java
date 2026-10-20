@@ -1,8 +1,7 @@
 package com.userfront.service.UserServiceImpl;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -17,6 +16,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import com.userfront.dao.UserDao;
 import com.userfront.domain.User;
+import com.userfront.service.EmailAlreadyExistsException;
 
 @RunWith(MockitoJUnitRunner.class)
 public class UserServiceImplTest {
@@ -61,12 +61,32 @@ public class UserServiceImplTest {
     }
 
     @Test
-    public void emailTakenOnlyWhenOwnedByDifferentUser() {
+    public void updateProfileRejectsEmailOwnedByAnotherUser() {
+        User attacker = user("attacker", "attacker@example.com");
+        when(userDao.findByUsername("attacker")).thenReturn(attacker);
         when(userDao.findByEmail("victim@example.com")).thenReturn(user("victim", "victim@example.com"));
-        when(userDao.findByEmail("attacker@example.com")).thenReturn(user("attacker", "attacker@example.com"));
 
-        assertTrue(userService.isEmailTakenByAnotherUser("victim@example.com", "attacker"));
-        assertFalse(userService.isEmailTakenByAnotherUser("attacker@example.com", "attacker"));
-        assertFalse(userService.isEmailTakenByAnotherUser("free@example.com", "attacker"));
+        try {
+            userService.updateProfile("attacker", user("attacker", "victim@example.com"));
+            fail("expected EmailAlreadyExistsException");
+        } catch (EmailAlreadyExistsException expected) {
+            // expected
+        }
+
+        verify(userDao, never()).save(any(User.class));
+        assertEquals("attacker@example.com", attacker.getEmail());
+    }
+
+    @Test
+    public void updateProfileAllowsKeepingOwnEmail() {
+        User attacker = user("attacker", "attacker@example.com");
+        when(userDao.findByUsername("attacker")).thenReturn(attacker);
+        when(userDao.findByEmail("attacker@example.com")).thenReturn(attacker);
+        when(userDao.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        User form = user("attacker", "attacker@example.com");
+        form.setPhone("555-2222");
+
+        assertEquals("555-2222", userService.updateProfile("attacker", form).getPhone());
     }
 }

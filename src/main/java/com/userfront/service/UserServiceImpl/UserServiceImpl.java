@@ -16,6 +16,7 @@ import com.userfront.dao.UserDao;
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.AccountService;
+import com.userfront.service.EmailAlreadyExistsException;
 import com.userfront.service.UserService;
 
 @Service
@@ -107,17 +108,17 @@ public class UserServiceImpl implements UserService{
             throw new UsernameNotFoundException("User not found: " + username);
         }
 
+        User emailOwner = userDao.findByEmail(profileUpdate.getEmail());
+        if (emailOwner != null && !emailOwner.getUsername().equals(user.getUsername())) {
+            throw new EmailAlreadyExistsException(profileUpdate.getEmail());
+        }
+
         user.setFirstName(profileUpdate.getFirstName());
         user.setLastName(profileUpdate.getLastName());
         user.setEmail(profileUpdate.getEmail());
         user.setPhone(profileUpdate.getPhone());
 
         return userDao.save(user);
-    }
-
-    public boolean isEmailTakenByAnotherUser(String email, String username) {
-        User existing = findByEmail(email);
-        return existing != null && !existing.getUsername().equals(username);
     }
     
     public List<User> findUserList() {

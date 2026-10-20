@@ -3,6 +3,7 @@ package com.userfront.controller;
 import java.security.Principal;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.userfront.domain.User;
+import com.userfront.service.EmailAlreadyExistsException;
 import com.userfront.service.UserService;
 
 @Controller
@@ -32,15 +34,17 @@ public class UserController {
     public String profilePost(@ModelAttribute("user") User newUser, Principal principal, Model model) {
         String username = principal.getName();
 
-        if (userService.isEmailTakenByAnotherUser(newUser.getEmail(), username)) {
+        try {
+            model.addAttribute("user", userService.updateProfile(username, newUser));
+        } catch (EmailAlreadyExistsException | DataIntegrityViolationException e) {
+            User current = userService.findByUsername(username);
+            newUser.setUsername(current.getUsername());
+            newUser.setPrimaryAccount(current.getPrimaryAccount());
+            newUser.setSavingsAccount(current.getSavingsAccount());
+
             model.addAttribute("emailExists", true);
-            model.addAttribute("user", userService.findByUsername(username));
-            return "profile";
+            model.addAttribute("user", newUser);
         }
-
-        User user = userService.updateProfile(username, newUser);
-
-        model.addAttribute("user", user);
 
         return "profile";
     }
