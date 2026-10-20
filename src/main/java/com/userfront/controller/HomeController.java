@@ -7,6 +7,8 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -26,6 +28,15 @@ public class HomeController {
 	
 	@Autowired
     private RoleDao roleDao;
+	
+	private static final String[] SIGNUP_ALLOWED_FIELDS = {
+			"username", "password", "firstName", "lastName", "email", "phone"
+	};
+
+	@InitBinder("user")
+	public void initUserBinder(WebDataBinder binder) {
+		binder.setAllowedFields(SIGNUP_ALLOWED_FIELDS);
+	}
 	
 	@RequestMapping("/")
 	public String home() {
