@@ -1,12 +1,13 @@
 package com.userfront.config;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -17,6 +18,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Collections;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.servlet.http.Cookie;
 
@@ -47,8 +50,10 @@ import com.userfront.controller.TransferController;
 import com.userfront.controller.UserController;
 import com.userfront.dao.UserDao;
 import com.userfront.resource.AppointmentResource;
+import com.userfront.resource.CsrfResource;
 import com.userfront.resource.UserResource;
 import com.userfront.service.AccountService;
+import com.userfront.service.AppointmentNotFoundException;
 import com.userfront.service.AppointmentService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
@@ -62,7 +67,7 @@ public class CsrfProtectionTest {
     @Configuration
     @EnableWebMvc
     @Import({SecurityConfig.class, UserResource.class, AppointmentResource.class, TransferController.class,
-            AccountController.class, UserController.class})
+            AccountController.class, UserController.class, CsrfResource.class})
     static class TestConfig {
 
         @Bean
@@ -137,17 +142,18 @@ public class CsrfProtectionTest {
         return session;
     }
 
-    private Cookie csrfCookie(MockHttpSession session) throws Exception {
-        Cookie cookie = mockMvc.perform(get("/api/appointment/all").session(session))
-                .andReturn().getResponse().getCookie("XSRF-TOKEN");
-        assertNotNull(cookie);
-        return cookie;
+    private String csrfToken(MockHttpSession session) throws Exception {
+        String body = mockMvc.perform(get("/api/csrf").session(session))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        Matcher matcher = Pattern.compile("\"token\":\"([^\"]+)\"").matcher(body);
+        assertTrue(body, matcher.find());
+        return matcher.group(1);
     }
 
     private MockHttpServletRequestBuilder withToken(MockHttpServletRequestBuilder request, MockHttpSession session)
             throws Exception {
-        Cookie csrf = csrfCookie(session);
-        return request.session(session).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue());
+        return request.session(session).header("X-CSRF-TOKEN", csrfToken(session));
     }
 
     @Test
@@ -167,7 +173,7 @@ public class CsrfProtectionTest {
     @Test
     public void adminUserToggleRejectsForgedToken() throws Exception {
         mockMvc.perform(post("/api/user/bob/disable").session(adminSession)
-                .cookie(csrfCookie(adminSession)).header("X-XSRF-TOKEN", "forged"))
+                .header("X-CSRF-TOKEN", "forged"))
                 .andExpect(status().isForbidden());
         verify(userService, never()).disableUser(anyString());
     }
@@ -206,9 +212,8 @@ public class CsrfProtectionTest {
 
     @Test
     public void recipientDeleteAcceptsFormTokenParameter() throws Exception {
-        Cookie csrf = csrfCookie(userSession);
         mockMvc.perform(post("/transfer/recipient/delete").param("recipientName", "Mallory")
-                .param("_csrf", csrf.getValue()).cookie(csrf).session(userSession));
+                .param("_csrf", csrfToken(userSession)).session(userSession));
         verify(transactionService).deleteRecipientByName("Mallory");
     }
 
@@ -238,9 +243,8 @@ public class CsrfProtectionTest {
 
     @Test
     public void withdrawAcceptsPostWithFormToken() throws Exception {
-        Cookie csrf = csrfCookie(userSession);
         mockMvc.perform(post("/account/withdraw").param("accountType", "Primary").param("amount", "500")
-                .param("_csrf", csrf.getValue()).cookie(csrf).session(userSession))
+                .param("_csrf", csrfToken(userSession)).session(userSession))
                 .andExpect(status().is3xxRedirection());
         verify(accountService).withdraw(eq("Primary"), eq(500.0), any());
     }
@@ -252,5 +256,36 @@ public class CsrfProtectionTest {
                 .andExpect(status().isForbidden());
         verify(userService, never()).findByUsername(anyString());
         verify(userService, never()).saveUser(any());
+    }
+
+    @Test
+    public void attackerPlantedCsrfCookieIsNotTrusted() throws Exception {
+        mockMvc.perform(post("/transfer/toSomeoneElse").param("recipientName", "Mallory")
+                .param("accountType", "Primary").param("amount", "500")
+                .cookie(new Cookie("XSRF-TOKEN", "attacker-chosen")).param("_csrf", "attacker-chosen")
+                .header("X-XSRF-TOKEN", "attacker-chosen").session(userSession))
+                .andExpect(status().isForbidden());
+        verify(transactionService, never()).toSomeoneElseTransfer(any(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    public void tokenFromAnotherSessionIsRejected() throws Exception {
+        String otherSessionToken = csrfToken(adminSession);
+        mockMvc.perform(post("/account/withdraw").param("accountType", "Primary").param("amount", "500")
+                .param("_csrf", otherSessionToken).session(userSession))
+                .andExpect(status().isForbidden());
+        verify(accountService, never()).withdraw(anyString(), anyDouble(), any());
+    }
+
+    @Test
+    public void csrfTokenEndpointRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/csrf")).andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    public void confirmingUnknownAppointmentReturnsNotFound() throws Exception {
+        doThrow(new AppointmentNotFoundException(999L)).when(appointmentService).confirmAppointment(999L);
+        mockMvc.perform(withToken(post("/api/appointment/999/confirm"), adminSession))
+                .andExpect(status().isNotFound());
     }
 }

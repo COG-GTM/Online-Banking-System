@@ -2,6 +2,9 @@ package com.userfront.service.UserServiceImpl;
 
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,6 +18,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import com.userfront.dao.AppointmentDao;
 import com.userfront.domain.Appointment;
+import com.userfront.service.AppointmentNotFoundException;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AppointmentServiceImplTest {
@@ -42,5 +46,17 @@ public class AppointmentServiceImplTest {
 
         assertTrue(appointment.isConfirmed());
         verify(appointmentDao).save(appointment);
+    }
+
+    @Test
+    public void confirmUnknownAppointmentThrowsNotFound() {
+        when(appointmentDao.findById(999L)).thenReturn(Optional.empty());
+
+        try {
+            appointmentService.confirmAppointment(999L);
+            fail("expected AppointmentNotFoundException");
+        } catch (AppointmentNotFoundException expected) {
+            verify(appointmentDao, never()).save(any());
+        }
     }
 }
