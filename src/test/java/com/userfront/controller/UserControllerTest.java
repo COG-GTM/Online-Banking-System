@@ -81,7 +81,19 @@ public class UserControllerTest {
 
     @Test
     public void profilePostReportsDuplicateEmailWhenUniqueConstraintFails() {
+        User victim = new User();
+        victim.setUsername("victim");
+        when(userService.findByEmail("victim@example.com")).thenReturn(victim);
         assertEmailRejected(new DataIntegrityViolationException("duplicate email"));
+    }
+
+    @Test(expected = DataIntegrityViolationException.class)
+    public void profilePostDoesNotReportOtherIntegrityErrorsAsDuplicateEmail() {
+        User form = profileForm("attacker", null);
+        when(userService.updateProfile("attacker", form))
+                .thenThrow(new DataIntegrityViolationException("email cannot be null"));
+
+        userController.profilePost(form, attacker, new ExtendedModelMap());
     }
 
     private void assertEmailRejected(RuntimeException failure) {

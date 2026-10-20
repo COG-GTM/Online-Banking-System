@@ -36,19 +36,34 @@ public class UserController {
 
         try {
             model.addAttribute("user", userService.updateProfile(username, newUser));
-        } catch (EmailAlreadyExistsException | DataIntegrityViolationException e) {
-            User current = userService.findByUsername(username);
-            newUser.setUsername(current.getUsername());
-            newUser.setPrimaryAccount(current.getPrimaryAccount());
-            newUser.setSavingsAccount(current.getSavingsAccount());
-
-            model.addAttribute("emailExists", true);
-            model.addAttribute("user", newUser);
+        } catch (EmailAlreadyExistsException e) {
+            showEmailExists(newUser, username, model);
+        } catch (DataIntegrityViolationException e) {
+            if (!isEmailOwnedByAnotherUser(newUser.getEmail(), username)) {
+                throw e;
+            }
+            showEmailExists(newUser, username, model);
         }
 
         return "profile";
     }
 
+    private boolean isEmailOwnedByAnotherUser(String email, String username) {
+        if (email == null) {
+            return false;
+        }
+        User owner = userService.findByEmail(email);
+        return owner != null && !owner.getUsername().equals(username);
+    }
 
+    private void showEmailExists(User submitted, String username, Model model) {
+        User current = userService.findByUsername(username);
+        submitted.setUsername(current.getUsername());
+        submitted.setPrimaryAccount(current.getPrimaryAccount());
+        submitted.setSavingsAccount(current.getSavingsAccount());
+
+        model.addAttribute("emailExists", true);
+        model.addAttribute("user", submitted);
+    }
 }
 
