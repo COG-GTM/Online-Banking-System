@@ -1,5 +1,6 @@
 package com.userfront.service.UserServiceImpl;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.RoleDao;
 import com.userfront.dao.UserDao;
+import com.userfront.domain.SignupForm;
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.AccountService;
@@ -54,26 +56,45 @@ public class UserServiceImpl implements UserService{
         if (localUser != null) {
             LOG.info("User with username {} already exist. Nothing will be done. ", user.getUsername());
         } else {
-            String encryptedPassword = passwordEncoder.encode(user.getPassword());
-            user.setPassword(encryptedPassword);
+            User newUser = new User();
+            newUser.setUsername(user.getUsername());
+            newUser.setPassword(passwordEncoder.encode(user.getPassword()));
+            newUser.setFirstName(user.getFirstName());
+            newUser.setLastName(user.getLastName());
+            newUser.setEmail(user.getEmail());
+            newUser.setPhone(user.getPhone());
 
             for (UserRole ur : userRoles) {
                 roleDao.save(ur.getRole());
+                newUser.getUserRoles().add(new UserRole(newUser, ur.getRole()));
             }
 
-            user.getUserRoles().addAll(userRoles);
+            newUser.setPrimaryAccount(accountService.createPrimaryAccount());
+            newUser.setSavingsAccount(accountService.createSavingsAccount());
 
-            user.setPrimaryAccount(accountService.createPrimaryAccount());
-            user.setSavingsAccount(accountService.createSavingsAccount());
-
-            localUser = userDao.save(user);
+            localUser = userDao.save(newUser);
         }
 
         return localUser;
     }
     
+    public User registerUser(SignupForm signupForm) {
+        User user = new User();
+        user.setUsername(signupForm.getUsername());
+        user.setPassword(signupForm.getPassword());
+        user.setFirstName(signupForm.getFirstName());
+        user.setLastName(signupForm.getLastName());
+        user.setEmail(signupForm.getEmail());
+        user.setPhone(signupForm.getPhone());
+
+        Set<UserRole> userRoles = new HashSet<>();
+        userRoles.add(new UserRole(user, roleDao.findByName("ROLE_USER")));
+
+        return createUser(user, userRoles);
+    }
+    
     public boolean checkUserExists(String username, String email){
-        if (checkUsernameExists(username) || checkEmailExists(username)) {
+        if (checkUsernameExists(username) || checkEmailExists(email)) {
             return true;
         } else {
             return false;
