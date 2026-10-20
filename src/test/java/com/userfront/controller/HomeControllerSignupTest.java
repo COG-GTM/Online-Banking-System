@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,6 +20,7 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -121,5 +123,18 @@ public class HomeControllerSignupTest {
 
         verify(userService, never()).checkUserExists(anyString(), anyString());
         verify(userService, never()).createUser(any(), any());
+    }
+
+    @Test
+    public void concurrentDuplicateRejectedByDatabaseGetsTheGenericResponse() throws Exception {
+        when(userService.checkUserExists("racer", "alice@example.com")).thenReturn(false);
+        doThrow(new DataIntegrityViolationException("UK_user_email"))
+                .when(userService).createUser(any(), any());
+
+        mockMvc.perform(signup("racer", "alice@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("signup"))
+                .andExpect(model().attribute("signupUnavailable", true))
+                .andExpect(model().attributeDoesNotExist("usernameExists", "emailExists"));
     }
 }

@@ -36,7 +36,7 @@ public class SignupRateLimiterTest {
     }
 
     private final MutableClock clock = new MutableClock();
-    private final SignupRateLimiter limiter = new SignupRateLimiter(3, Duration.ofMinutes(15), clock);
+    private final SignupRateLimiter limiter = new SignupRateLimiter(3, Duration.ofMinutes(15), clock, 100);
 
     @Test
     public void blocksAttemptsBeyondTheLimitWithinTheWindow() {
@@ -70,6 +70,27 @@ public class SignupRateLimiterTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void rejectsNonPositiveLimit() {
-        new SignupRateLimiter(0, Duration.ofMinutes(1), clock);
+        new SignupRateLimiter(0, Duration.ofMinutes(1), clock, 100);
+    }
+
+    @Test
+    public void refusesNewClientsOnceTheTrackingTableIsFullWithoutForgettingExistingOnes() {
+        SignupRateLimiter bounded = new SignupRateLimiter(2, Duration.ofMinutes(15), clock, 3);
+        assertTrue(bounded.tryAcquire("10.0.0.1"));
+        assertTrue(bounded.tryAcquire("10.0.0.2"));
+        assertTrue(bounded.tryAcquire("10.0.0.3"));
+
+        assertFalse(bounded.tryAcquire("10.0.0.4"));
+        assertFalse(bounded.tryAcquire("10.0.0.5"));
+
+        assertTrue(bounded.tryAcquire("10.0.0.1"));
+        assertFalse(bounded.tryAcquire("10.0.0.1"));
+
+        clock.advance(Duration.ofMinutes(15));
+
+        assertTrue(bounded.tryAcquire("10.0.0.4"));
+        assertTrue(bounded.tryAcquire("10.0.0.5"));
+        assertTrue(bounded.tryAcquire("10.0.0.6"));
+        assertFalse(bounded.tryAcquire("10.0.0.7"));
     }
 }

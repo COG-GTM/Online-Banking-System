@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -71,7 +72,12 @@ public class HomeController {
         	 Set<UserRole> userRoles = new HashSet<>();
              userRoles.add(new UserRole(user, roleDao.findByName("ROLE_USER")));
 
-            userService.createUser(user, userRoles);
+            try {
+                userService.createUser(user, userRoles);
+            } catch (DataIntegrityViolationException e) {
+                model.addAttribute("signupUnavailable", true);
+                return "signup";
+            }
 
             return "redirect:/";
         }
