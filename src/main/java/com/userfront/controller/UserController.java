@@ -3,6 +3,7 @@ package com.userfront.controller;
 import java.security.Principal;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.userfront.domain.User;
+import com.userfront.service.EmailAlreadyExistsException;
 import com.userfront.service.UserService;
 
 @Controller
@@ -29,21 +31,39 @@ public class UserController {
     }
 
     @RequestMapping(value = "/profile", method = RequestMethod.POST)
-    public String profilePost(@ModelAttribute("user") User newUser, Model model) {
-        User user = userService.findByUsername(newUser.getUsername());
-        user.setUsername(newUser.getUsername());
-        user.setFirstName(newUser.getFirstName());
-        user.setLastName(newUser.getLastName());
-        user.setEmail(newUser.getEmail());
-        user.setPhone(newUser.getPhone());
+    public String profilePost(@ModelAttribute("user") User newUser, Principal principal, Model model) {
+        String username = principal.getName();
 
-        model.addAttribute("user", user);
-
-        userService.saveUser(user);
+        try {
+            model.addAttribute("user", userService.updateProfile(username, newUser));
+        } catch (EmailAlreadyExistsException e) {
+            showEmailExists(newUser, username, model);
+        } catch (DataIntegrityViolationException e) {
+            if (!isEmailOwnedByAnotherUser(newUser.getEmail(), username)) {
+                throw e;
+            }
+            showEmailExists(newUser, username, model);
+        }
 
         return "profile";
     }
 
+    private boolean isEmailOwnedByAnotherUser(String email, String username) {
+        if (email == null) {
+            return false;
+        }
+        User owner = userService.findByEmail(email);
+        return owner != null && !owner.getUsername().equals(username);
+    }
 
+    private void showEmailExists(User submitted, String username, Model model) {
+        User current = userService.findByUsername(username);
+        submitted.setUsername(current.getUsername());
+        submitted.setPrimaryAccount(current.getPrimaryAccount());
+        submitted.setSavingsAccount(current.getSavingsAccount());
+
+        model.addAttribute("emailExists", true);
+        model.addAttribute("user", submitted);
+    }
 }
 
