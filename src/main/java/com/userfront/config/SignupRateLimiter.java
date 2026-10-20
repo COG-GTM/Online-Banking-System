@@ -2,8 +2,10 @@ package com.userfront.config;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,8 @@ public class SignupRateLimiter {
     private final Clock clock;
     private final ConcurrentMap<String, Window> windows = new ConcurrentHashMap<>();
     private final AtomicLong nextSweepAt = new AtomicLong(Long.MIN_VALUE);
+    private final AtomicLong earliestExpiry = new AtomicLong(Long.MAX_VALUE);
+    private final AtomicBoolean sweeping = new AtomicBoolean();
 
     @Autowired
     public SignupRateLimiter(@Value("${signup.rate-limit.max-attempts:5}") int maxAttempts,
@@ -61,6 +65,7 @@ public class SignupRateLimiter {
         }
         Window window = windows.compute(key, (k, current) -> {
             if (current == null || current.isExpired(now, windowMillis)) {
+                earliestExpiry.accumulateAndGet(now + windowMillis, Math::min);
                 return new Window(now, 1);
             }
             return new Window(current.start, Math.min(current.count + 1, maxAttempts + 1));
@@ -68,10 +73,31 @@ public class SignupRateLimiter {
         return window.count <= maxAttempts;
     }
 
+    /**
+     * Scans the table at most once per {@link #SWEEP_INTERVAL_MILLIS}, unless the earliest
+     * tracked window has already expired, so expired slots are never held past their expiry.
+     */
     private void sweepExpired(long now) {
-        long due = nextSweepAt.get();
-        if (now >= due && nextSweepAt.compareAndSet(due, now + SWEEP_INTERVAL_MILLIS)) {
-            windows.entrySet().removeIf(e -> e.getValue().isExpired(now, windowMillis));
+        if (now < nextSweepAt.get() && now < earliestExpiry.get()) {
+            return;
+        }
+        if (!sweeping.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            nextSweepAt.set(now + SWEEP_INTERVAL_MILLIS);
+            long earliest = Long.MAX_VALUE;
+            for (Map.Entry<String, Window> e : windows.entrySet()) {
+                Window w = e.getValue();
+                if (w.isExpired(now, windowMillis)) {
+                    windows.remove(e.getKey(), w);
+                } else {
+                    earliest = Math.min(earliest, w.start + windowMillis);
+                }
+            }
+            earliestExpiry.set(earliest);
+        } finally {
+            sweeping.set(false);
         }
     }
 

@@ -93,4 +93,19 @@ public class SignupRateLimiterTest {
         assertTrue(bounded.tryAcquire("10.0.0.6"));
         assertFalse(bounded.tryAcquire("10.0.0.7"));
     }
+
+    @Test
+    public void expiredSlotsAreReclaimedEvenWhenTheyExpireRightAfterASweep() {
+        SignupRateLimiter bounded = new SignupRateLimiter(2, Duration.ofMinutes(15), clock, 2);
+        assertTrue(bounded.tryAcquire("10.0.0.1"));
+        assertTrue(bounded.tryAcquire("10.0.0.2"));
+
+        clock.advance(Duration.ofMinutes(15).minusMillis(500));
+        assertFalse(bounded.tryAcquire("10.0.0.3"));
+
+        clock.advance(Duration.ofMillis(600));
+        assertTrue(bounded.tryAcquire("10.0.0.3"));
+        assertTrue(bounded.tryAcquire("10.0.0.4"));
+        assertFalse(bounded.tryAcquire("10.0.0.5"));
+    }
 }
