@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.PrimaryTransactionDao;
@@ -20,6 +21,7 @@ import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.service.InvalidTransferException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -75,29 +77,34 @@ public class TransactionServiceImpl implements TransactionService {
         savingsTransactionDao.save(savingsTransaction);
     }
     
+    @Transactional
     public void betweenAccountsTransfer(String transferFrom, String transferTo, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception {
+        BigDecimal transferAmount = parseTransferAmount(amount);
+
         if (transferFrom.equalsIgnoreCase("Primary") && transferTo.equalsIgnoreCase("Savings")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(new BigDecimal(amount)));
+            requireSufficientFunds(primaryAccount.getAccountBalance(), transferAmount);
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(transferAmount));
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(transferAmount));
             primaryAccountDao.save(primaryAccount);
             savingsAccountDao.save(savingsAccount);
 
             Date date = new Date();
 
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", transferAmount.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else if (transferFrom.equalsIgnoreCase("Savings") && transferTo.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            requireSufficientFunds(savingsAccount.getAccountBalance(), transferAmount);
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(transferAmount));
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(transferAmount));
             primaryAccountDao.save(primaryAccount);
             savingsAccountDao.save(savingsAccount);
 
             Date date = new Date();
 
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", transferAmount.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
             savingsTransactionDao.save(savingsTransaction);
         } else {
-            throw new Exception("Invalid Transfer");
+            throw new InvalidTransferException("Invalid Transfer");
         }
     }
     
@@ -122,23 +129,68 @@ public class TransactionServiceImpl implements TransactionService {
         recipientDao.deleteByName(recipientName);
     }
     
+    @Transactional
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
+        BigDecimal transferAmount = parseTransferAmount(amount);
+        requireOwnedRecipient(recipient, primaryAccount);
+
         if (accountType.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            requireSufficientFunds(primaryAccount.getAccountBalance(), transferAmount);
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(transferAmount));
             primaryAccountDao.save(primaryAccount);
 
             Date date = new Date();
 
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", transferAmount.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+            requireSufficientFunds(savingsAccount.getAccountBalance(), transferAmount);
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(transferAmount));
             savingsAccountDao.save(savingsAccount);
 
             Date date = new Date();
 
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", transferAmount.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
             savingsTransactionDao.save(savingsTransaction);
+        } else {
+            throw new InvalidTransferException("Invalid account type");
+        }
+    }
+
+    private static BigDecimal parseTransferAmount(String amount) {
+        if (amount == null || amount.trim().isEmpty()) {
+            throw new InvalidTransferException("Transfer amount is required");
+        }
+        BigDecimal transferAmount;
+        try {
+            transferAmount = new BigDecimal(amount.trim());
+        } catch (NumberFormatException e) {
+            throw new InvalidTransferException("Transfer amount must be a number");
+        }
+        if (transferAmount.signum() <= 0) {
+            throw new InvalidTransferException("Transfer amount must be positive");
+        }
+        if (transferAmount.stripTrailingZeros().scale() > 2) {
+            throw new InvalidTransferException("Transfer amount must have at most two decimal places");
+        }
+        return transferAmount;
+    }
+
+    private static void requireSufficientFunds(BigDecimal balance, BigDecimal transferAmount) {
+        if (balance == null || balance.compareTo(transferAmount) < 0) {
+            throw new InvalidTransferException("Insufficient funds");
+        }
+    }
+
+    private static void requireOwnedRecipient(Recipient recipient, PrimaryAccount primaryAccount) {
+        if (recipient == null || recipient.getUser() == null || primaryAccount == null) {
+            throw new InvalidTransferException("Invalid recipient");
+        }
+        PrimaryAccount ownerAccount = recipient.getUser().getPrimaryAccount();
+        boolean owned = ownerAccount == primaryAccount
+                || (ownerAccount != null && ownerAccount.getId() != null && ownerAccount.getId().equals(primaryAccount.getId()));
+        if (!owned) {
+            throw new InvalidTransferException("Invalid recipient");
         }
     }
 }
