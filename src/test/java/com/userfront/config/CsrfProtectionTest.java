@@ -12,6 +12,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -34,13 +35,18 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.resource.AppointmentResource;
+import com.userfront.resource.CsrfResource;
+import com.userfront.resource.UserResource;
 import com.userfront.service.AccountService;
+import com.userfront.service.AppointmentService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
 @RunWith(SpringRunner.class)
-@WebMvcTest(controllers = {TransferController.class, AccountController.class, UserController.class})
+@WebMvcTest(controllers = {TransferController.class, AccountController.class, UserController.class,
+        UserResource.class, AppointmentResource.class, CsrfResource.class})
 @Import(SecurityConfig.class)
 public class CsrfProtectionTest {
 
@@ -55,6 +61,9 @@ public class CsrfProtectionTest {
 
     @MockBean
     private AccountService accountService;
+
+    @MockBean
+    private AppointmentService appointmentService;
 
     @MockBean
     private UserSecurityService userSecurityService;
@@ -141,5 +150,56 @@ public class CsrfProtectionTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("action=\"/transfer/recipient/delete\" method=\"post\"")))
                 .andExpect(content().string(containsString("name=\"_csrf\"")));
+    }
+
+    @Test
+    public void adminStateChangesViaGetAreNotAllowed() throws Exception {
+        mvc.perform(get("/api/user/victim/disable").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isMethodNotAllowed());
+        mvc.perform(get("/api/user/victim/enable").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isMethodNotAllowed());
+        mvc.perform(get("/api/appointment/1/confirm").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isMethodNotAllowed());
+
+        verify(userService, never()).disableUser(anyString());
+        verify(userService, never()).enableUser(anyString());
+        verify(appointmentService, never()).confirmAppointment(any());
+    }
+
+    @Test
+    public void adminStateChangesWithoutCsrfTokenAreRejected() throws Exception {
+        mvc.perform(post("/api/user/victim/disable").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/appointment/1/confirm").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isForbidden());
+
+        verify(userService, never()).disableUser(anyString());
+        verify(appointmentService, never()).confirmAppointment(any());
+    }
+
+    @Test
+    public void adminStateChangesWithCsrfHeaderSucceed() throws Exception {
+        mvc.perform(post("/api/user/victim/disable").with(user("admin").roles("ADMIN")).with(csrf().asHeader()))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/appointment/1/confirm").with(user("admin").roles("ADMIN")).with(csrf().asHeader()))
+                .andExpect(status().isOk());
+
+        verify(userService).disableUser("victim");
+        verify(appointmentService).confirmAppointment(1L);
+    }
+
+    @Test
+    public void csrfTokenEndpointRequiresAuthentication() throws Exception {
+        mvc.perform(get("/api/csrf"))
+                .andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    public void csrfTokenEndpointReturnsSessionTokenForAuthenticatedUser() throws Exception {
+        mvc.perform(get("/api/csrf").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.headerName").value("X-CSRF-TOKEN"))
+                .andExpect(jsonPath("$.parameterName").value("_csrf"))
+                .andExpect(jsonPath("$.token").isNotEmpty());
     }
 }
