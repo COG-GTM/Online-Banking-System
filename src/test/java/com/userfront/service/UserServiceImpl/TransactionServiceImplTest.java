@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 
+import javax.persistence.EntityManager;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,6 +51,8 @@ public class TransactionServiceImplTest {
     private SavingsAccountDao savingsAccountDao;
     @Mock
     private RecipientDao recipientDao;
+    @Mock
+    private EntityManager entityManager;
 
     @InjectMocks
     private TransactionServiceImpl transactionService;
@@ -83,6 +87,7 @@ public class TransactionServiceImplTest {
         owner.setUsername("alice");
         owner.setPrimaryAccount(primaryAccount);
         owner.setSavingsAccount(savingsAccount);
+        when(userService.findByUsername("alice")).thenReturn(owner);
 
         ownRecipient = new Recipient();
         ownRecipient.setName("Alice");
@@ -159,6 +164,32 @@ public class TransactionServiceImplTest {
     }
 
     @Test
+    public void transfersRejectAccountNotOwnedByAuthenticatedUser() {
+        PrimaryAccount otherPrimary = new PrimaryAccount();
+        otherPrimary.setId(99L);
+        otherPrimary.setAccountBalance(new BigDecimal("1000.00"));
+        SavingsAccount otherSavings = new SavingsAccount();
+        otherSavings.setId(98L);
+        otherSavings.setAccountBalance(new BigDecimal("1000.00"));
+
+        expectRejected(() -> transactionService.toSomeoneElseTransfer(ownRecipient, "Primary", "10", otherPrimary, savingsAccount));
+        expectRejected(() -> transactionService.toSomeoneElseTransfer(ownRecipient, "Savings", "10", primaryAccount, otherSavings));
+        expectRejected(() -> transactionService.betweenAccountsTransfer("Primary", "Savings", "10", otherPrimary, savingsAccount));
+        expectRejected(() -> transactionService.betweenAccountsTransfer("Savings", "Primary", "10", primaryAccount, otherSavings));
+        verify(primaryAccountDao, never()).findByIdForUpdate(99L);
+        verify(savingsAccountDao, never()).findByIdForUpdate(98L);
+        assertBalancesUnchanged();
+    }
+
+    @Test
+    public void betweenAccountsRejectsUnauthenticatedCaller() {
+        SecurityContextHolder.clearContext();
+
+        expectRejected(() -> transactionService.betweenAccountsTransfer("Primary", "Savings", "10", primaryAccount, savingsAccount));
+        assertBalancesUnchanged();
+    }
+
+    @Test
     public void toSomeoneElseRejectsUnknownAccountType() {
         expectRejected(() -> transactionService.toSomeoneElseTransfer(ownRecipient, "Checking", "10", primaryAccount, savingsAccount));
         assertBalancesUnchanged();
@@ -170,6 +201,7 @@ public class TransactionServiceImplTest {
 
         assertEquals(0, new BigDecimal("59.50").compareTo(storedPrimaryAccount.getAccountBalance()));
         assertEquals(0, new BigDecimal("59.50").compareTo(primaryAccount.getAccountBalance()));
+        verify(entityManager).refresh(storedPrimaryAccount);
         verify(primaryAccountDao).save(storedPrimaryAccount);
         verify(primaryTransactionDao).save(any(PrimaryTransaction.class));
     }

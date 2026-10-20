@@ -6,6 +6,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -47,6 +50,9 @@ public class TransactionServiceImpl implements TransactionService {
 	
 	@Autowired
 	private RecipientDao recipientDao;
+
+	@PersistenceContext
+	private EntityManager entityManager;
 	
 
 	public List<PrimaryTransaction> findPrimaryTransactionList(String username){
@@ -82,10 +88,11 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public void betweenAccountsTransfer(String transferFrom, String transferTo, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception {
         BigDecimal transferAmount = parseTransferAmount(amount);
+        User owner = authenticatedUser();
 
         if (transferFrom.equalsIgnoreCase("Primary") && transferTo.equalsIgnoreCase("Savings")) {
-            PrimaryAccount lockedPrimary = lockPrimaryAccount(primaryAccount);
-            SavingsAccount lockedSavings = lockSavingsAccount(savingsAccount);
+            PrimaryAccount lockedPrimary = lockPrimaryAccount(owner, primaryAccount);
+            SavingsAccount lockedSavings = lockSavingsAccount(owner, savingsAccount);
             requireSufficientFunds(lockedPrimary.getAccountBalance(), transferAmount);
             lockedPrimary.setAccountBalance(lockedPrimary.getAccountBalance().subtract(transferAmount));
             lockedSavings.setAccountBalance(lockedSavings.getAccountBalance().add(transferAmount));
@@ -99,8 +106,8 @@ public class TransactionServiceImpl implements TransactionService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", transferAmount.doubleValue(), lockedPrimary.getAccountBalance(), lockedPrimary);
             primaryTransactionDao.save(primaryTransaction);
         } else if (transferFrom.equalsIgnoreCase("Savings") && transferTo.equalsIgnoreCase("Primary")) {
-            PrimaryAccount lockedPrimary = lockPrimaryAccount(primaryAccount);
-            SavingsAccount lockedSavings = lockSavingsAccount(savingsAccount);
+            PrimaryAccount lockedPrimary = lockPrimaryAccount(owner, primaryAccount);
+            SavingsAccount lockedSavings = lockSavingsAccount(owner, savingsAccount);
             requireSufficientFunds(lockedSavings.getAccountBalance(), transferAmount);
             lockedPrimary.setAccountBalance(lockedPrimary.getAccountBalance().add(transferAmount));
             lockedSavings.setAccountBalance(lockedSavings.getAccountBalance().subtract(transferAmount));
@@ -142,10 +149,11 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
         BigDecimal transferAmount = parseTransferAmount(amount);
-        requireOwnedRecipient(recipient);
+        User owner = authenticatedUser();
+        requireOwnedRecipient(recipient, owner);
 
         if (accountType.equalsIgnoreCase("Primary")) {
-            PrimaryAccount lockedPrimary = lockPrimaryAccount(primaryAccount);
+            PrimaryAccount lockedPrimary = lockPrimaryAccount(owner, primaryAccount);
             requireSufficientFunds(lockedPrimary.getAccountBalance(), transferAmount);
             lockedPrimary.setAccountBalance(lockedPrimary.getAccountBalance().subtract(transferAmount));
             primaryAccountDao.save(lockedPrimary);
@@ -156,7 +164,7 @@ public class TransactionServiceImpl implements TransactionService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", transferAmount.doubleValue(), lockedPrimary.getAccountBalance(), lockedPrimary);
             primaryTransactionDao.save(primaryTransaction);
         } else if (accountType.equalsIgnoreCase("Savings")) {
-            SavingsAccount lockedSavings = lockSavingsAccount(savingsAccount);
+            SavingsAccount lockedSavings = lockSavingsAccount(owner, savingsAccount);
             requireSufficientFunds(lockedSavings.getAccountBalance(), transferAmount);
             lockedSavings.setAccountBalance(lockedSavings.getAccountBalance().subtract(transferAmount));
             savingsAccountDao.save(lockedSavings);
@@ -171,19 +179,38 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
-    private PrimaryAccount lockPrimaryAccount(PrimaryAccount primaryAccount) {
-        PrimaryAccount locked = primaryAccount == null ? null : primaryAccountDao.findByIdForUpdate(primaryAccount.getId());
+    private User authenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User user = authentication == null ? null : userService.findByUsername(authentication.getName());
+        if (user == null) {
+            throw new InvalidTransferException("Not authenticated");
+        }
+        return user;
+    }
+
+    private PrimaryAccount lockPrimaryAccount(User owner, PrimaryAccount requested) {
+        PrimaryAccount owned = owner.getPrimaryAccount();
+        if (owned == null || owned.getId() == null || requested == null || !owned.getId().equals(requested.getId())) {
+            throw new InvalidTransferException("Invalid account");
+        }
+        PrimaryAccount locked = primaryAccountDao.findByIdForUpdate(owned.getId());
         if (locked == null) {
             throw new InvalidTransferException("Invalid account");
         }
+        entityManager.refresh(locked);
         return locked;
     }
 
-    private SavingsAccount lockSavingsAccount(SavingsAccount savingsAccount) {
-        SavingsAccount locked = savingsAccount == null ? null : savingsAccountDao.findByIdForUpdate(savingsAccount.getId());
+    private SavingsAccount lockSavingsAccount(User owner, SavingsAccount requested) {
+        SavingsAccount owned = owner.getSavingsAccount();
+        if (owned == null || owned.getId() == null || requested == null || !owned.getId().equals(requested.getId())) {
+            throw new InvalidTransferException("Invalid account");
+        }
+        SavingsAccount locked = savingsAccountDao.findByIdForUpdate(owned.getId());
         if (locked == null) {
             throw new InvalidTransferException("Invalid account");
         }
+        entityManager.refresh(locked);
         return locked;
     }
 
@@ -212,10 +239,9 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
-    private static void requireOwnedRecipient(Recipient recipient) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (recipient == null || recipient.getUser() == null || authentication == null
-                || !authentication.getName().equals(recipient.getUser().getUsername())) {
+    private static void requireOwnedRecipient(Recipient recipient, User owner) {
+        if (recipient == null || recipient.getUser() == null || owner.getUsername() == null
+                || !owner.getUsername().equals(recipient.getUser().getUsername())) {
             throw new InvalidTransferException("Invalid recipient");
         }
     }
