@@ -3,18 +3,22 @@ package com.userfront.service.UserServiceImpl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.PrimaryTransactionDao;
@@ -30,7 +34,7 @@ import com.userfront.domain.User;
 import com.userfront.service.InvalidTransferException;
 import com.userfront.service.UserService;
 
-@RunWith(MockitoJUnitRunner.class)
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class TransactionServiceImplTest {
 
     @Mock
@@ -51,6 +55,8 @@ public class TransactionServiceImplTest {
 
     private PrimaryAccount primaryAccount;
     private SavingsAccount savingsAccount;
+    private PrimaryAccount storedPrimaryAccount;
+    private SavingsAccount storedSavingsAccount;
     private Recipient ownRecipient;
 
     @Before
@@ -63,13 +69,31 @@ public class TransactionServiceImplTest {
         savingsAccount.setId(2L);
         savingsAccount.setAccountBalance(new BigDecimal("50.00"));
 
+        storedPrimaryAccount = new PrimaryAccount();
+        storedPrimaryAccount.setId(1L);
+        storedPrimaryAccount.setAccountBalance(new BigDecimal("100.00"));
+        when(primaryAccountDao.findByIdForUpdate(1L)).thenReturn(storedPrimaryAccount);
+
+        storedSavingsAccount = new SavingsAccount();
+        storedSavingsAccount.setId(2L);
+        storedSavingsAccount.setAccountBalance(new BigDecimal("50.00"));
+        when(savingsAccountDao.findByIdForUpdate(2L)).thenReturn(storedSavingsAccount);
+
         User owner = new User();
+        owner.setUsername("alice");
         owner.setPrimaryAccount(primaryAccount);
         owner.setSavingsAccount(savingsAccount);
 
         ownRecipient = new Recipient();
         ownRecipient.setName("Alice");
         ownRecipient.setUser(owner);
+
+        SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken("alice", null));
+    }
+
+    @After
+    public void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -102,16 +126,36 @@ public class TransactionServiceImplTest {
 
     @Test
     public void toSomeoneElseRejectsRecipientOwnedByAnotherUser() {
-        PrimaryAccount otherAccount = new PrimaryAccount();
-        otherAccount.setId(99L);
         User otherUser = new User();
-        otherUser.setPrimaryAccount(otherAccount);
+        otherUser.setUsername("mallory");
+        otherUser.setPrimaryAccount(primaryAccount);
         Recipient foreignRecipient = new Recipient();
         foreignRecipient.setName("Mallory");
         foreignRecipient.setUser(otherUser);
 
         expectRejected(() -> transactionService.toSomeoneElseTransfer(foreignRecipient, "Primary", "10", primaryAccount, savingsAccount));
         assertBalancesUnchanged();
+    }
+
+    @Test
+    public void toSomeoneElseRejectsUnauthenticatedCaller() {
+        SecurityContextHolder.clearContext();
+
+        expectRejected(() -> transactionService.toSomeoneElseTransfer(ownRecipient, "Primary", "10", primaryAccount, savingsAccount));
+        assertBalancesUnchanged();
+    }
+
+    @Test
+    public void fundsCheckUsesLockedStoredBalanceNotStaleCallerCopy() {
+        storedPrimaryAccount.setAccountBalance(new BigDecimal("20.00"));
+        storedSavingsAccount.setAccountBalance(new BigDecimal("20.00"));
+
+        expectRejected(() -> transactionService.toSomeoneElseTransfer(ownRecipient, "Primary", "80", primaryAccount, savingsAccount));
+        expectRejected(() -> transactionService.betweenAccountsTransfer("Savings", "Primary", "40", primaryAccount, savingsAccount));
+
+        assertEquals(0, new BigDecimal("20.00").compareTo(storedPrimaryAccount.getAccountBalance()));
+        assertEquals(0, new BigDecimal("20.00").compareTo(storedSavingsAccount.getAccountBalance()));
+        verifyNothingSaved();
     }
 
     @Test
@@ -124,8 +168,9 @@ public class TransactionServiceImplTest {
     public void toSomeoneElseDebitsValidAmount() {
         transactionService.toSomeoneElseTransfer(ownRecipient, "Primary", "40.50", primaryAccount, savingsAccount);
 
+        assertEquals(0, new BigDecimal("59.50").compareTo(storedPrimaryAccount.getAccountBalance()));
         assertEquals(0, new BigDecimal("59.50").compareTo(primaryAccount.getAccountBalance()));
-        verify(primaryAccountDao).save(primaryAccount);
+        verify(primaryAccountDao).save(storedPrimaryAccount);
         verify(primaryTransactionDao).save(any(PrimaryTransaction.class));
     }
 
@@ -147,6 +192,8 @@ public class TransactionServiceImplTest {
     public void betweenAccountsMovesValidAmount() throws Exception {
         transactionService.betweenAccountsTransfer("Savings", "Primary", "50", primaryAccount, savingsAccount);
 
+        assertEquals(0, new BigDecimal("150.00").compareTo(storedPrimaryAccount.getAccountBalance()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(storedSavingsAccount.getAccountBalance()));
         assertEquals(0, new BigDecimal("150.00").compareTo(primaryAccount.getAccountBalance()));
         assertEquals(0, BigDecimal.ZERO.compareTo(savingsAccount.getAccountBalance()));
         verify(savingsTransactionDao, times(1)).save(any(SavingsTransaction.class));
@@ -170,6 +217,15 @@ public class TransactionServiceImplTest {
     private void assertBalancesUnchanged() {
         assertEquals(0, new BigDecimal("100.00").compareTo(primaryAccount.getAccountBalance()));
         assertEquals(0, new BigDecimal("50.00").compareTo(savingsAccount.getAccountBalance()));
-        verifyZeroInteractions(primaryAccountDao, savingsAccountDao, primaryTransactionDao, savingsTransactionDao);
+        assertEquals(0, new BigDecimal("100.00").compareTo(storedPrimaryAccount.getAccountBalance()));
+        assertEquals(0, new BigDecimal("50.00").compareTo(storedSavingsAccount.getAccountBalance()));
+        verifyNothingSaved();
+    }
+
+    private void verifyNothingSaved() {
+        verify(primaryAccountDao, never()).save(any(PrimaryAccount.class));
+        verify(savingsAccountDao, never()).save(any(SavingsAccount.class));
+        verify(primaryTransactionDao, never()).save(any(PrimaryTransaction.class));
+        verify(savingsTransactionDao, never()).save(any(SavingsTransaction.class));
     }
 }
