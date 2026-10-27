@@ -132,6 +132,18 @@ public class AccountServiceImplTest {
     }
 
     @Test
+    public void partialDepositReducesAPreExistingOverdraft() {
+        when(savingsAccountDao.findBalanceById(2L)).thenReturn(new BigDecimal("-150.00"));
+        when(savingsAccountDao.compareAndSetBalance(2L, new BigDecimal("-150.00"), new BigDecimal("-100.00"))).thenReturn(1);
+
+        service.deposit("Savings", new BigDecimal("50"), principal);
+
+        ArgumentCaptor<SavingsTransaction> tx = ArgumentCaptor.forClass(SavingsTransaction.class);
+        verify(transactionService).saveSavingsDepositTransaction(tx.capture());
+        assertEquals(new BigDecimal("-100.00"), tx.getValue().getAvailableBalance());
+    }
+
+    @Test
     public void withdrawRechecksFundsAfterLosingARace() {
         when(primaryAccountDao.findBalanceById(1L))
             .thenReturn(new BigDecimal("100.00"))

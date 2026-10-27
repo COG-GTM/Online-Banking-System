@@ -25,7 +25,7 @@ final class BalanceUpdates {
                 throw new IllegalStateException("Account not found.");
             }
             BigDecimal updated = current.add(delta);
-            if (updated.signum() < 0) {
+            if (delta.signum() < 0 && updated.signum() < 0) {
                 throw new InsufficientFundsException();
             }
             if (swap.compareAndSet(accountId, current, updated) == 1) {
