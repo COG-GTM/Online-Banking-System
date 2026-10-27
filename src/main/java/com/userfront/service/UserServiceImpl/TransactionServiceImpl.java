@@ -136,10 +136,6 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientDao.findByIdAndUser_Username(recipientId, username);
     }
 
-    public Recipient findRecipientByName(String recipientName, String username) {
-        return recipientDao.findFirstByNameAndUser_Username(recipientName, username);
-    }
-
     @Transactional
     public void deleteRecipientById(Long recipientId, String username) {
         recipientDao.deleteByIdAndUser_Username(recipientId, username);

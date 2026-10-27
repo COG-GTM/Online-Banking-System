@@ -106,9 +106,9 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
-    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
+    public String toSomeoneElsePost(@RequestParam(value = "recipientId") Long recipientId, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName, principal.getName());
+        Recipient recipient = transactionService.findRecipientById(recipientId, principal.getName());
         if (recipient == null) {
             return "redirect:/transfer/toSomeoneElse";
         }
