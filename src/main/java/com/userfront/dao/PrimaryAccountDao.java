@@ -19,6 +19,10 @@ public interface PrimaryAccountDao extends CrudRepository<PrimaryAccount,Long> {
     @Query("update PrimaryAccount a set a.accountBalance = :updated where a.id = :id and a.accountBalance = :expected")
     int compareAndSetBalance(@Param("id") Long id, @Param("expected") BigDecimal expected, @Param("updated") BigDecimal updated);
 
+    @Modifying
+    @Query("update PrimaryAccount a set a.accountBalance = a.accountBalance + :amount where a.id = :id")
+    int creditBalance(@Param("id") Long id, @Param("amount") BigDecimal amount);
+
     @Query("select a.accountBalance from PrimaryAccount a where a.id = :id")
     BigDecimal findBalanceById(@Param("id") Long id);
 }

@@ -3,7 +3,6 @@ package com.userfront.service.UserServiceImpl;
 import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.Date;
-import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,8 +16,6 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
 import com.userfront.service.AccountService;
-import com.userfront.service.InsufficientFundsException;
-import com.userfront.service.InvalidTransactionException;
 import com.userfront.service.TransactionAmount;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
@@ -27,8 +24,6 @@ import com.userfront.service.UserService;
 public class AccountServiceImpl implements AccountService {
 	
 	private static int nextAccountNumber = 11223145;
-
-    private static final int MAX_BALANCE_UPDATE_ATTEMPTS = 10;
 
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
@@ -67,20 +62,20 @@ public class AccountServiceImpl implements AccountService {
         BigDecimal value = TransactionAmount.requireValid(amount);
         User user = userService.findByUsername(principal.getName());
 
-        if (isPrimary(accountType)) {
+        if (BalanceUpdates.isPrimary(accountType)) {
             PrimaryAccount primaryAccount = user.getPrimaryAccount();
-            BigDecimal balance = adjustBalance(primaryAccountDao::findBalanceById, primaryAccountDao::compareAndSetBalance, primaryAccount.getId(), value);
+            BigDecimal balance = BalanceUpdates.adjust(primaryAccountDao::findBalanceById, primaryAccountDao::compareAndSetBalance, primaryAccount.getId(), value);
 
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(new Date(), "Deposit to Primary Account", "Account", "Finished", value.doubleValue(), balance, primaryAccount);
             transactionService.savePrimaryDepositTransaction(primaryTransaction);
-        } else if (isSavings(accountType)) {
+        } else if (BalanceUpdates.isSavings(accountType)) {
             SavingsAccount savingsAccount = user.getSavingsAccount();
-            BigDecimal balance = adjustBalance(savingsAccountDao::findBalanceById, savingsAccountDao::compareAndSetBalance, savingsAccount.getId(), value);
+            BigDecimal balance = BalanceUpdates.adjust(savingsAccountDao::findBalanceById, savingsAccountDao::compareAndSetBalance, savingsAccount.getId(), value);
 
             SavingsTransaction savingsTransaction = new SavingsTransaction(new Date(), "Deposit to savings Account", "Account", "Finished", value.doubleValue(), balance, savingsAccount);
             transactionService.saveSavingsDepositTransaction(savingsTransaction);
         } else {
-            throw unknownAccountType();
+            throw BalanceUpdates.unknownAccountType();
         }
     }
 
@@ -89,60 +84,21 @@ public class AccountServiceImpl implements AccountService {
         BigDecimal value = TransactionAmount.requireValid(amount);
         User user = userService.findByUsername(principal.getName());
 
-        if (isPrimary(accountType)) {
+        if (BalanceUpdates.isPrimary(accountType)) {
             PrimaryAccount primaryAccount = user.getPrimaryAccount();
-            BigDecimal balance = adjustBalance(primaryAccountDao::findBalanceById, primaryAccountDao::compareAndSetBalance, primaryAccount.getId(), value.negate());
+            BigDecimal balance = BalanceUpdates.adjust(primaryAccountDao::findBalanceById, primaryAccountDao::compareAndSetBalance, primaryAccount.getId(), value.negate());
 
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(new Date(), "Withdraw from Primary Account", "Account", "Finished", value.doubleValue(), balance, primaryAccount);
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
-        } else if (isSavings(accountType)) {
+        } else if (BalanceUpdates.isSavings(accountType)) {
             SavingsAccount savingsAccount = user.getSavingsAccount();
-            BigDecimal balance = adjustBalance(savingsAccountDao::findBalanceById, savingsAccountDao::compareAndSetBalance, savingsAccount.getId(), value.negate());
+            BigDecimal balance = BalanceUpdates.adjust(savingsAccountDao::findBalanceById, savingsAccountDao::compareAndSetBalance, savingsAccount.getId(), value.negate());
 
             SavingsTransaction savingsTransaction = new SavingsTransaction(new Date(), "Withdraw from savings Account", "Account", "Finished", value.doubleValue(), balance, savingsAccount);
             transactionService.saveSavingsWithdrawTransaction(savingsTransaction);
         } else {
-            throw unknownAccountType();
+            throw BalanceUpdates.unknownAccountType();
         }
-    }
-
-    /*
-     * Compare-and-set on the balance column: each UPDATE is atomic on its own (the MySQL5Dialect
-     * tables are MyISAM, so there are no row locks), it can never drive the balance negative, and
-     * the balance it writes is exactly the one recorded in this operation's ledger row.
-     */
-    private static BigDecimal adjustBalance(Function<Long, BigDecimal> balanceOf, BalanceSwap swap, Long accountId, BigDecimal delta) {
-        for (int attempt = 0; attempt < MAX_BALANCE_UPDATE_ATTEMPTS; attempt++) {
-            BigDecimal current = balanceOf.apply(accountId);
-            if (current == null) {
-                throw new IllegalStateException("Account not found.");
-            }
-            BigDecimal updated = current.add(delta);
-            if (updated.signum() < 0) {
-                throw new InsufficientFundsException();
-            }
-            if (swap.compareAndSet(accountId, current, updated) == 1) {
-                return updated;
-            }
-        }
-        throw new InvalidTransactionException("The account is busy. Please try again.");
-    }
-
-    @FunctionalInterface
-    private interface BalanceSwap {
-        int compareAndSet(Long accountId, BigDecimal expected, BigDecimal updated);
-    }
-
-    private static boolean isPrimary(String accountType) {
-        return "Primary".equalsIgnoreCase(accountType);
-    }
-
-    private static boolean isSavings(String accountType) {
-        return "Savings".equalsIgnoreCase(accountType);
-    }
-
-    private static InvalidTransactionException unknownAccountType() {
-        return new InvalidTransactionException("Please select the Primary or Savings account.");
     }
 
     private int accountGen() {
