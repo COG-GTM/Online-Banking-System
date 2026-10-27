@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.userfront.dao.AppointmentDao;
 import com.userfront.domain.Appointment;
+import com.userfront.service.AppointmentNotFoundException;
 import com.userfront.service.AppointmentService;
 
 @Service
@@ -24,11 +25,14 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     public Appointment findAppointment(Long id) {
-        return null;
+        return appointmentDao.findById(id).orElse(null);
     }
 
     public void confirmAppointment(Long id) {
         Appointment appointment = findAppointment(id);
+        if (appointment == null) {
+            throw new AppointmentNotFoundException(id);
+        }
         appointment.setConfirmed(true);
         appointmentDao.save(appointment);
     }
