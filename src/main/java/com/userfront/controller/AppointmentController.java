@@ -8,6 +8,8 @@ import java.util.Date;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -27,6 +29,11 @@ public class AppointmentController {
     @Autowired
     private UserService userService;
 
+    @InitBinder("appointment")
+    public void initAppointmentBinder(WebDataBinder binder) {
+        binder.setAllowedFields("location", "description");
+    }
+
     @RequestMapping(value = "/create",method = RequestMethod.GET)
     public String createAppointment(Model model) {
         Appointment appointment = new Appointment();
@@ -37,7 +44,12 @@ public class AppointmentController {
     }
 
     @RequestMapping(value = "/create",method = RequestMethod.POST)
-    public String createAppointmentPost(@ModelAttribute("appointment") Appointment appointment, @ModelAttribute("dateString") String date, Model model, Principal principal) throws ParseException {
+    public String createAppointmentPost(@ModelAttribute("appointment") Appointment form, @ModelAttribute("dateString") String date, Model model, Principal principal) throws ParseException {
+
+        Appointment appointment = new Appointment();
+        appointment.setLocation(form.getLocation());
+        appointment.setDescription(form.getDescription());
+        appointment.setConfirmed(false);
 
         SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd hh:mm");
         Date d1 = format1.parse( date );
