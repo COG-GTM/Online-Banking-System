@@ -86,7 +86,7 @@
         });
 
         $('body').append(modal);
-        modal.modal('show');
+        modal.modal({backdrop: 'static', keyboard: true, show: true});
     };
 
 }(jQuery));
