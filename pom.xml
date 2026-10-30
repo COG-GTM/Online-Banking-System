@@ -22,6 +22,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
+		<dom4j2.version>2.1.4</dom4j2.version>
 	</properties>
 
 	<dependencies>
@@ -48,6 +49,19 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <exclusions>
+                <!-- dom4j:dom4j 1.6.1 is unmaintained (CVE-2018-1000632, CVE-2020-10683); use org.dom4j instead -->
+                <exclusion>
+                    <groupId>dom4j</groupId>
+                    <artifactId>dom4j</artifactId>
+                </exclusion>
+            </exclusions>
+         </dependency>
+
+         <dependency>
+             <groupId>org.dom4j</groupId>
+             <artifactId>dom4j</artifactId>
+             <version>${dom4j2.version}</version>
          </dependency>
 
 
