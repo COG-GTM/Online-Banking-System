@@ -5,6 +5,7 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -127,7 +128,16 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         if (!httpScheme || !bareOrigin || origin.contains("*")) {
             throw new IllegalStateException("app.cors.allowed-origins entries must be explicit http(s)://host[:port] origins: " + origin);
         }
-        return origin;
+        return serializeOrigin(uri);
+    }
+
+    /** Serializes like a browser Origin header: lower case, no empty or default port. */
+    private static String serializeOrigin(URI uri) {
+        String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
+        int defaultPort = "https".equals(scheme) ? 443 : 80;
+        int port = uri.getPort();
+        String origin = scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT);
+        return (port == -1 || port == defaultPort) ? origin : origin + ":" + port;
     }
 
     @Autowired
