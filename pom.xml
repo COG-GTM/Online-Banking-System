@@ -22,6 +22,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
+		<!-- CVE-2017-18640 (alias expansion DoS): Boot 2.0.0.M7 manages snakeyaml 1.19 -->
+		<snakeyaml.version>1.33</snakeyaml.version>
 	</properties>
 
 	<dependencies>
