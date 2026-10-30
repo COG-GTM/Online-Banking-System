@@ -22,6 +22,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
+		<!-- CVE-2026-54515: overrides the jackson-bom version managed by the Boot parent -->
+		<jackson.version>2.18.9</jackson.version>
 	</properties>
 
 	<dependencies>
