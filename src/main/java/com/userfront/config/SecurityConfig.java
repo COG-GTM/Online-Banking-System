@@ -30,7 +30,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private static final String SALT = "salt"; // Salt should be protected carefully
 
     @Bean
-    public BCryptPasswordEncoder passwordEncoder() {
+    public static BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12, new SecureRandom(SALT.getBytes()));
     }
 
