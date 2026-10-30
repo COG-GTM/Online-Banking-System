@@ -10,7 +10,8 @@ import jakarta.persistence.*;
 @Table(name="user_role")
 public class UserRole {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "userRoleIdGenerator")
+    @SequenceGenerator(name = "userRoleIdGenerator", sequenceName = "hibernate_sequence", allocationSize = 1)
     private long userRoleId;
 
     public UserRole(User user, Role role) {
