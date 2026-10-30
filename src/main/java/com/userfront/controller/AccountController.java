@@ -18,6 +18,7 @@ import com.userfront.domain.User;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionDeclinedException;
 import com.userfront.service.TransactionService;
+import com.userfront.service.UserServiceImpl.AccountLedger;
 import com.userfront.service.UserService;
 
 @Controller
@@ -69,7 +70,7 @@ public class AccountController {
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
     public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
         try {
-            accountService.deposit(accountType, Double.parseDouble(amount), principal);
+            accountService.deposit(accountType, AccountLedger.validAmount(amount).doubleValue(), principal);
         } catch (NumberFormatException e) {
             model.addAttribute("errorMessage", "Enter a valid amount.");
             return "deposit";
@@ -92,7 +93,7 @@ public class AccountController {
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
     public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
         try {
-            accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+            accountService.withdraw(accountType, AccountLedger.validAmount(amount).doubleValue(), principal);
         } catch (NumberFormatException e) {
             model.addAttribute("errorMessage", "Enter a valid amount.");
             return "withdraw";

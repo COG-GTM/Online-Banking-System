@@ -20,7 +20,7 @@ public class AccountLedgerTest {
 
     @Test
     public void rejectsNonPositiveMalformedAndFractionalCentAmounts() {
-        for (String raw : new String[] {"0", "-5", "abc", "", "1.005", "NaN", null}) {
+        for (String raw : new String[] {"0", "-5", "abc", "", "1.005", "1.0000000000000001", "NaN", null}) {
             try {
                 AccountLedger.validAmount(raw);
                 fail("expected decline for " + raw);
