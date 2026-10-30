@@ -18,7 +18,7 @@ import com.userfront.service.LoginAttemptService;
 
 /**
  * Rejects sign-in submissions for a locked account or a throttled client IP before the
- * credentials are checked. The client IP is the socket address, not X-Forwarded-For, so it
+ * credentials are checked, and holds an in-flight slot while they are. The client IP is the socket address, not X-Forwarded-For, so it
  * cannot be spoofed per request.
  */
 public class BruteForceProtectionFilter extends OncePerRequestFilter {
@@ -42,11 +42,17 @@ public class BruteForceProtectionFilter extends OncePerRequestFilter {
         if (loginRequestMatcher.matches(request)) {
             String username = request.getParameter(UsernamePasswordAuthenticationFilter.SPRING_SECURITY_FORM_USERNAME_KEY);
             String ip = request.getRemoteAddr();
-            if (loginAttemptService.isBlocked(username, ip)) {
+            if (!loginAttemptService.tryBeginAttempt(username, ip)) {
                 LOG.warn("Rejected sign-in attempt from {}: too many failed attempts", ip);
                 response.sendRedirect(request.getContextPath() + lockedRedirectUrl);
                 return;
             }
+            try {
+                chain.doFilter(request, response);
+            } finally {
+                loginAttemptService.endAttempt(username, ip);
+            }
+            return;
         }
         chain.doFilter(request, response);
     }

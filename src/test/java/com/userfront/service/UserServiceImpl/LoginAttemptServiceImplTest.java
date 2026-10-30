@@ -101,6 +101,48 @@ public class LoginAttemptServiceImplTest {
         assertTrue(service.isBlocked("", ""));
     }
 
+    @Test
+    public void inFlightAttemptsCountTowardTheAccountLimit() {
+        fail("alice", "10.0.0.1", 1);
+        assertTrue(service.tryBeginAttempt("alice", "10.0.0.2"));
+        assertTrue(service.tryBeginAttempt("alice", "10.0.0.3"));
+
+        assertFalse(service.tryBeginAttempt("alice", "10.0.0.4"));
+        assertTrue(service.tryBeginAttempt("bob", "10.0.0.4"));
+    }
+
+    @Test
+    public void inFlightAttemptsCountTowardTheIpLimit() {
+        for (int i = 0; i < 5; i++) {
+            assertTrue(service.tryBeginAttempt("user" + i, "10.0.0.1"));
+        }
+
+        assertFalse(service.tryBeginAttempt("user5", "10.0.0.1"));
+    }
+
+    @Test
+    public void endingAnAttemptFreesItsSlot() {
+        assertTrue(service.tryBeginAttempt("alice", "10.0.0.1"));
+        assertTrue(service.tryBeginAttempt("alice", "10.0.0.1"));
+        assertTrue(service.tryBeginAttempt("alice", "10.0.0.1"));
+        assertFalse(service.tryBeginAttempt("alice", "10.0.0.1"));
+
+        service.endAttempt("alice", "10.0.0.1");
+        assertTrue(service.tryBeginAttempt("alice", "10.0.0.1"));
+    }
+
+    @Test
+    public void failedAttemptKeepsCountingAfterItEnds() {
+        for (int i = 0; i < 3; i++) {
+            assertTrue(service.tryBeginAttempt("alice", "10.0.0.1"));
+            service.loginFailed("alice", "10.0.0.1");
+            service.endAttempt("alice", "10.0.0.1");
+        }
+
+        assertFalse(service.tryBeginAttempt("alice", "10.0.0.1"));
+        assertTrue(service.isBlocked("alice", "10.0.0.1"));
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void rejectsNonPositiveLimits() {
         new LoginAttemptServiceImpl(0, 5, 15, clock);

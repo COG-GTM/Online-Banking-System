@@ -1,7 +1,9 @@
 package com.userfront.service.UserServiceImpl;
 
 import java.time.Clock;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -17,6 +19,7 @@ import com.userfront.service.LoginAttemptService;
  * accumulates {@code maxAttemptsPerUser} failures (from any IP) and an IP is throttled once it
  * accumulates {@code maxAttemptsPerIp} failures (against any account). Each failure re-arms a
  * {@code lockoutMinutes} window; counters expire once that window passes without new failures.
+ * Sign-ins still being checked count toward the limits, so parallel guesses cannot overshoot them.
  */
 @Service
 public class LoginAttemptServiceImpl implements LoginAttemptService {
@@ -24,6 +27,7 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
     private static final long PURGE_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(1);
 
     private final ConcurrentMap<String, Attempts> attempts = new ConcurrentHashMap<>();
+    private final Map<String, Integer> inFlight = new HashMap<>();
     private final int maxAttemptsPerUser;
     private final int maxAttemptsPerIp;
     private final long lockoutMillis;
@@ -48,7 +52,28 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
     }
 
     @Override
-    public void loginFailed(String username, String ip) {
+    public synchronized boolean tryBeginAttempt(String username, String ip) {
+        String user = userKey(username);
+        String client = ipKey(ip);
+        long now = clock.millis();
+        purgeExpiredIfDue(now);
+        if (countOf(user, now) + inFlightOf(user) >= maxAttemptsPerUser
+                || countOf(client, now) + inFlightOf(client) >= maxAttemptsPerIp) {
+            return false;
+        }
+        inFlight.merge(user, 1, Integer::sum);
+        inFlight.merge(client, 1, Integer::sum);
+        return true;
+    }
+
+    @Override
+    public synchronized void endAttempt(String username, String ip) {
+        inFlight.computeIfPresent(userKey(username), (k, n) -> n > 1 ? n - 1 : null);
+        inFlight.computeIfPresent(ipKey(ip), (k, n) -> n > 1 ? n - 1 : null);
+    }
+
+    @Override
+    public synchronized void loginFailed(String username, String ip) {
         long now = clock.millis();
         purgeExpiredIfDue(now);
         register(userKey(username), now);
@@ -56,16 +81,21 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
     }
 
     @Override
-    public void loginSucceeded(String username, String ip) {
+    public synchronized void loginSucceeded(String username, String ip) {
         attempts.remove(userKey(username));
     }
 
     @Override
-    public boolean isBlocked(String username, String ip) {
+    public synchronized boolean isBlocked(String username, String ip) {
         long now = clock.millis();
         purgeExpiredIfDue(now);
         return countOf(userKey(username), now) >= maxAttemptsPerUser
                 || countOf(ipKey(ip), now) >= maxAttemptsPerIp;
+    }
+
+    private int inFlightOf(String key) {
+        Integer n = inFlight.get(key);
+        return n == null ? 0 : n;
     }
 
     private void register(String key, long now) {

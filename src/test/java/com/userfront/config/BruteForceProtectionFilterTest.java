@@ -1,10 +1,17 @@
 package com.userfront.config;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import java.io.IOException;
 import java.time.Clock;
+
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -86,6 +93,31 @@ public class BruteForceProtectionFilterTest {
         filter.doFilter(request, response, new MockFilterChain());
 
         assertEquals("/index?locked", response.getRedirectedUrl());
+    }
+
+    @Test
+    public void parallelGuessesBeyondTheLimitAreRejectedWhileOthersAreInFlight() throws Exception {
+        final MockHttpServletResponse[] nested = new MockHttpServletResponse[1];
+        final int[] reached = new int[1];
+        FilterChain slowCheck = new FilterChain() {
+            @Override
+            public void doFilter(ServletRequest request, ServletResponse response) throws IOException, ServletException {
+                reached[0]++;
+                if (reached[0] < 3) {
+                    filter.doFilter(loginRequest("alice", "10.0.0." + reached[0]), new MockHttpServletResponse(), this);
+                } else {
+                    nested[0] = new MockHttpServletResponse();
+                    filter.doFilter(loginRequest("alice", "10.0.0.9"), nested[0], new MockFilterChain());
+                }
+            }
+        };
+
+        filter.doFilter(loginRequest("alice", "10.0.0.0"), new MockHttpServletResponse(), slowCheck);
+
+        assertEquals(3, reached[0]);
+        assertEquals("/index?locked", nested[0].getRedirectedUrl());
+        assertFalse(loginAttemptService.isBlocked("alice", "10.0.0.9"));
+        assertNotNull(submitLogin("alice", "10.0.0.9").getRequest());
     }
 
     private MockFilterChain submitLogin(String username, String ip) throws Exception {
