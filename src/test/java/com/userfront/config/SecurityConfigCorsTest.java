@@ -155,6 +155,21 @@ public class SecurityConfigCorsTest {
     }
 
     @Test
+    public void parseAllowedOriginsSerializesLikeBrowserOrigins() {
+        assertEquals(java.util.Arrays.asList(TRUSTED, TRUSTED, TRUSTED, "http://localhost", "http://localhost:4200"),
+                SecurityConfig.parseAllowedOrigins(TRUSTED + ":443, " + TRUSTED + ":, HTTPS://Bank.Example.com,"
+                        + " http://localhost:80, http://localhost:4200"));
+    }
+
+    @Test
+    public void defaultPortEntryStillMatchesBrowserOrigin() throws Exception {
+        MockHttpServletResponse response = perform(mockMvc(TRUSTED + ":443"), preflight(TRUSTED));
+
+        assertEquals(200, response.getStatus());
+        assertEquals(TRUSTED, response.getHeader("Access-Control-Allow-Origin"));
+    }
+
+    @Test
     public void wildcardAndMalformedOriginsAreRefused() {
         String[] invalid = {"*", "null", "https://*.example.com", "bank.example.com", "ftp://bank.example.com",
                 "https://bank.example.com/app", "https://user@bank.example.com"};
