@@ -2,6 +2,7 @@ package com.userfront.config;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.persistence.EntityManagerFactory;
@@ -18,7 +19,8 @@ import org.springframework.stereotype.Component;
  * Tables created by the old MySQL5Dialect use MyISAM, which ignores transactions and
  * row locks, so balance updates could neither be serialized nor rolled back. Converts
  * any remaining MyISAM tables in the application schema to InnoDB at startup, after
- * Hibernate has updated the schema and before the web server accepts requests.
+ * Hibernate has updated the schema and before the web server accepts requests, and fails
+ * startup if any table cannot be converted.
  */
 @Component
 public class InnoDbStorageEngineMigration implements InitializingBean {
@@ -45,15 +47,21 @@ public class InnoDbStorageEngineMigration implements InitializingBean {
                 "select table_name from information_schema.tables "
                         + "where table_schema = database() and table_type = 'BASE TABLE' and engine = 'MyISAM'",
                 String.class);
+        List<String> failed = new ArrayList<>();
         for (String table : tables) {
             String sql = "ALTER TABLE `" + table.replace("`", "``") + "` ENGINE=InnoDB";
             try {
                 jdbc.execute(sql);
                 LOG.info("Converted table {} from MyISAM to InnoDB", table);
             } catch (RuntimeException e) {
-                LOG.error("Could not convert table {} to InnoDB; balance updates on it are not transactional. Run manually: {}",
-                        table, sql, e);
+                LOG.error("Could not convert table {} to InnoDB. Run manually: {}", table, sql, e);
+                failed.add(table);
             }
+        }
+        if (!failed.isEmpty()) {
+            throw new IllegalStateException("Refusing to start: tables " + failed
+                    + " are still MyISAM, which ignores transactions and row locks, so balance updates"
+                    + " would not be atomic. Convert them to InnoDB or set userfront.convert-myisam-to-innodb=false.");
         }
     }
 
