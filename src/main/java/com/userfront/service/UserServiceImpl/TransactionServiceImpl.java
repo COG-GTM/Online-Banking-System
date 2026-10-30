@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.userfront.service.RecipientNotFoundException;
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.PrimaryTransactionDao;
 import com.userfront.dao.RecipientDao;
@@ -110,16 +111,34 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientList;
     }
 
-    public Recipient saveRecipient(Recipient recipient) {
+    public Recipient saveRecipient(Recipient submitted, Principal principal) {
+        Recipient recipient;
+        if (submitted.getId() == null) {
+            recipient = new Recipient();
+            recipient.setUser(userService.findByUsername(principal.getName()));
+        } else {
+            recipient = findRecipientById(submitted.getId(), principal);
+        }
+
+        recipient.setName(submitted.getName());
+        recipient.setEmail(submitted.getEmail());
+        recipient.setPhone(submitted.getPhone());
+        recipient.setAccountNumber(submitted.getAccountNumber());
+        recipient.setDescription(submitted.getDescription());
+
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName) {
-        return recipientDao.findByName(recipientName);
+    public void deleteRecipientById(Long recipientId, Principal principal) {
+        recipientDao.delete(findRecipientById(recipientId, principal));
     }
 
-    public void deleteRecipientByName(String recipientName) {
-        recipientDao.deleteByName(recipientName);
+    public Recipient findRecipientById(Long recipientId, Principal principal) {
+        Recipient recipient = recipientDao.findByIdAndUserUsername(recipientId, principal.getName());
+        if (recipient == null) {
+            throw new RecipientNotFoundException();
+        }
+        return recipient;
     }
     
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
