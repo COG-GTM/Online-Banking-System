@@ -22,6 +22,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
+		<thymeleaf.version>3.1.4.RELEASE</thymeleaf.version>
 	</properties>
 
 	<dependencies>
@@ -36,6 +37,13 @@
        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
+            <exclusions>
+                <!-- Java 8 date/time support is built into Thymeleaf 3.1 core -->
+                <exclusion>
+                    <groupId>org.thymeleaf.extras</groupId>
+                    <artifactId>thymeleaf-extras-java8time</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
 
