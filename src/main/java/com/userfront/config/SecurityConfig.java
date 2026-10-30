@@ -2,6 +2,8 @@ package com.userfront.config;
 
 import java.security.SecureRandom;
 
+import jakarta.servlet.DispatcherType;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -32,7 +34,7 @@ public class SecurityConfig {
             "/",
             "/about/**",
             "/contact/**",
-            "/error/**",
+            "/error/*/**",
             "/console/**",
             "/signup"
     };
@@ -41,6 +43,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(requests -> requests
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(PUBLIC_MATCHERS).permitAll()
                         .anyRequest().authenticated())
                 .csrf(csrf -> csrf.disable())
