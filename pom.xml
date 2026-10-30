@@ -22,6 +22,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
+		<!-- CVE-2020-13935: tomcat-embed-websocket < 8.5.57 WebSocket payload-length infinite loop -->
+		<tomcat.version>8.5.57</tomcat.version>
 	</properties>
 
 	<dependencies>
