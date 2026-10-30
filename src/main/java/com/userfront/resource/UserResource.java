@@ -1,6 +1,7 @@
 package com.userfront.resource;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsTransaction;
-import com.userfront.domain.User;
+import com.userfront.resource.dto.UserSummary;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -28,8 +29,10 @@ public class UserResource {
     private TransactionService transactionService;
 
     @RequestMapping(value = "/user/all", method = RequestMethod.GET)
-    public List<User> userList() {
-        return userService.findUserList();
+    public List<UserSummary> userList() {
+        return userService.findUserList().stream()
+                .map(UserSummary::from)
+                .collect(Collectors.toList());
     }
 
     @RequestMapping(value = "/user/primary/transaction", method = RequestMethod.GET)
