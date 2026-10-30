@@ -2,7 +2,10 @@ package com.userfront.dao;
 
 import java.math.BigDecimal;
 
+import javax.persistence.LockModeType;
+
 import com.userfront.domain.PrimaryAccount;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -23,6 +26,7 @@ public interface PrimaryAccountDao extends CrudRepository<PrimaryAccount,Long> {
     @Query("update PrimaryAccount a set a.accountBalance = a.accountBalance + :amount where a.id = :id")
     int creditBalance(@Param("id") Long id, @Param("amount") BigDecimal amount);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a.accountBalance from PrimaryAccount a where a.id = :id")
     BigDecimal findBalanceById(@Param("id") Long id);
 }

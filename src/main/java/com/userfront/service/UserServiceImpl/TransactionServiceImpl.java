@@ -89,6 +89,8 @@ public class TransactionServiceImpl implements TransactionService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(new Date(), "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", value.doubleValue(), balance, primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
         } else if (BalanceUpdates.isSavings(transferFrom) && BalanceUpdates.isPrimary(transferTo)) {
+            // Lock rows in the same order as Primary -> Savings (primary first) so opposing transfers cannot deadlock.
+            primaryAccountDao.findBalanceById(primaryAccount.getId());
             BigDecimal balance = BalanceUpdates.adjust(savingsAccountDao::findBalanceById, savingsAccountDao::compareAndSetBalance, savingsAccount.getId(), value.negate());
             primaryAccountDao.creditBalance(primaryAccount.getId(), value);
 

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,6 +16,7 @@ import java.math.BigDecimal;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -93,6 +95,9 @@ public class TransactionServiceImplTest {
 
         service.betweenAccountsTransfer("Savings", "Primary", new BigDecimal("20.25"), primaryAccount, savingsAccount);
 
+        InOrder lockOrder = inOrder(primaryAccountDao, savingsAccountDao);
+        lockOrder.verify(primaryAccountDao).findBalanceById(1L);
+        lockOrder.verify(savingsAccountDao).findBalanceById(2L);
         verify(primaryAccountDao).creditBalance(1L, new BigDecimal("20.25"));
         ArgumentCaptor<SavingsTransaction> tx = ArgumentCaptor.forClass(SavingsTransaction.class);
         verify(savingsTransactionDao).save(tx.capture());

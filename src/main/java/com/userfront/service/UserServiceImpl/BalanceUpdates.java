@@ -14,9 +14,10 @@ final class BalanceUpdates {
     }
 
     /*
-     * Compare-and-set on the balance column: each UPDATE is atomic on its own (the MySQL5Dialect
-     * tables are MyISAM, so there are no row locks), it can never drive the balance negative, and
-     * the balance it writes is exactly the one recorded in this operation's ledger row.
+     * Compare-and-set on the balance column: the balance is read with SELECT ... FOR UPDATE, so on InnoDB
+     * it is a current (not snapshot) read and the row stays locked until commit; on MyISAM (the
+     * MySQL5Dialect default, no row locks) the conditional UPDATE is still atomic and retried. Either way
+     * the balance can never go negative and the value written is the one recorded in the ledger row.
      */
     static BigDecimal adjust(Function<Long, BigDecimal> balanceOf, BalanceSwap swap, Long accountId, BigDecimal delta) {
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
