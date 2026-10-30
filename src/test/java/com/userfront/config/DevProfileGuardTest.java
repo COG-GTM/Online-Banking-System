@@ -29,6 +29,13 @@ public class DevProfileGuardTest {
         guard.postProcessEnvironment(env("jdbc:mysql://prod-db.bank.internal:3306/OnlineBankingSystem", "dev"), new SpringApplication());
     }
 
+    @Test(expected = IllegalStateException.class)
+    public void devProfileWithJndiDataSourceIsRefused() {
+        MockEnvironment env = env("jdbc:mysql://localhost:3306/OnlineBankingSystem", "dev");
+        env.setProperty("spring.datasource.jndi-name", "java:comp/env/jdbc/bank");
+        guard.postProcessEnvironment(env, new SpringApplication());
+    }
+
     @Test
     public void remoteDatabaseWithoutDevProfileIsNotChecked() {
         guard.postProcessEnvironment(env("jdbc:mysql://prod-db.bank.internal:3306/OnlineBankingSystem"), new SpringApplication());

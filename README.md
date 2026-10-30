@@ -41,4 +41,5 @@ For a disposable local database only, the `dev` profile restores
 `ddl-auto=update` and SQL logging: run with `--spring.profiles.active=dev`
 (or `SPRING_PROFILES_ACTIVE=dev`). Never enable it in production; the app refuses to
 start with `dev` unless `spring.datasource.url` points at localhost, 127.0.0.1, ::1
-or an in-memory H2 database (`config.DevProfileGuard`).
+or an in-memory H2 database and no `spring.datasource.jndi-name` is set
+(`config.DevProfileGuard`).

@@ -32,10 +32,12 @@ public class DevProfileGuard implements EnvironmentPostProcessor, Ordered {
             return;
         }
         String url = environment.getProperty("spring.datasource.url", "");
-        if (!isLocal(url)) {
+        String jndiName = environment.getProperty("spring.datasource.jndi-name", "");
+        if (!jndiName.trim().isEmpty() || !isLocal(url)) {
             throw new IllegalStateException("The '" + DEV_PROFILE + "' profile enables ddl-auto=update and SQL "
                     + "logging and may only be used with a local database (localhost, 127.0.0.1, ::1 or an "
-                    + "in-memory H2 database); spring.datasource.url points elsewhere.");
+                    + "in-memory H2 database) configured through spring.datasource.url, not through "
+                    + "spring.datasource.jndi-name.");
         }
     }
 
