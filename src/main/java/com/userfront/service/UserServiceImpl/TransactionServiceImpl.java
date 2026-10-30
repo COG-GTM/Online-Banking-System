@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.PrimaryTransactionDao;
@@ -20,6 +21,8 @@ import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.service.InsufficientFundsException;
+import com.userfront.service.TransactionDeclinedException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -43,6 +46,9 @@ public class TransactionServiceImpl implements TransactionService {
 	
 	@Autowired
 	private RecipientDao recipientDao;
+
+	@Autowired
+	private AccountLedger accountLedger;
 	
 
 	public List<PrimaryTransaction> findPrimaryTransactionList(String username){
@@ -75,29 +81,40 @@ public class TransactionServiceImpl implements TransactionService {
         savingsTransactionDao.save(savingsTransaction);
     }
     
+    @Transactional(noRollbackFor = TransactionDeclinedException.class)
     public void betweenAccountsTransfer(String transferFrom, String transferTo, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception {
-        if (transferFrom.equalsIgnoreCase("Primary") && transferTo.equalsIgnoreCase("Savings")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(new BigDecimal(amount)));
-            primaryAccountDao.save(primaryAccount);
-            savingsAccountDao.save(savingsAccount);
+        if ("Primary".equalsIgnoreCase(transferFrom) && "Savings".equalsIgnoreCase(transferTo)) {
+            BigDecimal value = AccountLedger.validAmount(amount);
+            boolean debited = accountLedger.debit(primaryAccount, value);
+            if (debited) {
+                accountLedger.credit(savingsAccount, value);
+            }
+            primaryAccount = accountLedger.reload(primaryAccount);
 
             Date date = new Date();
 
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", debited ? "Finished" : "Declined", value.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
-        } else if (transferFrom.equalsIgnoreCase("Savings") && transferTo.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            primaryAccountDao.save(primaryAccount);
-            savingsAccountDao.save(savingsAccount);
+            if (!debited) {
+                throw new InsufficientFundsException();
+            }
+        } else if ("Savings".equalsIgnoreCase(transferFrom) && "Primary".equalsIgnoreCase(transferTo)) {
+            BigDecimal value = AccountLedger.validAmount(amount);
+            boolean debited = accountLedger.debit(savingsAccount, value);
+            if (debited) {
+                accountLedger.credit(primaryAccount, value);
+            }
+            savingsAccount = accountLedger.reload(savingsAccount);
 
             Date date = new Date();
 
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", debited ? "Finished" : "Declined", value.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
             savingsTransactionDao.save(savingsTransaction);
+            if (!debited) {
+                throw new InsufficientFundsException();
+            }
         } else {
-            throw new Exception("Invalid Transfer");
+            throw new TransactionDeclinedException("Invalid Transfer: choose two different accounts.");
         }
     }
     
@@ -122,23 +139,39 @@ public class TransactionServiceImpl implements TransactionService {
         recipientDao.deleteByName(recipientName);
     }
     
+    @Transactional(noRollbackFor = TransactionDeclinedException.class)
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
-        if (accountType.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            primaryAccountDao.save(primaryAccount);
+        if (recipient == null) {
+            throw new TransactionDeclinedException("Select a recipient.");
+        }
+        String recipientName = recipient.getName();
+
+        if ("Primary".equalsIgnoreCase(accountType)) {
+            BigDecimal value = AccountLedger.validAmount(amount);
+            boolean debited = accountLedger.debit(primaryAccount, value);
+            primaryAccount = accountLedger.reload(primaryAccount);
 
             Date date = new Date();
 
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipientName, "Transfer", debited ? "Finished" : "Declined", value.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
-        } else if (accountType.equalsIgnoreCase("Savings")) {
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            savingsAccountDao.save(savingsAccount);
+            if (!debited) {
+                throw new InsufficientFundsException();
+            }
+        } else if ("Savings".equalsIgnoreCase(accountType)) {
+            BigDecimal value = AccountLedger.validAmount(amount);
+            boolean debited = accountLedger.debit(savingsAccount, value);
+            savingsAccount = accountLedger.reload(savingsAccount);
 
             Date date = new Date();
 
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipientName, "Transfer", debited ? "Finished" : "Declined", value.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
             savingsTransactionDao.save(savingsTransaction);
+            if (!debited) {
+                throw new InsufficientFundsException();
+            }
+        } else {
+            throw new TransactionDeclinedException("Select an account.");
         }
     }
 }
