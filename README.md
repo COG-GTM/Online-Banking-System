@@ -26,6 +26,6 @@ Online banking system detail diagram
 
 HTTPS is required by default: every request is redirected to HTTPS, HSTS is sent, and the session and remember-me cookies are marked `Secure`.
 
-- **TLS at a reverse proxy / load balancer:** have the proxy set `X-Forwarded-Proto` (and `X-Forwarded-For`); `server.use-forward-headers=true` makes the app treat those requests as secure.
+- **TLS at a reverse proxy / load balancer:** have the proxy set `X-Forwarded-Proto` (and `X-Forwarded-For`); `server.use-forward-headers=true` makes the app treat those requests as secure. Only loopback addresses are trusted to send these headers by default; set `SERVER_TOMCAT_INTERNAL_PROXIES` to a regex matching your proxy's address (e.g. `10\.0\.0\.\d{1,3}`), and keep the app port unreachable except through the proxy.
 - **TLS in the app:** provide a keystore through the environment, e.g. `SERVER_SSL_ENABLED=true SERVER_SSL_KEY_STORE=file:/path/keystore.p12 SERVER_SSL_KEY_STORE_PASSWORD=... SERVER_SSL_KEY_STORE_TYPE=PKCS12 SERVER_PORT=8443`.
 - **Local plain-HTTP development:** run with `-Dspring.profiles.active=dev` (`application-dev.properties` sets `app.security.require-ssl=false`). Never enable this profile in a deployed environment.
