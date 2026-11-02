@@ -73,8 +73,8 @@ public class AccountServiceImpl implements AccountService {
 
         if ("Primary".equalsIgnoreCase(accountType)) {
             PrimaryAccount primaryAccount = lockForUpdate(user.getPrimaryAccount());
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(validAmount));
-            primaryAccountDao.save(primaryAccount);
+            primaryAccountDao.credit(primaryAccount.getId(), validAmount);
+            entityManager.refresh(primaryAccount);
 
             Date date = new Date();
 
@@ -83,8 +83,8 @@ public class AccountServiceImpl implements AccountService {
 
         } else if ("Savings".equalsIgnoreCase(accountType)) {
             SavingsAccount savingsAccount = lockForUpdate(user.getSavingsAccount());
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(validAmount));
-            savingsAccountDao.save(savingsAccount);
+            savingsAccountDao.credit(savingsAccount.getId(), validAmount);
+            entityManager.refresh(savingsAccount);
 
             Date date = new Date();
             SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Deposit to savings Account", "Account", "Finished", validAmount.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
@@ -101,8 +101,11 @@ public class AccountServiceImpl implements AccountService {
 
         if ("Primary".equalsIgnoreCase(accountType)) {
             PrimaryAccount primaryAccount = lockForUpdate(user.getPrimaryAccount());
-            primaryAccount.setAccountBalance(debit(primaryAccount.getAccountBalance(), validAmount));
-            primaryAccountDao.save(primaryAccount);
+            requireSufficientFunds(primaryAccount.getAccountBalance(), validAmount);
+            if (primaryAccountDao.debitIfSufficient(primaryAccount.getId(), validAmount) != 1) {
+                throw insufficientFunds(primaryAccount.getAccountBalance());
+            }
+            entityManager.refresh(primaryAccount);
 
             Date date = new Date();
 
@@ -110,8 +113,11 @@ public class AccountServiceImpl implements AccountService {
             transactionService.savePrimaryWithdrawTransaction(primaryTransaction);
         } else if ("Savings".equalsIgnoreCase(accountType)) {
             SavingsAccount savingsAccount = lockForUpdate(user.getSavingsAccount());
-            savingsAccount.setAccountBalance(debit(savingsAccount.getAccountBalance(), validAmount));
-            savingsAccountDao.save(savingsAccount);
+            requireSufficientFunds(savingsAccount.getAccountBalance(), validAmount);
+            if (savingsAccountDao.debitIfSufficient(savingsAccount.getId(), validAmount) != 1) {
+                throw insufficientFunds(savingsAccount.getAccountBalance());
+            }
+            entityManager.refresh(savingsAccount);
 
             Date date = new Date();
             SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Withdraw from savings Account", "Account", "Finished", validAmount.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
@@ -122,8 +128,9 @@ public class AccountServiceImpl implements AccountService {
     }
 
     /**
-     * Re-reads the account with SELECT ... FOR UPDATE so the balance used for the
-     * read-modify-write is current and concurrent updates on the row wait for this transaction.
+     * Re-reads the account with SELECT ... FOR UPDATE so concurrent updates on the row wait for this
+     * transaction. The balance change itself is a single conditional UPDATE, so funds are enforced
+     * atomically even where row locks are not honoured (e.g. legacy MyISAM tables).
      */
     private <T> T lockForUpdate(T account) {
         if (account == null) {
@@ -133,12 +140,14 @@ public class AccountServiceImpl implements AccountService {
         return account;
     }
 
-    private static BigDecimal debit(BigDecimal balance, BigDecimal amount) {
-        BigDecimal newBalance = balance.subtract(amount);
-        if (newBalance.signum() < 0) {
-            throw new InvalidTransactionException("Insufficient funds: the available balance is $" + balance.setScale(2, RoundingMode.HALF_UP).toPlainString() + ".");
+    private static void requireSufficientFunds(BigDecimal balance, BigDecimal amount) {
+        if (balance.compareTo(amount) < 0) {
+            throw insufficientFunds(balance);
         }
-        return newBalance;
+    }
+
+    private static InvalidTransactionException insufficientFunds(BigDecimal balance) {
+        return new InvalidTransactionException("Insufficient funds: the available balance is $" + balance.setScale(2, RoundingMode.HALF_UP).toPlainString() + ".");
     }
 
     private int accountGen() {

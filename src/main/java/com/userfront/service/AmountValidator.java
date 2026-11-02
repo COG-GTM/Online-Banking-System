@@ -31,7 +31,7 @@ public final class AmountValidator {
         if (amount.signum() <= 0) {
             throw new InvalidTransactionException("Amount must be greater than zero.");
         }
-        if (amount.stripTrailingZeros().scale() > MAX_SCALE) {
+        if (amount.scale() > MAX_SCALE) {
             throw new InvalidTransactionException("Amount must have at most two decimal places.");
         }
         if (amount.compareTo(MAX_AMOUNT) > 0) {

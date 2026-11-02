@@ -35,7 +35,7 @@ public class AmountValidatorTest {
     public void requireValidChecksBigDecimalsPassedDirectlyToTheService() {
         assertEquals(new BigDecimal("1000.00"), AmountValidator.requireValid(new BigDecimal("1E+3")));
         BigDecimal[] rejected = {null, new BigDecimal("-1"), BigDecimal.ZERO, new BigDecimal("0.001"),
-                new BigDecimal("1E+308")};
+                new BigDecimal("1.000"), new BigDecimal("1E+308")};
         for (BigDecimal amount : rejected) {
             try {
                 AmountValidator.requireValid(amount);

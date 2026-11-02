@@ -3,6 +3,7 @@ package com.userfront.service.UserServiceImpl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,8 +62,10 @@ public class AccountServiceImplTest {
     @Before
     public void setUp() {
         primaryAccount = new PrimaryAccount();
+        primaryAccount.setId(1L);
         primaryAccount.setAccountBalance(new BigDecimal("10.00"));
         savingsAccount = new SavingsAccount();
+        savingsAccount.setId(2L);
         savingsAccount.setAccountBalance(new BigDecimal("10.00"));
         User user = new User();
         user.setPrimaryAccount(primaryAccount);
@@ -75,20 +78,31 @@ public class AccountServiceImplTest {
         accountService.deposit("Primary", new BigDecimal("2.50"), principal);
 
         verify(entityManager).refresh(primaryAccount, LockModeType.PESSIMISTIC_WRITE);
-        assertEquals(new BigDecimal("12.50"), primaryAccount.getAccountBalance());
+        verify(primaryAccountDao).credit(1L, new BigDecimal("2.50"));
+        verify(entityManager).refresh(primaryAccount);
         ArgumentCaptor<PrimaryTransaction> tx = ArgumentCaptor.forClass(PrimaryTransaction.class);
         verify(transactionService).savePrimaryDepositTransaction(tx.capture());
         assertEquals(2.50, tx.getValue().getAmount(), 0.0);
     }
 
     @Test
-    public void withdrawDebitsUpToTheFullBalance() {
+    public void withdrawDebitsUpToTheFullBalanceWithAConditionalUpdate() {
+        when(savingsAccountDao.debitIfSufficient(2L, new BigDecimal("10.00"))).thenReturn(1);
+
         accountService.withdraw("Savings", new BigDecimal("10.00"), principal);
 
         verify(entityManager).refresh(savingsAccount, LockModeType.PESSIMISTIC_WRITE);
-        assertEquals(0, savingsAccount.getAccountBalance().signum());
-        verify(savingsAccountDao).save(savingsAccount);
+        verify(savingsAccountDao).debitIfSufficient(2L, new BigDecimal("10.00"));
         verify(transactionService).saveSavingsWithdrawTransaction(any(SavingsTransaction.class));
+    }
+
+    @Test
+    public void withdrawIsRejectedWhenTheAtomicDebitFindsTooLittleBalance() {
+        when(primaryAccountDao.debitIfSufficient(anyLong(), any())).thenReturn(0);
+
+        assertRejected(() -> accountService.withdraw("Primary", new BigDecimal("5"), principal));
+
+        verify(transactionService, never()).savePrimaryWithdrawTransaction(any());
     }
 
     @Test
@@ -136,8 +150,10 @@ public class AccountServiceImplTest {
     private void assertBalancesUnchangedAndNothingSaved() {
         assertEquals(new BigDecimal("10.00"), primaryAccount.getAccountBalance());
         assertEquals(new BigDecimal("10.00"), savingsAccount.getAccountBalance());
-        verify(primaryAccountDao, never()).save(any(PrimaryAccount.class));
-        verify(savingsAccountDao, never()).save(any(SavingsAccount.class));
+        verify(primaryAccountDao, never()).credit(any(), any());
+        verify(primaryAccountDao, never()).debitIfSufficient(any(), any());
+        verify(savingsAccountDao, never()).credit(any(), any());
+        verify(savingsAccountDao, never()).debitIfSufficient(any(), any());
         verify(transactionService, never()).savePrimaryWithdrawTransaction(any());
         verify(transactionService, never()).saveSavingsWithdrawTransaction(any());
         verify(transactionService, never()).savePrimaryDepositTransaction(any());
