@@ -36,8 +36,7 @@ public class UserController {
         User user = userService.findByUsername(principal.getName());
         model.addAttribute("user", user);
 
-        User emailOwner = userService.findByEmail(profileForm.getEmail());
-        if (emailOwner != null && !emailOwner.getUserId().equals(user.getUserId())) {
+        if (emailTakenByAnotherUser(profileForm.getEmail(), user)) {
             model.addAttribute("emailExists", true);
             return "profile";
         }
@@ -48,10 +47,18 @@ public class UserController {
             userService.saveUser(user);
         } catch (DataIntegrityViolationException e) {
             previous.applyTo(user);
+            if (!emailTakenByAnotherUser(profileForm.getEmail(), user)) {
+                throw e;
+            }
             model.addAttribute("emailExists", true);
             return "profile";
         }
 
         return "profile";
+    }
+
+    private boolean emailTakenByAnotherUser(String email, User user) {
+        User emailOwner = userService.findByEmail(email);
+        return emailOwner != null && !emailOwner.getUserId().equals(user.getUserId());
     }
 }

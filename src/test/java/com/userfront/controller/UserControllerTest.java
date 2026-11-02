@@ -2,6 +2,8 @@ package com.userfront.controller;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -24,6 +26,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
+import org.springframework.web.util.NestedServletException;
 
 import com.userfront.domain.User;
 import com.userfront.service.UserService;
@@ -126,6 +129,7 @@ public class UserControllerTest {
     public void restoresPrincipalWhenSaveHitsUniqueEmail() throws Exception {
         when(userService.findByUsername("alice")).thenReturn(alice);
         when(userService.saveUser(alice)).thenThrow(new DataIntegrityViolationException("uk_email"));
+        when(userService.findByEmail("shared@example.com")).thenReturn(null, bob);
 
         mockMvc.perform(post("/user/profile").principal(principal("alice"))
                 .param("firstName", "Alicia")
@@ -134,6 +138,26 @@ public class UserControllerTest {
                 .param("phone", "555-0100"))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("emailExists", true));
+
+        assertEquals("alice@example.com", alice.getEmail());
+        assertNull(alice.getFirstName());
+    }
+
+    @Test
+    public void otherIntegrityFailuresAreNotReportedAsDuplicateEmail() throws Exception {
+        when(userService.findByUsername("alice")).thenReturn(alice);
+        when(userService.saveUser(alice)).thenThrow(new DataIntegrityViolationException("first_name too long"));
+
+        try {
+            mockMvc.perform(post("/user/profile").principal(principal("alice"))
+                    .param("firstName", "Alicia")
+                    .param("lastName", "Smith")
+                    .param("email", "alicia@example.com")
+                    .param("phone", "555-0100"));
+            fail("expected the integrity violation to propagate");
+        } catch (NestedServletException e) {
+            assertTrue(e.getCause() instanceof DataIntegrityViolationException);
+        }
 
         assertEquals("alice@example.com", alice.getEmail());
         assertNull(alice.getFirstName());
