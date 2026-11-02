@@ -24,24 +24,47 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
 
     private static final List<String> IN_MEMORY_URL_PREFIXES = Arrays.asList("jdbc:h2:mem:", "jdbc:hsqldb:mem:", "jdbc:derby:memory:");
 
+    // Pool-specific properties are bound onto the DataSource after spring.datasource.*,
+    // so they override the validated top-level values and must be checked too.
+    static final List<Pool> POOLS = Arrays.asList(
+            new Pool("spring.datasource.hikari.", "jdbc-url", "jdbcUrl"),
+            new Pool("spring.datasource.tomcat.", "url"),
+            new Pool("spring.datasource.dbcp2.", "url"));
+
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
         String url = resolve(environment, URL);
+        String username = resolve(environment, USERNAME);
+        String password = resolve(environment, PASSWORD);
+        check("spring.datasource.", url, username, password);
+        for (Pool pool : POOLS) {
+            String poolUrl = pool.url(environment);
+            String poolUsername = resolve(environment, pool.prefix + "username");
+            String poolPassword = resolve(environment, pool.prefix + "password");
+            if (poolUrl != null || poolUsername != null || poolPassword != null) {
+                check(pool.prefix, poolUrl != null ? poolUrl : url,
+                        poolUsername != null ? poolUsername : username,
+                        poolPassword != null ? poolPassword : password);
+            }
+        }
+    }
+
+    private static void check(String prefix, String url, String username, String password) {
         if (url == null || isInMemory(url)) {
             return;
         }
-        validate(resolve(environment, USERNAME), resolve(environment, PASSWORD));
+        validate(prefix, username, password);
     }
 
-    static void validate(String username, String password) {
+    static void validate(String prefix, String username, String password) {
         if (isBlank(username)) {
-            throw new InsecureDatasourceCredentialsException(USERNAME + " is not set; provide DB_USERNAME");
+            throw new InsecureDatasourceCredentialsException(prefix + "username is not set; provide DB_USERNAME");
         }
         if (PRIVILEGED_ACCOUNTS.contains(username.trim().toLowerCase(Locale.ROOT))) {
-            throw new InsecureDatasourceCredentialsException(USERNAME + " must be a least-privilege application account, not '" + username.trim() + "'");
+            throw new InsecureDatasourceCredentialsException(prefix + "username must be a least-privilege application account, not '" + username.trim() + "'");
         }
         if (isBlank(password)) {
-            throw new InsecureDatasourceCredentialsException(PASSWORD + " is empty; provide DB_PASSWORD");
+            throw new InsecureDatasourceCredentialsException(prefix + "password is empty; provide DB_PASSWORD");
         }
     }
 
@@ -69,6 +92,26 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
     @Override
     public int getOrder() {
         return Ordered.LOWEST_PRECEDENCE;
+    }
+
+    static final class Pool {
+        final String prefix;
+        private final List<String> urlKeys;
+
+        Pool(String prefix, String... urlKeys) {
+            this.prefix = prefix;
+            this.urlKeys = Arrays.asList(urlKeys);
+        }
+
+        String url(ConfigurableEnvironment environment) {
+            for (String key : urlKeys) {
+                String value = resolve(environment, prefix + key);
+                if (value != null) {
+                    return value;
+                }
+            }
+            return null;
+        }
     }
 
     public static class InsecureDatasourceCredentialsException extends IllegalStateException {
