@@ -78,11 +78,44 @@ public class DatasourceCredentialsPolicyTest {
         postProcess(null, null, null);
     }
 
-    private void postProcess(String url, String username, String password) {
+    @Test(expected = InsecureDatasourceCredentialsException.class)
+    public void hikariRootUsernameOverrideIsRejected() {
+        postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd", "spring.datasource.hikari.username", "root");
+    }
+
+    @Test(expected = InsecureDatasourceCredentialsException.class)
+    public void hikariEmptyPasswordOverrideIsRejected() {
+        postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd", "spring.datasource.hikari.password", "");
+    }
+
+    @Test(expected = InsecureDatasourceCredentialsException.class)
+    public void hikariJdbcUrlOverrideOfInMemoryUrlIsChecked() {
+        postProcess("jdbc:h2:mem:testdb", "root", "", "spring.datasource.hikari.jdbc-url", MYSQL_URL);
+    }
+
+    @Test(expected = InsecureDatasourceCredentialsException.class)
+    public void tomcatPoolRootUsernameOverrideIsRejected() {
+        postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd", "spring.datasource.tomcat.username", "root");
+    }
+
+    @Test(expected = InsecureDatasourceCredentialsException.class)
+    public void dbcp2PoolRootUsernameOverrideIsRejected() {
+        postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd", "spring.datasource.dbcp2.username", "root");
+    }
+
+    @Test
+    public void hikariLeastPrivilegeOverrideIsAccepted() {
+        postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd", "spring.datasource.hikari.username", "obs_pool");
+    }
+
+    private void postProcess(String url, String username, String password, String... extra) {
         Map<String, Object> values = new HashMap<>();
         put(values, DatasourceCredentialsPolicy.URL, url);
         put(values, DatasourceCredentialsPolicy.USERNAME, username);
         put(values, DatasourceCredentialsPolicy.PASSWORD, password);
+        for (int i = 0; i < extra.length; i += 2) {
+            values.put(extra[i], extra[i + 1]);
+        }
         StandardEnvironment environment = new StandardEnvironment();
         environment.getPropertySources().addFirst(new MapPropertySource("test", values));
         policy.postProcessEnvironment(environment, new SpringApplication());
