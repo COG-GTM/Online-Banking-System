@@ -8,6 +8,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.util.ClassUtils;
 
 /**
  * Refuses to start the application when the datasource would connect with a
@@ -24,12 +25,15 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
 
     private static final List<String> IN_MEMORY_URL_PREFIXES = Arrays.asList("jdbc:h2:mem:", "jdbc:hsqldb:mem:", "jdbc:derby:memory:");
 
-    // Pool-specific properties are bound onto the DataSource after spring.datasource.*,
-    // so they override the validated top-level values and must be checked too.
+    static final String TYPE = "spring.datasource.type";
+
+    // Spring Boot binds the selected pool's spring.datasource.<pool>.* properties after
+    // spring.datasource.*, so they override the top-level values. Listed in Boot's
+    // auto-detection order.
     static final List<Pool> POOLS = Arrays.asList(
-            new Pool("spring.datasource.hikari.", "jdbc-url", "jdbcUrl"),
-            new Pool("spring.datasource.tomcat.", "url"),
-            new Pool("spring.datasource.dbcp2.", "url"));
+            new Pool("com.zaxxer.hikari.HikariDataSource", "spring.datasource.hikari.", "jdbc-url", "jdbcUrl"),
+            new Pool("org.apache.tomcat.jdbc.pool.DataSource", "spring.datasource.tomcat.", "url"),
+            new Pool("org.apache.commons.dbcp2.BasicDataSource", "spring.datasource.dbcp2.", "url"));
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
@@ -37,7 +41,8 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
         String username = resolve(environment, USERNAME);
         String password = resolve(environment, PASSWORD);
         check("spring.datasource.", url, username, password);
-        for (Pool pool : POOLS) {
+        Pool pool = activePool(resolve(environment, TYPE), application.getClassLoader());
+        if (pool != null) {
             String poolUrl = pool.url(environment);
             String poolUsername = resolve(environment, pool.prefix + "username");
             String poolPassword = resolve(environment, pool.prefix + "password");
@@ -47,6 +52,15 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
                         poolPassword != null ? poolPassword : password);
             }
         }
+    }
+
+    static Pool activePool(String type, ClassLoader classLoader) {
+        for (Pool pool : POOLS) {
+            if (type != null ? pool.className.equals(type.trim()) : ClassUtils.isPresent(pool.className, classLoader)) {
+                return pool;
+            }
+        }
+        return null;
     }
 
     private static void check(String prefix, String url, String username, String password) {
@@ -95,10 +109,12 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
     }
 
     static final class Pool {
+        final String className;
         final String prefix;
         private final List<String> urlKeys;
 
-        Pool(String prefix, String... urlKeys) {
+        Pool(String className, String prefix, String... urlKeys) {
+            this.className = className;
             this.prefix = prefix;
             this.urlKeys = Arrays.asList(urlKeys);
         }
