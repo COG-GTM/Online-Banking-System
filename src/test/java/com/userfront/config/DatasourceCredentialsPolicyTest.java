@@ -95,12 +95,30 @@ public class DatasourceCredentialsPolicyTest {
 
     @Test(expected = InsecureDatasourceCredentialsException.class)
     public void tomcatPoolRootUsernameOverrideIsRejected() {
-        postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd", "spring.datasource.tomcat.username", "root");
+        postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd",
+                DatasourceCredentialsPolicy.TYPE, "org.apache.tomcat.jdbc.pool.DataSource",
+                "spring.datasource.tomcat.username", "root");
     }
 
     @Test(expected = InsecureDatasourceCredentialsException.class)
     public void dbcp2PoolRootUsernameOverrideIsRejected() {
-        postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd", "spring.datasource.dbcp2.username", "root");
+        postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd",
+                DatasourceCredentialsPolicy.TYPE, "org.apache.commons.dbcp2.BasicDataSource",
+                "spring.datasource.dbcp2.username", "root");
+    }
+
+    @Test
+    public void inactivePoolOverridesAreIgnored() {
+        postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd",
+                "spring.datasource.tomcat.username", "root",
+                "spring.datasource.dbcp2.password", "");
+    }
+
+    @Test(expected = InsecureDatasourceCredentialsException.class)
+    public void hikariIsTheAutoDetectedPool() {
+        postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd",
+                "spring.datasource.tomcat.username", "obs_tomcat",
+                "spring.datasource.hikari.username", "root");
     }
 
     @Test
