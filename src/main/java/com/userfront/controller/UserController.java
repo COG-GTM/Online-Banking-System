@@ -3,6 +3,7 @@ package com.userfront.controller;
 import java.security.Principal;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.userfront.domain.User;
+import com.userfront.dto.ProfileForm;
 import com.userfront.service.UserService;
 
 @Controller
@@ -24,26 +26,32 @@ public class UserController {
         User user = userService.findByUsername(principal.getName());
 
         model.addAttribute("user", user);
+        model.addAttribute("profileForm", ProfileForm.from(user));
 
         return "profile";
     }
 
     @RequestMapping(value = "/profile", method = RequestMethod.POST)
-    public String profilePost(@ModelAttribute("user") User newUser, Model model) {
-        User user = userService.findByUsername(newUser.getUsername());
-        user.setUsername(newUser.getUsername());
-        user.setFirstName(newUser.getFirstName());
-        user.setLastName(newUser.getLastName());
-        user.setEmail(newUser.getEmail());
-        user.setPhone(newUser.getPhone());
-
+    public String profilePost(@ModelAttribute("profileForm") ProfileForm profileForm, Principal principal, Model model) {
+        User user = userService.findByUsername(principal.getName());
         model.addAttribute("user", user);
 
-        userService.saveUser(user);
+        User emailOwner = userService.findByEmail(profileForm.getEmail());
+        if (emailOwner != null && !emailOwner.getUserId().equals(user.getUserId())) {
+            model.addAttribute("emailExists", true);
+            return "profile";
+        }
+
+        ProfileForm previous = ProfileForm.from(user);
+        profileForm.applyTo(user);
+        try {
+            userService.saveUser(user);
+        } catch (DataIntegrityViolationException e) {
+            previous.applyTo(user);
+            model.addAttribute("emailExists", true);
+            return "profile";
+        }
 
         return "profile";
     }
-
-
 }
-
