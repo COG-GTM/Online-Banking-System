@@ -1,5 +1,7 @@
 package com.userfront.service.UserServiceImpl;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -54,6 +56,11 @@ public class UserServiceImpl implements UserService{
         if (localUser != null) {
             LOG.info("User with username {} already exist. Nothing will be done. ", user.getUsername());
         } else {
+            user.setUserId(null);
+            user.setEnabled(true);
+            user.setAppointmentList(new ArrayList<>());
+            user.setRecipientList(new ArrayList<>());
+
             String encryptedPassword = passwordEncoder.encode(user.getPassword());
             user.setPassword(encryptedPassword);
 
@@ -61,7 +68,7 @@ public class UserServiceImpl implements UserService{
                 roleDao.save(ur.getRole());
             }
 
-            user.getUserRoles().addAll(userRoles);
+            user.setUserRoles(new HashSet<>(userRoles));
 
             user.setPrimaryAccount(accountService.createPrimaryAccount());
             user.setSavingsAccount(accountService.createSavingsAccount());
@@ -73,7 +80,7 @@ public class UserServiceImpl implements UserService{
     }
     
     public boolean checkUserExists(String username, String email){
-        if (checkUsernameExists(username) || checkEmailExists(username)) {
+        if (checkUsernameExists(username) || checkEmailExists(email)) {
             return true;
         } else {
             return false;
