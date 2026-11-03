@@ -54,6 +54,7 @@ public class TransferControllerTest {
                 .build();
 
         alicesRecipient = new Recipient();
+        alicesRecipient.setId(7L);
         alicesRecipient.setName("Carol");
         aliceUser = new User();
         aliceUser.setUsername("alice");
@@ -61,18 +62,18 @@ public class TransferControllerTest {
         aliceUser.setSavingsAccount(new SavingsAccount());
 
         when(transactionService.findRecipientList(any(Principal.class))).thenReturn(Collections.<Recipient>emptyList());
-        when(transactionService.findRecipientByName(eq("Carol"), any(Principal.class))).thenReturn(alicesRecipient);
+        when(transactionService.findRecipientById(eq(7L), any(Principal.class))).thenReturn(alicesRecipient);
         when(userService.findByUsername("alice")).thenReturn(aliceUser);
     }
 
     @Test
     public void transfersToOwnRecipientWithValidAmount() throws Exception {
         mockMvc.perform(post("/transfer/toSomeoneElse").principal(alice)
-                .param("recipientName", "Carol").param("accountType", "Primary").param("amount", "25.50"))
+                .param("recipientId", "7").param("accountType", "Primary").param("amount", "25.50"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(view().name("redirect:/userFront"));
 
-        verify(transactionService).findRecipientByName(eq("Carol"), eq(alice));
+        verify(transactionService).findRecipientById(eq(7L), eq(alice));
         verify(transactionService).toSomeoneElseTransfer(alicesRecipient, "Primary", "25.50",
                 aliceUser.getPrimaryAccount(), aliceUser.getSavingsAccount());
     }
@@ -80,12 +81,26 @@ public class TransferControllerTest {
     @Test
     public void rejectsRecipientNotOwnedByPrincipal() throws Exception {
         mockMvc.perform(post("/transfer/toSomeoneElse").principal(alice)
-                .param("recipientName", "BobsPayee").param("accountType", "Primary").param("amount", "10"))
+                .param("recipientId", "8").param("accountType", "Primary").param("amount", "10"))
                 .andExpect(status().isBadRequest())
                 .andExpect(view().name("toSomeoneElse"))
                 .andExpect(model().attributeExists("errorMessage"));
 
         verify(transactionService, never()).findRecipientByName(anyString());
+        verifyNoTransfer();
+    }
+
+    @Test
+    public void rejectsMissingOrNonNumericRecipientId() throws Exception {
+        mockMvc.perform(post("/transfer/toSomeoneElse").principal(alice)
+                .param("recipientId", "Carol").param("accountType", "Primary").param("amount", "10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(model().attributeExists("errorMessage"));
+        mockMvc.perform(post("/transfer/toSomeoneElse").principal(alice)
+                .param("accountType", "Primary").param("amount", "10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(model().attributeExists("errorMessage"));
+
         verifyNoTransfer();
     }
 
@@ -112,7 +127,7 @@ public class TransferControllerTest {
     @Test
     public void rejectsUnknownAccountType() throws Exception {
         mockMvc.perform(post("/transfer/toSomeoneElse").principal(alice)
-                .param("recipientName", "Carol").param("accountType", "Checking").param("amount", "10"))
+                .param("recipientId", "7").param("accountType", "Checking").param("amount", "10"))
                 .andExpect(status().isBadRequest())
                 .andExpect(model().attributeExists("errorMessage"));
 
@@ -121,7 +136,7 @@ public class TransferControllerTest {
 
     private void assertRejectedAmount(String amount) throws Exception {
         mockMvc.perform(post("/transfer/toSomeoneElse").principal(alice)
-                .param("recipientName", "Carol").param("accountType", "Primary").param("amount", amount))
+                .param("recipientId", "7").param("accountType", "Primary").param("amount", amount))
                 .andExpect(status().isBadRequest())
                 .andExpect(view().name("toSomeoneElse"))
                 .andExpect(model().attributeExists("errorMessage"));

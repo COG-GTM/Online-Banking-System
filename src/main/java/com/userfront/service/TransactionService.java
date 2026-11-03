@@ -29,7 +29,7 @@ public interface TransactionService {
 
     Recipient findRecipientByName(String recipientName);
 
-    Recipient findRecipientByName(String recipientName, Principal principal);
+    Recipient findRecipientById(Long recipientId, Principal principal);
 
     void deleteRecipientByName(String recipientName);
     

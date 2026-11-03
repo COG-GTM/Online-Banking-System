@@ -118,8 +118,8 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
-    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Model model, Principal principal, HttpServletResponse response) {
-        Recipient recipient = transactionService.findRecipientByName(recipientName, principal);
+    public String toSomeoneElsePost(@RequestParam(value = "recipientId", required = false) String recipientId, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Model model, Principal principal, HttpServletResponse response) {
+        Recipient recipient = transactionService.findRecipientById(parseId(recipientId), principal);
         if (recipient == null) {
             return rejectToSomeoneElse("Please choose one of your saved recipients.", model, principal, response);
         }
@@ -136,6 +136,14 @@ public class TransferController {
         transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
 
         return "redirect:/userFront";
+    }
+
+    private static Long parseId(String id) {
+        try {
+            return id == null ? null : Long.valueOf(id.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private String rejectToSomeoneElse(String errorMessage, Model model, Principal principal, HttpServletResponse response) {

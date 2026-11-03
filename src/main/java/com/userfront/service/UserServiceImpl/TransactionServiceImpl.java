@@ -120,11 +120,11 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientDao.findByName(recipientName);
     }
 
-    public Recipient findRecipientByName(String recipientName, Principal principal) {
-        if (recipientName == null || principal == null) {
+    public Recipient findRecipientById(Long recipientId, Principal principal) {
+        if (recipientId == null || principal == null) {
             return null;
         }
-        return recipientDao.findFirstByNameAndUserUsername(recipientName, principal.getName());
+        return recipientDao.findByIdAndUserUsername(recipientId, principal.getName());
     }
 
     public void deleteRecipientByName(String recipientName) {
