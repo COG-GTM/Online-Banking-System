@@ -187,7 +187,10 @@ def osv_check(argv):
         if (name, version, vuln_id) not in new:
             print("baseline: %s:%s %s" % (name, version, vuln_id))
     for name, version, vuln_id in new:
-        fixed = ", ".join(_osv_fixed_versions(vuln_id, name)) or "no fix listed"
+        try:
+            fixed = ", ".join(_osv_fixed_versions(vuln_id, name)) or "no fix listed"
+        except Exception as exc:  # detail lookup is best-effort enrichment
+            fixed = "lookup failed: %s" % exc
         plugins = ", ".join(sorted(via.get((name, version), ()))) or "project dependencies"
         print("error: %s:%s %s (fixed in: %s; via %s)" % (name, version, vuln_id, fixed, plugins))
     return 1 if new else 0
