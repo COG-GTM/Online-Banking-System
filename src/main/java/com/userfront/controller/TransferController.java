@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -28,6 +30,11 @@ public class TransferController {
 
     @Autowired
     private UserService userService;
+
+    @InitBinder("recipient")
+    public void initRecipientBinder(WebDataBinder binder) {
+        binder.setDisallowedFields("id", "user*");
+    }
 
     @RequestMapping(value = "/betweenAccounts", method = RequestMethod.GET)
     public String betweenAccounts(Model model) {
@@ -66,11 +73,29 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/recipient/save", method = RequestMethod.POST)
-    public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
+    public String recipientPost(
+            @ModelAttribute("recipient") Recipient recipient,
+            @RequestParam(value = "id", required = false) Long id,
+            Principal principal) {
 
         User user = userService.findByUsername(principal.getName());
-        recipient.setUser(user);
-        transactionService.saveRecipient(recipient);
+        if (id == null) {
+            recipient.setUser(user);
+            transactionService.saveRecipient(recipient);
+        } else {
+            Recipient existing = transactionService.findRecipientById(id);
+            if (existing == null || existing.getUser() == null
+                    || !user.getUsername().equals(existing.getUser().getUsername())) {
+                throw new org.springframework.security.access.AccessDeniedException("Recipient not found");
+            }
+
+            existing.setName(recipient.getName());
+            existing.setEmail(recipient.getEmail());
+            existing.setPhone(recipient.getPhone());
+            existing.setAccountNumber(recipient.getAccountNumber());
+            existing.setDescription(recipient.getDescription());
+            transactionService.saveRecipient(existing);
+        }
 
         return "redirect:/transfer/recipient";
     }
