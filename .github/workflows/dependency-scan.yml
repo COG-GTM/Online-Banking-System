@@ -25,16 +25,33 @@ jobs:
           cache: maven
       - name: Enforce dependency rules
         run: ./mvnw -B -ntp validate
+      - name: Repository URL allowlist
+        run: |
+          ./mvnw -B -ntp help:effective-pom -Doutput=target/effective-pom.xml
+          python3 .github/scripts/maven_inventory.py check-repos target/effective-pom.xml
       - name: Resolved dependency tree
         run: ./mvnw -B -ntp dependency:tree -DoutputFile=target/dependency-tree.txt
       - name: CycloneDX SBOM
         run: ./mvnw -B -ntp cyclonedx:makeAggregateBom
+      - name: Build-plugin SBOM
+        run: |
+          ./mvnw -B -ntp dependency:resolve-plugins -DoutputFile=target/plugins.txt
+          python3 .github/scripts/maven_inventory.py plugins-sbom target/plugins.txt target/plugins.cdx.json
+      - name: OSV-Scanner (build plugins)
+        uses: google/osv-scanner-action/osv-scanner-action@v2.0.2
+        with:
+          scan-args: |-
+            --lockfile=target/plugins.cdx.json
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: dependency-inventory
           path: |
             target/bom.json
             target/dependency-tree.txt
+            target/effective-pom.xml
+            target/plugins.txt
+            target/plugins.cdx.json
 
   osv-pr:
     name: OSV-Scanner (new vulnerabilities in this PR)
