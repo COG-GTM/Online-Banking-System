@@ -16,6 +16,7 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.service.InvalidTransferException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -43,12 +44,18 @@ public class TransferController {
             @ModelAttribute("transferFrom") String transferFrom,
             @ModelAttribute("transferTo") String transferTo,
             @ModelAttribute("amount") String amount,
-            Principal principal
-    ) throws Exception {
+            Principal principal,
+            Model model
+    ) {
         User user = userService.findByUsername(principal.getName());
         PrimaryAccount primaryAccount = user.getPrimaryAccount();
         SavingsAccount savingsAccount = user.getSavingsAccount();
-        transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
+        try {
+            transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
+        } catch (InvalidTransferException e) {
+            model.addAttribute("transferError", e.getMessage());
+            return "betweenAccounts";
+        }
 
         return "redirect:/userFront";
     }
