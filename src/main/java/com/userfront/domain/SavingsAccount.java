@@ -4,12 +4,14 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import javax.persistence.CascadeType;
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
+import javax.persistence.Version;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -21,6 +23,10 @@ public class SavingsAccount {
     private Long id;
     private int accountNumber;
     private BigDecimal accountBalance;
+
+    @Version
+    @Column(columnDefinition = "bigint default 0 not null")
+    private long version;
 
     @OneToMany(mappedBy = "savingsAccount", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
@@ -48,6 +54,14 @@ public class SavingsAccount {
 
     public void setAccountBalance(BigDecimal accountBalance) {
         this.accountBalance = accountBalance;
+    }
+
+    public long getVersion() {
+        return version;
+    }
+
+    public void setVersion(long version) {
+        this.version = version;
     }
 
     public List<SavingsTransaction> getSavingsTransactionList() {
