@@ -28,11 +28,11 @@ The application does not create or alter its own tables:
 startup, and `spring.jpa.show-sql=false` keeps SQL statements out of the logs.
 Before the first start, create the `OnlineBankingSystem` database and apply the
 baseline schema (which also seeds the `hibernate_sequence` row and `ROLE_USER`).
-The tables inherit the database character set; use `utf8` (or `latin1`), because
-the MyISAM unique index on `user.email` exceeds the 1000-byte key limit under `utf8mb4`:
+The tables are created as `utf8` whatever the database default is (under `utf8mb4`
+the MyISAM unique index on `user.email` would exceed the 1000-byte key limit):
 
 ```
-mysql -u <admin> -p -e "CREATE DATABASE IF NOT EXISTS OnlineBankingSystem CHARACTER SET utf8"
+mysql -u <admin> -p -e "CREATE DATABASE IF NOT EXISTS OnlineBankingSystem"
 mysql -u <admin> -p OnlineBankingSystem < src/main/resources/db/V1__baseline_schema.sql
 ```
 
