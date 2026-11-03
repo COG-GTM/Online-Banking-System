@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.userfront.dao.AppointmentDao;
 import com.userfront.domain.Appointment;
+import com.userfront.resource.dto.AppointmentSummary;
 import com.userfront.service.AppointmentService;
 
 @Service
@@ -21,6 +22,10 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     public List<Appointment> findAll() {
         return appointmentDao.findAll();
+    }
+
+    public List<AppointmentSummary> findAllSummaries() {
+        return appointmentDao.findAllSummaries();
     }
 
     public Appointment findAppointment(Long id) {
