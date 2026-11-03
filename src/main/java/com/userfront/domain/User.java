@@ -163,15 +163,15 @@ public class User implements UserDetails{
         if (this == o) {
             return true;
         }
-        if (!(o instanceof User) || username == null) {
+        if (!(o instanceof User) || userId == null) {
             return false;
         }
-        return username.equals(((User) o).username);
+        return userId.equals(((User) o).userId);
     }
 
     @Override
     public int hashCode() {
-        return username == null ? System.identityHashCode(this) : Objects.hash(username);
+        return userId == null ? System.identityHashCode(this) : Objects.hash(userId);
     }
 
     @Override

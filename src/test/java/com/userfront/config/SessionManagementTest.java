@@ -13,6 +13,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import javax.servlet.http.Cookie;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -110,22 +112,53 @@ public class SessionManagementTest {
     }
 
     @Test
+    public void rememberMeCookieIsClearedOnExpiryAndRememberMeLoginStillCountsTowardsLimit() throws Exception {
+        MvcResult first = mvc.perform(post("/index").session(new MockHttpSession())
+                .param("username", USERNAME).param("password", PASSWORD).param("remember-me", "on"))
+                .andExpect(redirectedUrl("/userFront"))
+                .andReturn();
+        MockHttpSession firstSession = (MockHttpSession) first.getRequest().getSession(false);
+        Cookie rememberMe = first.getResponse().getCookie("remember-me");
+        assertNotNull(rememberMe);
+
+        MockHttpSession second = login(new MockHttpSession());
+
+        MvcResult expired = mvc.perform(get("/userFront").session(firstSession).cookie(rememberMe))
+                .andExpect(redirectedUrl("/index?expired"))
+                .andReturn();
+        Cookie cleared = expired.getResponse().getCookie("remember-me");
+        assertNotNull(cleared);
+        assertEquals(0, cleared.getMaxAge());
+
+        MvcResult restored = mvc.perform(get("/userFront").session(new MockHttpSession()).cookie(rememberMe))
+                .andExpect(status().isNotFound())
+                .andReturn();
+        MockHttpSession restoredSession = (MockHttpSession) restored.getRequest().getSession(false);
+
+        mvc.perform(get("/userFront").session(second)).andExpect(redirectedUrl("/index?expired"));
+        mvc.perform(get("/userFront").session(restoredSession)).andExpect(status().isNotFound());
+    }
+
+    @Test
     public void expiredLandingPageIsPublic() throws Exception {
         mvc.perform(get("/index?expired")).andExpect(status().isNotFound());
     }
 
     @Test
-    public void usersWithSameUsernameAreEqualForSessionRegistry() {
+    public void usersAreIdentifiedByUserIdForSessionRegistry() {
         User a = new User();
+        a.setUserId(1L);
         a.setUsername(USERNAME);
         User b = new User();
+        b.setUserId(1L);
         b.setUsername(USERNAME);
-        User other = new User();
-        other.setUsername("bob");
+        User sameNameOtherAccount = new User();
+        sameNameOtherAccount.setUserId(2L);
+        sameNameOtherAccount.setUsername(USERNAME);
 
         assertEquals(a, b);
         assertEquals(a.hashCode(), b.hashCode());
-        assertNotEquals(a, other);
+        assertNotEquals(a, sameNameOtherAccount);
         assertNotEquals(new User(), new User());
     }
 }
