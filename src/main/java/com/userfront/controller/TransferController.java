@@ -16,6 +16,7 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.dto.RecipientForm;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -66,19 +67,18 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/recipient/save", method = RequestMethod.POST)
-    public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
+    public String recipientPost(@ModelAttribute("recipient") RecipientForm recipientForm, Principal principal) {
 
         User user = userService.findByUsername(principal.getName());
-        recipient.setUser(user);
-        transactionService.saveRecipient(recipient);
+        transactionService.saveRecipient(recipientForm, user);
 
         return "redirect:/transfer/recipient";
     }
 
     @RequestMapping(value = "/recipient/edit", method = RequestMethod.GET)
-    public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
+    public String recipientEdit(@RequestParam(value = "recipientId") Long recipientId, Model model, Principal principal){
 
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = transactionService.findRecipient(recipientId, principal);
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
         model.addAttribute("recipientList", recipientList);
@@ -89,9 +89,9 @@ public class TransferController {
 
     @RequestMapping(value = "/recipient/delete", method = RequestMethod.GET)
     @Transactional
-    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
+    public String recipientDelete(@RequestParam(value = "recipientId") Long recipientId, Model model, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName);
+        transactionService.deleteRecipient(recipientId, principal);
 
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
@@ -114,9 +114,9 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
-    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
+    public String toSomeoneElsePost(@RequestParam(value = "recipientId") Long recipientId, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = transactionService.findRecipient(recipientId, principal);
         transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
 
         return "redirect:/userFront";
