@@ -2,19 +2,10 @@ package com.userfront.dto;
 
 public class ProfileForm {
 
-    private String username;
     private String firstName;
     private String lastName;
     private String email;
     private String phone;
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
 
     public String getFirstName() {
         return firstName;

@@ -3,9 +3,6 @@ package com.userfront.controller;
 import java.security.Principal;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -37,41 +34,30 @@ public class UserController {
         User user = userService.findByUsername(principal.getName());
         model.addAttribute("user", user);
 
-        String newUsername = profileForm.getUsername();
-        String newEmail = profileForm.getEmail();
-
-        if (newUsername != null && !newUsername.equals(user.getUsername())
-                && userService.checkUsernameExists(newUsername)) {
-            model.addAttribute("usernameExists", true);
+        if (isBlank(profileForm.getFirstName()) || isBlank(profileForm.getLastName())
+                || isBlank(profileForm.getEmail()) || isBlank(profileForm.getPhone())) {
+            model.addAttribute("missingFields", true);
             return "profile";
         }
 
-        if (newEmail != null && !newEmail.equals(user.getEmail())
-                && userService.checkEmailExists(newEmail)) {
+        String newEmail = profileForm.getEmail().trim();
+        if (!newEmail.equals(user.getEmail()) && userService.checkEmailExists(newEmail)) {
             model.addAttribute("emailExists", true);
             return "profile";
         }
 
-        boolean usernameChanged = newUsername != null && !newUsername.equals(user.getUsername());
-
-        user.setUsername(newUsername);
-        user.setFirstName(profileForm.getFirstName());
-        user.setLastName(profileForm.getLastName());
+        user.setFirstName(profileForm.getFirstName().trim());
+        user.setLastName(profileForm.getLastName().trim());
         user.setEmail(newEmail);
-        user.setPhone(profileForm.getPhone());
+        user.setPhone(profileForm.getPhone().trim());
 
-        user = userService.saveUser(user);
-        model.addAttribute("user", user);
-
-        if (usernameChanged) {
-            Authentication current = SecurityContextHolder.getContext().getAuthentication();
-            UsernamePasswordAuthenticationToken updated =
-                    new UsernamePasswordAuthenticationToken(user, current.getCredentials(), user.getAuthorities());
-            updated.setDetails(current.getDetails());
-            SecurityContextHolder.getContext().setAuthentication(updated);
-        }
+        model.addAttribute("user", userService.saveUser(user));
 
         return "profile";
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
 

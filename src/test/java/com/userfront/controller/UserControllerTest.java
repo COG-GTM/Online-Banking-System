@@ -2,7 +2,6 @@ package com.userfront.controller;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -11,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -20,7 +18,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -53,42 +50,37 @@ public class UserControllerTest {
         bob = user(2L, "bob", "bob@example.com");
         given(userService.findByUsername("alice")).willReturn(alice);
         given(userService.findByUsername("bob")).willReturn(bob);
-        given(userService.checkUsernameExists("bob")).willReturn(true);
         given(userService.checkEmailExists("bob@example.com")).willReturn(true);
         given(userService.saveUser(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
-    }
-
-    @After
-    public void clearContext() {
-        SecurityContextHolder.clearContext();
     }
 
     @Test
     public void profilePostUpdatesPrincipalNotSubmittedUsername() throws Exception {
         mockMvc.perform(post("/user/profile").principal(authFor(alice))
                 .param("username", "bob")
-                .param("firstName", "Mallory")
-                .param("lastName", "Attacker")
-                .param("email", "mallory@example.com")
-                .param("phone", "000"))
+                .param("firstName", "Alicia")
+                .param("lastName", "Smith")
+                .param("email", "alicia@example.com")
+                .param("phone", "555-0100"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("profile"))
-                .andExpect(model().attribute("usernameExists", true))
                 .andExpect(model().attribute("user", alice));
 
-        verify(userService, never()).saveUser(any(User.class));
+        verify(userService).saveUser(alice);
+        verify(userService, never()).saveUser(bob);
+        assertEquals("alice", alice.getUsername());
+        assertEquals("Alicia", alice.getFirstName());
         assertEquals("Bob", bob.getFirstName());
         assertEquals("bob@example.com", bob.getEmail());
-        assertEquals("Alice", alice.getFirstName());
     }
 
     @Test
     public void profilePostIgnoresNonProfileFields() throws Exception {
         mockMvc.perform(post("/user/profile").principal(authFor(alice))
                 .param("userId", "2")
+                .param("username", "alice2")
                 .param("password", "hacked")
                 .param("enabled", "false")
-                .param("username", "alice")
                 .param("firstName", "Alicia")
                 .param("lastName", "Smith")
                 .param("email", "alicia@example.com")
@@ -98,18 +90,17 @@ public class UserControllerTest {
 
         verify(userService).saveUser(alice);
         assertEquals(Long.valueOf(1L), alice.getUserId());
+        assertEquals("alice", alice.getUsername());
         assertEquals("secret", alice.getPassword());
         assertEquals(true, alice.isEnabled());
         assertEquals("Alicia", alice.getFirstName());
         assertEquals("alicia@example.com", alice.getEmail());
         assertEquals("555-0100", alice.getPhone());
-        assertEquals("Bob", bob.getFirstName());
     }
 
     @Test
     public void profilePostRejectsEmailOwnedByAnotherUser() throws Exception {
         mockMvc.perform(post("/user/profile").principal(authFor(alice))
-                .param("username", "alice")
                 .param("firstName", "Alice")
                 .param("lastName", "Smith")
                 .param("email", "bob@example.com")
@@ -122,21 +113,17 @@ public class UserControllerTest {
     }
 
     @Test
-    public void profilePostRefreshesAuthenticationOnUsernameChange() throws Exception {
-        UsernamePasswordAuthenticationToken auth = authFor(alice);
-        SecurityContextHolder.getContext().setAuthentication(auth);
-
-        mockMvc.perform(post("/user/profile").principal(auth)
-                .param("username", "alice2")
-                .param("firstName", "Alice")
-                .param("lastName", "Smith")
-                .param("email", "alice@example.com")
+    public void profilePostRejectsMissingFields() throws Exception {
+        mockMvc.perform(post("/user/profile").principal(authFor(alice))
+                .param("firstName", "Alicia")
+                .param("lastName", " ")
                 .param("phone", "555-0100"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("missingFields", true));
 
-        verify(userService, never()).checkEmailExists(anyString());
-        assertEquals("alice2", alice.getUsername());
-        assertEquals("alice2", SecurityContextHolder.getContext().getAuthentication().getName());
+        verify(userService, never()).saveUser(any(User.class));
+        assertEquals("Alice", alice.getFirstName());
+        assertEquals("alice@example.com", alice.getEmail());
     }
 
     private static UsernamePasswordAuthenticationToken authFor(User user) {
