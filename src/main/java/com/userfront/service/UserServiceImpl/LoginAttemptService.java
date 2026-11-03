@@ -1,5 +1,6 @@
 package com.userfront.service.UserServiceImpl;
 
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -10,8 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.UserDao;
-import com.userfront.domain.User;
 
+/**
+ * Counts failed logins with single-statement conditional UPDATEs so concurrent
+ * attempts cannot overwrite each other's increments.
+ */
 @Service
 public class LoginAttemptService {
 
@@ -31,24 +35,25 @@ public class LoginAttemptService {
         if (username == null) {
             return;
         }
-        User user = userDao.findByUsername(username);
-        if (user == null) {
+        Date now = new Date();
+        userDao.clearExpiredLockout(username, now);
+        if (userDao.incrementFailedLoginAttempts(username) == 0) {
             return;
         }
-        user.recordFailedLogin(maxFailedAttempts, TimeUnit.MINUTES.toMillis(lockoutMinutes));
-        userDao.save(user);
-        if (!user.isAccountNonLocked()) {
-            LOG.warn("Account {} locked until {} after {} failed login attempts",
-                    username, user.getLockoutUntil(), user.getFailedLoginAttempts());
+        Date until = new Date(now.getTime() + TimeUnit.MINUTES.toMillis(lockoutMinutes));
+        if (userDao.lockIfThresholdReached(username, maxFailedAttempts, now, until) > 0) {
+            LOG.warn("Account {} locked until {} after {} failed login attempts", username, until, maxFailedAttempts);
         }
     }
 
     @Transactional
     public void loginSucceeded(String username) {
-        User user = userDao.findByUsername(username);
-        if (user != null && (user.getFailedLoginAttempts() > 0 || user.getLockoutUntil() != null)) {
-            user.resetFailedLogins();
-            userDao.save(user);
-        }
+        userDao.resetFailedLogins(username);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isLocked(String username) {
+        Date until = userDao.findLockoutUntilByUsername(username);
+        return until != null && until.after(new Date());
     }
 }

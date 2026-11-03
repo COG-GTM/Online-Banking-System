@@ -43,7 +43,7 @@ public class User implements UserDetails{
 
     private boolean enabled=true;
 
-    // No public setters: keeps these fields out of @ModelAttribute data binding.
+    // No setters: keeps these out of @ModelAttribute binding. Updated only via UserDao queries.
     @JsonIgnore
     private Integer failedLoginAttempts;
 
@@ -208,21 +208,6 @@ public class User implements UserDetails{
 
     public Date getLockoutUntil() {
         return lockoutUntil;
-    }
-
-    public void recordFailedLogin(int maxAttempts, long lockoutMillis) {
-        if (lockoutUntil != null && isAccountNonLocked()) {
-            resetFailedLogins();
-        }
-        failedLoginAttempts = getFailedLoginAttempts() + 1;
-        if (failedLoginAttempts >= maxAttempts) {
-            lockoutUntil = new Date(System.currentTimeMillis() + lockoutMillis);
-        }
-    }
-
-    public void resetFailedLogins() {
-        failedLoginAttempts = 0;
-        lockoutUntil = null;
     }
 
     @Override
