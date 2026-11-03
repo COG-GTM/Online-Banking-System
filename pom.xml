@@ -81,7 +81,8 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-			<!-- Declared (without executions) so the plugins the dependency-scan workflow runs are in the plugin SBOM. -->
+			<!-- Declared (without executions) so the plugins the dependency-scan workflow runs are in the plugin SBOM.
+			     Plugin <dependencies> override transitive versions with known vulnerabilities (OSV); drop them once the plugin releases ship fixed versions. -->
 			<plugin>
 				<groupId>org.cyclonedx</groupId>
 				<artifactId>cyclonedx-maven-plugin</artifactId>
@@ -90,16 +91,52 @@
 					<outputFormat>json</outputFormat>
 					<outputName>bom</outputName>
 				</configuration>
+				<dependencies>
+					<dependency>
+						<groupId>com.fasterxml.jackson.core</groupId>
+						<artifactId>jackson-core</artifactId>
+						<version>2.18.11</version>
+					</dependency>
+					<dependency>
+						<groupId>com.fasterxml.jackson.core</groupId>
+						<artifactId>jackson-databind</artifactId>
+						<version>2.18.10</version>
+					</dependency>
+					<dependency>
+						<groupId>org.cyclonedx</groupId>
+						<artifactId>cyclonedx-core-java</artifactId>
+						<version>11.0.1</version>
+					</dependency>
+				</dependencies>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-help-plugin</artifactId>
 				<version>${maven-help-plugin.version}</version>
+				<dependencies>
+					<dependency>
+						<groupId>com.thoughtworks.xstream</groupId>
+						<artifactId>xstream</artifactId>
+						<version>1.4.21</version>
+					</dependency>
+					<dependency>
+						<groupId>org.jsoup</groupId>
+						<artifactId>jsoup</artifactId>
+						<version>1.23.2</version>
+					</dependency>
+				</dependencies>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
 				<version>${maven-dependency-plugin.version}</version>
+				<dependencies>
+					<dependency>
+						<groupId>io.airlift</groupId>
+						<artifactId>aircompressor</artifactId>
+						<version>2.0.3</version>
+					</dependency>
+				</dependencies>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
