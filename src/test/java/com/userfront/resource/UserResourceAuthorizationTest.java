@@ -111,6 +111,12 @@ public class UserResourceAuthorizationTest {
     }
 
     @Test
+    public void nonAdminUserIsForbiddenOnBareApiPath() throws Exception {
+        mockMvc.perform(get("/api").with(user("alice").roles("USER")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     public void adminReceivesSummariesWithoutCredentialFields() throws Exception {
         when(userService.findUserList()).thenReturn(Collections.singletonList(sampleUser()));
 
