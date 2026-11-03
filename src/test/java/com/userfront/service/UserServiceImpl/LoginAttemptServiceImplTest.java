@@ -11,6 +11,10 @@ import java.time.ZoneOffset;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
+
+import com.userfront.dao.UserDao;
+import com.userfront.domain.User;
 
 public class LoginAttemptServiceImplTest {
 
@@ -49,6 +53,40 @@ public class LoginAttemptServiceImplTest {
         service.loginFailed("ALICE", "10.0.0.3");
 
         assertTrue(service.isBlocked("alice", "10.0.0.4"));
+    }
+
+    @Test
+    public void accountCounterFollowsTheStoredUsernameTheDatabaseResolves() {
+        UserDao userDao = Mockito.mock(UserDao.class);
+        Mockito.when(userDao.findByUsername("alice")).thenReturn(user("alice"));
+        Mockito.when(userDao.findByUsername("ALICE")).thenReturn(user("alice"));
+        Mockito.when(userDao.findByUsername("alice  ")).thenReturn(user("alice"));
+        service = new LoginAttemptServiceImpl(3, 20, 15, clock, userDao);
+
+        service.loginFailed("alice", "10.0.0.1");
+        service.loginFailed("ALICE", "10.0.0.2");
+        service.loginFailed("alice  ", "10.0.0.3");
+
+        assertTrue(service.isBlocked("alice", "10.0.0.4"));
+    }
+
+    @Test
+    public void distinctStoredAccountsNeverShareACounter() {
+        UserDao userDao = Mockito.mock(UserDao.class);
+        Mockito.when(userDao.findByUsername("Bob")).thenReturn(user("Bob"));
+        Mockito.when(userDao.findByUsername("bob")).thenReturn(user("bob"));
+        service = new LoginAttemptServiceImpl(3, 20, 15, clock, userDao);
+
+        fail("Bob", "10.0.0.1", 3);
+
+        assertTrue(service.isBlocked("Bob", "10.0.0.2"));
+        assertFalse(service.isBlocked("bob", "10.0.0.2"));
+    }
+
+    private static User user(String username) {
+        User user = new User();
+        user.setUsername(username);
+        return user;
     }
 
     @Test

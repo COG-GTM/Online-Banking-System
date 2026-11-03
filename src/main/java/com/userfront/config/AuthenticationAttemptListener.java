@@ -3,6 +3,7 @@ package com.userfront.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.event.AuthenticationFailureBadCredentialsEvent;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
 import org.springframework.security.core.Authentication;
@@ -32,6 +33,10 @@ public class AuthenticationAttemptListener {
 
     @EventListener
     public void onSuccess(AuthenticationSuccessEvent event) {
+        if (!(event.getAuthentication() instanceof UsernamePasswordAuthenticationToken)) {
+            // Remember-me re-authentication proves no password, so it must not clear failed guesses.
+            return;
+        }
         loginAttemptService.loginSucceeded(usernameOf(event.getAuthentication()), ipOf(event.getAuthentication()));
     }
 

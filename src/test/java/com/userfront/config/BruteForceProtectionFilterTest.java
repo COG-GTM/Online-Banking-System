@@ -19,9 +19,11 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.RememberMeAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.event.AuthenticationFailureBadCredentialsEvent;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.web.authentication.WebAuthenticationDetails;
 
 import com.userfront.service.UserServiceImpl.LoginAttemptServiceImpl;
@@ -62,6 +64,21 @@ public class BruteForceProtectionFilterTest {
         listener.onFailure(badCredentials("alice", "10.0.0.1"));
 
         assertNotNull(submitLogin("alice", "10.0.0.1").getRequest());
+    }
+
+    @Test
+    public void rememberMeLoginDoesNotClearAccountFailures() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            listener.onFailure(badCredentials("alice", "10.0.0.1"));
+        }
+        RememberMeAuthenticationToken rememberMe = new RememberMeAuthenticationToken("key", "alice",
+                AuthorityUtils.createAuthorityList("ROLE_USER"));
+        listener.onSuccess(new AuthenticationSuccessEvent(rememberMe));
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(loginRequest("alice", "10.0.0.2"), response, new MockFilterChain());
+
+        assertEquals("/index?locked", response.getRedirectedUrl());
     }
 
     @Test

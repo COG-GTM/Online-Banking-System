@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.userfront.dao.UserDao;
+import com.userfront.domain.User;
 import com.userfront.service.LoginAttemptService;
 
 /**
@@ -20,6 +22,8 @@ import com.userfront.service.LoginAttemptService;
  * accumulates {@code maxAttemptsPerIp} failures (against any account). Each failure re-arms a
  * {@code lockoutMinutes} window; counters expire once that window passes without new failures.
  * Sign-ins still being checked count toward the limits, so parallel guesses cannot overshoot them.
+ * Account counters are keyed by the stored username the database resolves the submitted name to, so
+ * spelling variants the database treats as equal share one counter while distinct accounts never do.
  */
 @Service
 public class LoginAttemptServiceImpl implements LoginAttemptService {
@@ -32,16 +36,23 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
     private final int maxAttemptsPerIp;
     private final long lockoutMillis;
     private final Clock clock;
+    private final UserDao userDao;
     private volatile long nextPurgeAt;
 
     @Autowired
     public LoginAttemptServiceImpl(@Value("${security.login.max-attempts-per-user:5}") int maxAttemptsPerUser,
                                    @Value("${security.login.max-attempts-per-ip:20}") int maxAttemptsPerIp,
-                                   @Value("${security.login.lockout-minutes:15}") long lockoutMinutes) {
-        this(maxAttemptsPerUser, maxAttemptsPerIp, lockoutMinutes, Clock.systemUTC());
+                                   @Value("${security.login.lockout-minutes:15}") long lockoutMinutes,
+                                   UserDao userDao) {
+        this(maxAttemptsPerUser, maxAttemptsPerIp, lockoutMinutes, Clock.systemUTC(), userDao);
     }
 
     public LoginAttemptServiceImpl(int maxAttemptsPerUser, int maxAttemptsPerIp, long lockoutMinutes, Clock clock) {
+        this(maxAttemptsPerUser, maxAttemptsPerIp, lockoutMinutes, clock, null);
+    }
+
+    public LoginAttemptServiceImpl(int maxAttemptsPerUser, int maxAttemptsPerIp, long lockoutMinutes, Clock clock,
+                                   UserDao userDao) {
         if (maxAttemptsPerUser < 1 || maxAttemptsPerIp < 1 || lockoutMinutes < 1) {
             throw new IllegalArgumentException("Login attempt limits and lockout window must be positive");
         }
@@ -49,12 +60,15 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
         this.maxAttemptsPerIp = maxAttemptsPerIp;
         this.lockoutMillis = TimeUnit.MINUTES.toMillis(lockoutMinutes);
         this.clock = clock;
+        this.userDao = userDao;
     }
 
     @Override
-    public synchronized boolean tryBeginAttempt(String username, String ip) {
-        String user = userKey(username);
-        String client = ipKey(ip);
+    public boolean tryBeginAttempt(String username, String ip) {
+        return tryBegin(userKey(username), ipKey(ip));
+    }
+
+    private synchronized boolean tryBegin(String user, String client) {
         long now = clock.millis();
         purgeExpiredIfDue(now);
         if (countOf(user, now) + inFlightOf(user) >= maxAttemptsPerUser
@@ -67,30 +81,41 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
     }
 
     @Override
-    public synchronized void endAttempt(String username, String ip) {
-        inFlight.computeIfPresent(userKey(username), (k, n) -> n > 1 ? n - 1 : null);
-        inFlight.computeIfPresent(ipKey(ip), (k, n) -> n > 1 ? n - 1 : null);
+    public void endAttempt(String username, String ip) {
+        end(userKey(username), ipKey(ip));
+    }
+
+    private synchronized void end(String user, String client) {
+        inFlight.computeIfPresent(user, (k, n) -> n > 1 ? n - 1 : null);
+        inFlight.computeIfPresent(client, (k, n) -> n > 1 ? n - 1 : null);
     }
 
     @Override
-    public synchronized void loginFailed(String username, String ip) {
+    public void loginFailed(String username, String ip) {
+        failed(userKey(username), ipKey(ip));
+    }
+
+    private synchronized void failed(String user, String client) {
         long now = clock.millis();
         purgeExpiredIfDue(now);
-        register(userKey(username), now);
-        register(ipKey(ip), now);
+        register(user, now);
+        register(client, now);
     }
 
     @Override
-    public synchronized void loginSucceeded(String username, String ip) {
+    public void loginSucceeded(String username, String ip) {
         attempts.remove(userKey(username));
     }
 
     @Override
-    public synchronized boolean isBlocked(String username, String ip) {
+    public boolean isBlocked(String username, String ip) {
+        return blocked(userKey(username), ipKey(ip));
+    }
+
+    private synchronized boolean blocked(String user, String client) {
         long now = clock.millis();
         purgeExpiredIfDue(now);
-        return countOf(userKey(username), now) >= maxAttemptsPerUser
-                || countOf(ipKey(ip), now) >= maxAttemptsPerIp;
+        return countOf(user, now) >= maxAttemptsPerUser || countOf(client, now) >= maxAttemptsPerIp;
     }
 
     private int inFlightOf(String key) {
@@ -119,8 +144,21 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
         attempts.values().removeIf(a -> a.isExpired(now));
     }
 
-    private static String userKey(String username) {
-        return "user:" + normalize(username);
+    private String userKey(String username) {
+        String stored = storedUsername(username);
+        return stored != null ? "account:" + stored : "user:" + normalize(username);
+    }
+
+    private String storedUsername(String username) {
+        if (userDao == null || username == null || username.isEmpty()) {
+            return null;
+        }
+        try {
+            User user = userDao.findByUsername(username);
+            return user == null ? null : user.getUsername();
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private static String ipKey(String ip) {
