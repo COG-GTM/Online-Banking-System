@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -103,6 +104,13 @@ public class CorsPreflightTest {
                 .andExpect(content().string("ok"))
                 .andExpect(header().string("Access-Control-Allow-Origin", ALLOWED_ORIGIN))
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+    }
+
+    @Test
+    public void authenticatedCrossOriginHeadFromAllowedOriginGetsCorsHeaders() throws Exception {
+        mockMvc.perform(head("/api/user/all").header("Origin", ALLOWED_ORIGIN).with(user("alice")))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", ALLOWED_ORIGIN));
     }
 
     @Test

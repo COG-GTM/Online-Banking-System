@@ -88,7 +88,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         if (!origins.isEmpty()) {
             CorsConfiguration configuration = new CorsConfiguration();
             configuration.setAllowedOrigins(origins);
-            configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+            configuration.setAllowedMethods(Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"));
             configuration.setAllowedHeaders(Arrays.asList(
                     "Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
             configuration.setAllowCredentials(true);
