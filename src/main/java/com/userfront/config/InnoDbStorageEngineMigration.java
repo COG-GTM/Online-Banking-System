@@ -56,15 +56,18 @@ public class InnoDbStorageEngineMigration implements InitializingBean {
         if (!enabled || !isMySql()) {
             return;
         }
-        Set<String> appTables = applicationTables();
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        // lower_case_table_names = 0 means table names are case-sensitive.
+        boolean caseSensitive = Integer.valueOf(0).equals(
+                jdbc.queryForObject("select @@lower_case_table_names", Integer.class));
+        Set<String> appTables = applicationTables(caseSensitive);
         List<String> tables = jdbc.queryForList(
                 "select table_name from information_schema.tables "
                         + "where table_schema = database() and table_type = 'BASE TABLE' and engine = 'MyISAM'",
                 String.class);
         List<String> failed = new ArrayList<>();
         for (String table : tables) {
-            if (!appTables.contains(table.toLowerCase(Locale.ROOT))) {
+            if (!appTables.contains(caseSensitive ? table : table.toLowerCase(Locale.ROOT))) {
                 continue;
             }
             String sql = "ALTER TABLE `" + table.replace("`", "``") + "` ENGINE=InnoDB";
@@ -83,34 +86,34 @@ public class InnoDbStorageEngineMigration implements InitializingBean {
         }
     }
 
-    Set<String> applicationTables() {
+    Set<String> applicationTables(boolean caseSensitive) {
         SessionFactoryImplementor sessionFactory = entityManagerFactory.unwrap(SessionFactoryImplementor.class);
         Set<String> tables = new TreeSet<>();
         for (EntityPersister persister : sessionFactory.getMetamodel().entityPersisters().values()) {
             if (persister instanceof AbstractEntityPersister) {
-                addTable(tables, ((AbstractEntityPersister) persister).getTableName());
+                addTable(tables, caseSensitive, ((AbstractEntityPersister) persister).getTableName());
             }
             IdentifierGenerator generator = persister.getIdentifierGenerator();
             if (generator instanceof SequenceStyleGenerator) {
-                addTable(tables, ((SequenceStyleGenerator) generator).getDatabaseStructure().getName());
+                addTable(tables, caseSensitive, ((SequenceStyleGenerator) generator).getDatabaseStructure().getName());
             } else if (generator instanceof TableGenerator) {
-                addTable(tables, ((TableGenerator) generator).getTableName());
+                addTable(tables, caseSensitive, ((TableGenerator) generator).getTableName());
             }
         }
         for (CollectionPersister persister : sessionFactory.getMetamodel().collectionPersisters().values()) {
             if (persister instanceof AbstractCollectionPersister) {
-                addTable(tables, ((AbstractCollectionPersister) persister).getTableName());
+                addTable(tables, caseSensitive, ((AbstractCollectionPersister) persister).getTableName());
             }
         }
         return tables;
     }
 
-    private static void addTable(Set<String> tables, String qualifiedName) {
+    private static void addTable(Set<String> tables, boolean caseSensitive, String qualifiedName) {
         if (qualifiedName == null) {
             return;
         }
         String name = qualifiedName.substring(qualifiedName.lastIndexOf('.') + 1).replace("`", "");
-        tables.add(name.toLowerCase(Locale.ROOT));
+        tables.add(caseSensitive ? name : name.toLowerCase(Locale.ROOT));
     }
 
     private boolean isMySql() throws SQLException {
