@@ -30,6 +30,7 @@ public class SecurityConfigCorsTest {
 
     private static final String TRUSTED = "https://bank.example.com";
     private static final String UNTRUSTED = "https://evil.example";
+    private static final String API = "/api/user/all";
 
     @Configuration
     @EnableWebMvc
@@ -52,6 +53,11 @@ public class SecurityConfigCorsTest {
 
     @RestController
     static class ProbeController {
+        @GetMapping("/api/user/all")
+        public String users() {
+            return "[]";
+        }
+
         @GetMapping("/userFront")
         public String userFront() {
             return "account data";
@@ -59,10 +65,17 @@ public class SecurityConfigCorsTest {
     }
 
     private static MockMvc mockMvc(String allowedOrigins) {
+        return mockMvc(allowedOrigins, null);
+    }
+
+    private static MockMvc mockMvc(String allowedOrigins, String allowCredentials) {
         AnnotationConfigWebApplicationContext context = new AnnotationConfigWebApplicationContext();
         context.setServletContext(new MockServletContext());
-        context.getEnvironment().getPropertySources().addFirst(
-                new MockPropertySource().withProperty("app.cors.allowed-origins", allowedOrigins));
+        MockPropertySource properties = new MockPropertySource().withProperty("app.cors.allowed-origins", allowedOrigins);
+        if (allowCredentials != null) {
+            properties.setProperty("app.cors.allow-credentials", allowCredentials);
+        }
+        context.getEnvironment().getPropertySources().addFirst(properties);
         context.register(TestWebConfig.class, SecurityConfig.class);
         context.refresh();
         Filter springSecurityFilterChain = context.getBean("springSecurityFilterChain", Filter.class);
@@ -70,7 +83,11 @@ public class SecurityConfigCorsTest {
     }
 
     private static MockHttpServletRequestBuilder preflight(String origin) {
-        return MockMvcRequestBuilders.options("/userFront")
+        return preflight(API, origin);
+    }
+
+    private static MockHttpServletRequestBuilder preflight(String path, String origin) {
+        return MockMvcRequestBuilders.options(path)
                 .header("Origin", origin)
                 .header("Access-Control-Request-Method", "GET");
     }
@@ -92,7 +109,7 @@ public class SecurityConfigCorsTest {
         assertEquals(403, preflight.getStatus());
         assertNoCorsGrant(preflight);
 
-        MockHttpServletResponse get = perform(mvc, MockMvcRequestBuilders.get("/userFront").header("Origin", "http://localhost:4200"));
+        MockHttpServletResponse get = perform(mvc, MockMvcRequestBuilders.get(API).header("Origin", "http://localhost:4200"));
         assertEquals(403, get.getStatus());
         assertNoCorsGrant(get);
     }
@@ -100,7 +117,7 @@ public class SecurityConfigCorsTest {
     @Test
     public void sameOriginRequestIsUnaffected() throws Exception {
         MockHttpServletResponse response = perform(mockMvc(""),
-                MockMvcRequestBuilders.get("http://localhost/userFront").header("Origin", "http://localhost"));
+                MockMvcRequestBuilders.get("http://localhost" + API).header("Origin", "http://localhost"));
 
         assertEquals(302, response.getStatus());
         assertTrue(response.getRedirectedUrl().endsWith("/index"));
@@ -109,7 +126,7 @@ public class SecurityConfigCorsTest {
 
     @Test
     public void optionsWithoutOriginGoesThroughAuthentication() throws Exception {
-        MockHttpServletResponse response = perform(mockMvc(TRUSTED), MockMvcRequestBuilders.options("/userFront"));
+        MockHttpServletResponse response = perform(mockMvc(TRUSTED), MockMvcRequestBuilders.options(API));
 
         assertEquals(302, response.getStatus());
         assertTrue(response.getRedirectedUrl().endsWith("/index"));
@@ -127,10 +144,28 @@ public class SecurityConfigCorsTest {
     @Test
     public void configuredOriginStillNeedsAuthenticationForActualRequest() throws Exception {
         MockHttpServletResponse response = perform(mockMvc(TRUSTED),
-                MockMvcRequestBuilders.get("/userFront").header("Origin", TRUSTED));
+                MockMvcRequestBuilders.get(API).header("Origin", TRUSTED));
 
         assertEquals(302, response.getStatus());
         assertTrue(response.getRedirectedUrl().endsWith("/index"));
+    }
+
+    @Test
+    public void credentialsHeaderCanBeDisabledForListedOrigin() throws Exception {
+        MockHttpServletResponse response = perform(mockMvc(TRUSTED, "false"), preflight(TRUSTED));
+
+        assertEquals(200, response.getStatus());
+        assertEquals(TRUSTED, response.getHeader("Access-Control-Allow-Origin"));
+        assertNull(response.getHeader("Access-Control-Allow-Credentials"));
+    }
+
+    @Test
+    public void pagesOutsideApiNeverGetCorsHeaders() throws Exception {
+        MockMvc mvc = mockMvc(TRUSTED);
+
+        assertNoCorsGrant(perform(mvc, preflight("/userFront", TRUSTED)));
+        assertNoCorsGrant(perform(mvc, MockMvcRequestBuilders.get("/userFront").header("Origin", TRUSTED)));
+        assertNoCorsGrant(perform(mvc, MockMvcRequestBuilders.get("/index").header("Origin", TRUSTED)));
     }
 
     @Test
@@ -141,7 +176,7 @@ public class SecurityConfigCorsTest {
         assertEquals(403, preflight.getStatus());
         assertNoCorsGrant(preflight);
 
-        MockHttpServletResponse get = perform(mvc, MockMvcRequestBuilders.get("/userFront").header("Origin", UNTRUSTED));
+        MockHttpServletResponse get = perform(mvc, MockMvcRequestBuilders.get(API).header("Origin", UNTRUSTED));
         assertEquals(403, get.getStatus());
         assertNoCorsGrant(get);
     }

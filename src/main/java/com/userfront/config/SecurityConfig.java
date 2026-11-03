@@ -39,6 +39,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Value("${app.cors.allowed-origins:}")
     private String corsAllowedOrigins = "";
 
+    @Value("${app.cors.allow-credentials:true}")
+    private boolean corsAllowCredentials = true;
+
     private static final String SALT = "salt"; // Salt should be protected carefully
 
     @Bean
@@ -81,9 +84,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
 
     /**
-     * Cross-origin access is granted only to the origins listed in
-     * {@code app.cors.allowed-origins}; requests from any other origin are
-     * rejected with 403. The default empty list rejects all cross-origin requests.
+     * Cross-origin access is limited to the JSON API under {@code /api/**} and to
+     * the origins listed in {@code app.cors.allowed-origins}; requests from any
+     * other origin are rejected with 403. The default empty list rejects all
+     * cross-origin requests. {@code Access-Control-Allow-Credentials} is only sent
+     * to a listed origin, and only while {@code app.cors.allow-credentials} is true.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -91,11 +96,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         configuration.setAllowedOrigins(parseAllowedOrigins(corsAllowedOrigins));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
         configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "accept", "x-requested-with"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(corsAllowCredentials);
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration("/api/**", configuration);
         return source;
     }
 
