@@ -18,7 +18,7 @@ public class Appointment {
     private Date date;
     private String location;
     private String description;
-    private boolean confirmed;
+    private boolean confirmed = false;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
