@@ -1,6 +1,11 @@
 package com.userfront.config;
 
+import java.io.IOException;
 import java.security.SecureRandom;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -11,9 +16,15 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
+import com.userfront.service.LoginAttemptService;
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
 @Configuration
@@ -26,6 +37,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
     private UserSecurityService userSecurityService;
+
+    @Autowired
+    private LoginAttemptService loginAttemptService;
 
     private static final String SALT = "salt"; // Salt should be protected carefully
 
@@ -40,12 +54,16 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             "/js/**",
             "/images/**",
             "/",
+            "/index",
             "/about/**",
             "/contact/**",
             "/error/**/*",
             "/console/**",
             "/signup"
     };
+
+    private static final String LOGIN_URL = "/index";
+    private static final String USERNAME_PARAMETER = "username";
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
@@ -57,14 +75,43 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         http
                 .csrf().disable().cors().disable()
-                .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
+                .addFilterBefore(new LoginThrottlingFilter(loginAttemptService, LOGIN_URL, USERNAME_PARAMETER),
+                        UsernamePasswordAuthenticationFilter.class)
+                .formLogin().loginPage(LOGIN_URL).usernameParameter(USERNAME_PARAMETER)
+                .failureHandler(loginFailureHandler()).successHandler(loginSuccessHandler()).permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
                 .rememberMe();
     }
 
+    private SimpleUrlAuthenticationFailureHandler loginFailureHandler() {
+        return new SimpleUrlAuthenticationFailureHandler("/index?error") {
+            @Override
+            public void onAuthenticationFailure(HttpServletRequest request,
+                                                HttpServletResponse response,
+                                                AuthenticationException exception)
+                    throws IOException, ServletException {
+                loginAttemptService.loginFailed(request.getParameter(USERNAME_PARAMETER), request.getRemoteAddr());
+                super.onAuthenticationFailure(request, response, exception);
+            }
+        };
+    }
 
+    private SavedRequestAwareAuthenticationSuccessHandler loginSuccessHandler() {
+        SavedRequestAwareAuthenticationSuccessHandler handler = new SavedRequestAwareAuthenticationSuccessHandler() {
+            @Override
+            public void onAuthenticationSuccess(HttpServletRequest request,
+                                                HttpServletResponse response,
+                                                Authentication authentication)
+                    throws IOException, ServletException {
+                loginAttemptService.loginSucceeded(authentication.getName());
+                super.onAuthenticationSuccess(request, response, authentication);
+            }
+        };
+        handler.setDefaultTargetUrl("/userFront");
+        return handler;
+    }
 
     @Autowired
     public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
