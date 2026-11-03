@@ -51,6 +51,7 @@ public class User implements UserDetails{
     private List<Appointment> appointmentList;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Recipient> recipientList;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
@@ -129,6 +130,7 @@ public class User implements UserDetails{
         this.recipientList = recipientList;
     }
 
+    @JsonIgnore
     public String getPassword() {
         return password;
     }
@@ -162,18 +164,16 @@ public class User implements UserDetails{
         return "User{" +
                 "userId=" + userId +
                 ", username='" + username + '\'' +
-                ", password='" + password + '\'' +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", email='" + email + '\'' +
                 ", phone='" + phone + '\'' +
-                ", appointmentList=" + appointmentList +
-                ", recipientList=" + recipientList +
-                ", userRoles=" + userRoles +
+                ", enabled=" + enabled +
                 '}';
     }
 
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         Set<GrantedAuthority> authorities = new HashSet<>();
         userRoles.forEach(ur -> authorities.add(new Authority(ur.getRole().getName())));
