@@ -1,5 +1,6 @@
 package com.userfront.service;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -84,6 +85,36 @@ public class LoginAttemptServiceTest {
 
         assertFalse(service.isBlocked("", "10.0.0.3"));
         assertFalse(service.isBlocked(null, "10.0.0.3"));
+    }
+
+    @Test
+    public void trackedKeysStayBoundedWhileAllEntriesAreRecent() {
+        LoginAttemptService bounded = new LoginAttemptService(2, 2, Duration.ofMinutes(15), clock, 3);
+        for (int i = 0; i < 50; i++) {
+            clock.advance(Duration.ofSeconds(1));
+            bounded.loginFailed("user" + i, "10.0.1." + i);
+        }
+
+        assertEquals(3, bounded.trackedUsernames());
+        assertEquals(3, bounded.trackedAddresses());
+    }
+
+    @Test
+    public void evictionDropsOldestEntryAndKeepsRecentLocks() {
+        LoginAttemptService bounded = new LoginAttemptService(2, 100, Duration.ofMinutes(15), clock, 3);
+        bounded.loginFailed("oldest", "10.0.0.1");
+        clock.advance(Duration.ofSeconds(1));
+        bounded.loginFailed("alice", "10.0.0.1");
+        bounded.loginFailed("alice", "10.0.0.1");
+        clock.advance(Duration.ofSeconds(1));
+        bounded.loginFailed("bob", "10.0.0.1");
+        clock.advance(Duration.ofSeconds(1));
+        bounded.loginFailed("carol", "10.0.0.1");
+
+        assertEquals(3, bounded.trackedUsernames());
+        assertTrue("recently locked user survives eviction", bounded.isBlocked("alice", "10.0.0.9"));
+        bounded.loginFailed("oldest", "10.0.0.1");
+        assertFalse("oldest entry was evicted, so its count restarted", bounded.isBlocked("oldest", "10.0.0.9"));
     }
 
     @Test(expected = IllegalArgumentException.class)
