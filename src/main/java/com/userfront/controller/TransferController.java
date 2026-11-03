@@ -5,8 +5,9 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -28,6 +29,11 @@ public class TransferController {
 
     @Autowired
     private UserService userService;
+
+    @InitBinder("recipient")
+    public void initRecipientBinder(WebDataBinder binder) {
+        binder.setAllowedFields("name", "email", "phone", "accountNumber", "description");
+    }
 
     @RequestMapping(value = "/betweenAccounts", method = RequestMethod.GET)
     public String betweenAccounts(Model model) {
@@ -66,9 +72,23 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/recipient/save", method = RequestMethod.POST)
-    public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
+    public String recipientPost(@ModelAttribute("recipient") Recipient recipient, @RequestParam(value = "id", required = false) Long id, Principal principal) {
 
         User user = userService.findByUsername(principal.getName());
+
+        if (id != null) {
+            Recipient existing = transactionService.findRecipientById(id, user);
+            if (existing == null) {
+                return "redirect:/transfer/recipient";
+            }
+            existing.setName(recipient.getName());
+            existing.setEmail(recipient.getEmail());
+            existing.setPhone(recipient.getPhone());
+            existing.setAccountNumber(recipient.getAccountNumber());
+            existing.setDescription(recipient.getDescription());
+            recipient = existing;
+        }
+
         recipient.setUser(user);
         transactionService.saveRecipient(recipient);
 
@@ -78,7 +98,11 @@ public class TransferController {
     @RequestMapping(value = "/recipient/edit", method = RequestMethod.GET)
     public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        User user = userService.findByUsername(principal.getName());
+        Recipient recipient = transactionService.findRecipientByName(recipientName, user);
+        if (recipient == null) {
+            return "redirect:/transfer/recipient";
+        }
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
         model.addAttribute("recipientList", recipientList);
@@ -87,20 +111,13 @@ public class TransferController {
         return "recipient";
     }
 
-    @RequestMapping(value = "/recipient/delete", method = RequestMethod.GET)
-    @Transactional
-    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
+    @RequestMapping(value = "/recipient/delete", method = RequestMethod.POST)
+    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName);
+        User user = userService.findByUsername(principal.getName());
+        transactionService.deleteRecipientByName(recipientName, user);
 
-        List<Recipient> recipientList = transactionService.findRecipientList(principal);
-
-        Recipient recipient = new Recipient();
-        model.addAttribute("recipient", recipient);
-        model.addAttribute("recipientList", recipientList);
-
-
-        return "recipient";
+        return "redirect:/transfer/recipient";
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.GET)
@@ -116,7 +133,10 @@ public class TransferController {
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
     public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = transactionService.findRecipientByName(recipientName, user);
+        if (recipient == null) {
+            return "redirect:/transfer/toSomeoneElse";
+        }
         transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
 
         return "redirect:/userFront";
