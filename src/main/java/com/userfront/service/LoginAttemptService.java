@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
  * Counts failed form logins per username and per client address and blocks further attempts
  * once a threshold is reached. A block lasts {@code lockoutDuration} from the last recorded failure.
  * Each map holds at most {@code maxTrackedKeys} entries; when full, expired entries are purged first and
- * then the entry with the oldest failure is evicted.
+ * then the oldest entry that is not locked is evicted, so active lockouts survive unless every entry is locked.
  */
 @Service
 public class LoginAttemptService {
@@ -72,8 +72,8 @@ public class LoginAttemptService {
 
     public void loginFailed(String username, String address) {
         Instant now = clock.instant();
-        record(userAttempts, normalize(username), now);
-        record(addressAttempts, address, now);
+        record(userAttempts, normalize(username), maxUserFailures, now);
+        record(addressAttempts, address, maxAddressFailures, now);
     }
 
     /** Clears the username counter only; the address counter keeps running so a valid login cannot reset it. */
@@ -92,7 +92,7 @@ public class LoginAttemptService {
         return current != null && !current.isExpired(now, lockoutDuration) && current.failures >= max;
     }
 
-    private void record(Map<String, Attempts> attempts, String key, Instant now) {
+    private void record(Map<String, Attempts> attempts, String key, int max, Instant now) {
         if (key == null) {
             return;
         }
@@ -100,7 +100,7 @@ public class LoginAttemptService {
             if (!attempts.containsKey(key) && attempts.size() >= maxTrackedKeys) {
                 attempts.values().removeIf(a -> a.isExpired(now, lockoutDuration));
                 if (attempts.size() >= maxTrackedKeys) {
-                    evictOldest(attempts);
+                    evictOldest(attempts, max);
                 }
             }
             attempts.compute(key, (k, existing) -> existing == null || existing.isExpired(now, lockoutDuration)
@@ -109,17 +109,27 @@ public class LoginAttemptService {
         }
     }
 
-    private static void evictOldest(Map<String, Attempts> attempts) {
-        String oldest = null;
-        Instant oldestFailure = null;
+    /** Evicts the oldest entry that is not locked; only when every entry is locked is the oldest lock dropped. */
+    private static void evictOldest(Map<String, Attempts> attempts, int max) {
+        String oldestUnlocked = null;
+        Attempts oldestUnlockedAttempts = null;
+        String oldestLocked = null;
+        Attempts oldestLockedAttempts = null;
         for (Map.Entry<String, Attempts> entry : attempts.entrySet()) {
-            if (oldestFailure == null || entry.getValue().lastFailure.isBefore(oldestFailure)) {
-                oldest = entry.getKey();
-                oldestFailure = entry.getValue().lastFailure;
+            Attempts candidate = entry.getValue();
+            if (candidate.failures < max) {
+                if (oldestUnlockedAttempts == null || candidate.lastFailure.isBefore(oldestUnlockedAttempts.lastFailure)) {
+                    oldestUnlocked = entry.getKey();
+                    oldestUnlockedAttempts = candidate;
+                }
+            } else if (oldestLockedAttempts == null || candidate.lastFailure.isBefore(oldestLockedAttempts.lastFailure)) {
+                oldestLocked = entry.getKey();
+                oldestLockedAttempts = candidate;
             }
         }
-        if (oldest != null) {
-            attempts.remove(oldest);
+        String victim = oldestUnlocked != null ? oldestUnlocked : oldestLocked;
+        if (victim != null) {
+            attempts.remove(victim);
         }
     }
 
