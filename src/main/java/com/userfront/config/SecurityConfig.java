@@ -31,6 +31,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private static final String REMEMBER_ME_COOKIE = "remember-me";
 
+    private static final int MIN_REMEMBER_ME_KEY_LENGTH = 32;
+
     @Value("${app.security.remember-me.key:}")
     private String rememberMeKey;
 
@@ -90,6 +92,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private String resolveRememberMeKey() {
         if (StringUtils.hasText(rememberMeKey)) {
+            if (rememberMeKey.trim().length() < MIN_REMEMBER_ME_KEY_LENGTH) {
+                throw new IllegalStateException("app.security.remember-me.key (REMEMBER_ME_KEY) must be at least "
+                        + MIN_REMEMBER_ME_KEY_LENGTH + " characters; use a long random value, e.g. `openssl rand -base64 32`.");
+            }
             return rememberMeKey;
         }
         LOG.warn("app.security.remember-me.key (REMEMBER_ME_KEY) is not set; using a random per-startup key, "
