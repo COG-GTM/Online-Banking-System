@@ -33,9 +33,15 @@ public final class Money {
         if (value == null) {
             throw new IllegalArgumentException("Amount is required");
         }
+        requireFitsColumn(value);
+        BigDecimal scaled = value.setScale(SCALE, ROUNDING);
+        requireFitsColumn(scaled);
+        return scaled;
+    }
+
+    private static void requireFitsColumn(BigDecimal value) {
         if (value.precision() - value.scale() > MAX_INTEGER_DIGITS) {
             throw new IllegalArgumentException("Amount exceeds " + MAX_INTEGER_DIGITS + " integer digits");
         }
-        return value.setScale(SCALE, ROUNDING);
     }
 }

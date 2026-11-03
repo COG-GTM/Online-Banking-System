@@ -44,6 +44,21 @@ public class MoneyTest {
         Money.parse("123456789012345678");
     }
 
+    @Test
+    public void parseAcceptsLargestValueThatFitsTheColumn() {
+        assertEquals("99999999999999999.99", Money.parse("99999999999999999.994").toPlainString());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void parseRejectsValuesThatRoundIntoAnExtraIntegerDigit() {
+        Money.parse("99999999999999999.995");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void normalizeRejectsArithmeticResultsWiderThanTheColumn() {
+        Money.normalize(Money.parse("99999999999999999.99").add(Money.parse("0.01")));
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void parseRejectsHugeExponentWithoutExpandingIt() {
         Money.parse("1E100000000");
