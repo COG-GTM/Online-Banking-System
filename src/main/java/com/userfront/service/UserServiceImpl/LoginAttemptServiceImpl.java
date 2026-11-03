@@ -64,30 +64,31 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
     }
 
     @Override
-    public boolean tryBeginAttempt(String username, String ip) {
+    public Reservation tryBeginAttempt(String username, String ip) {
         return tryBegin(userKey(username), ipKey(ip));
     }
 
-    private synchronized boolean tryBegin(String user, String client) {
+    private synchronized Reservation tryBegin(String user, String client) {
         long now = clock.millis();
         purgeExpiredIfDue(now);
         if (countOf(user, now) + inFlightOf(user) >= maxAttemptsPerUser
                 || countOf(client, now) + inFlightOf(client) >= maxAttemptsPerIp) {
-            return false;
+            return null;
         }
         inFlight.merge(user, 1, Integer::sum);
         inFlight.merge(client, 1, Integer::sum);
-        return true;
+        return new Slot(user, client);
     }
 
     @Override
-    public void endAttempt(String username, String ip) {
-        end(userKey(username), ipKey(ip));
-    }
-
-    private synchronized void end(String user, String client) {
-        inFlight.computeIfPresent(user, (k, n) -> n > 1 ? n - 1 : null);
-        inFlight.computeIfPresent(client, (k, n) -> n > 1 ? n - 1 : null);
+    public synchronized void endAttempt(Reservation reservation) {
+        if (!(reservation instanceof Slot) || ((Slot) reservation).released) {
+            return;
+        }
+        Slot slot = (Slot) reservation;
+        slot.released = true;
+        inFlight.computeIfPresent(slot.userKey, (k, n) -> n > 1 ? n - 1 : null);
+        inFlight.computeIfPresent(slot.ipKey, (k, n) -> n > 1 ? n - 1 : null);
     }
 
     @Override
@@ -167,6 +168,18 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
 
     private static String normalize(String value) {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static final class Slot implements Reservation {
+
+        private final String userKey;
+        private final String ipKey;
+        private boolean released;
+
+        private Slot(String userKey, String ipKey) {
+            this.userKey = userKey;
+            this.ipKey = ipKey;
+        }
     }
 
     private static final class Attempts {

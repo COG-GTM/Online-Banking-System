@@ -1,6 +1,8 @@
 package com.userfront.service.UserServiceImpl;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.time.Clock;
@@ -15,6 +17,7 @@ import org.mockito.Mockito;
 
 import com.userfront.dao.UserDao;
 import com.userfront.domain.User;
+import com.userfront.service.LoginAttemptService;
 
 public class LoginAttemptServiceImplTest {
 
@@ -142,43 +145,63 @@ public class LoginAttemptServiceImplTest {
     @Test
     public void inFlightAttemptsCountTowardTheAccountLimit() {
         fail("alice", "10.0.0.1", 1);
-        assertTrue(service.tryBeginAttempt("alice", "10.0.0.2"));
-        assertTrue(service.tryBeginAttempt("alice", "10.0.0.3"));
+        assertNotNull(service.tryBeginAttempt("alice", "10.0.0.2"));
+        assertNotNull(service.tryBeginAttempt("alice", "10.0.0.3"));
 
-        assertFalse(service.tryBeginAttempt("alice", "10.0.0.4"));
-        assertTrue(service.tryBeginAttempt("bob", "10.0.0.4"));
+        assertNull(service.tryBeginAttempt("alice", "10.0.0.4"));
+        assertNotNull(service.tryBeginAttempt("bob", "10.0.0.4"));
     }
 
     @Test
     public void inFlightAttemptsCountTowardTheIpLimit() {
         for (int i = 0; i < 5; i++) {
-            assertTrue(service.tryBeginAttempt("user" + i, "10.0.0.1"));
+            assertNotNull(service.tryBeginAttempt("user" + i, "10.0.0.1"));
         }
 
-        assertFalse(service.tryBeginAttempt("user5", "10.0.0.1"));
+        assertNull(service.tryBeginAttempt("user5", "10.0.0.1"));
     }
 
     @Test
     public void endingAnAttemptFreesItsSlot() {
-        assertTrue(service.tryBeginAttempt("alice", "10.0.0.1"));
-        assertTrue(service.tryBeginAttempt("alice", "10.0.0.1"));
-        assertTrue(service.tryBeginAttempt("alice", "10.0.0.1"));
-        assertFalse(service.tryBeginAttempt("alice", "10.0.0.1"));
+        LoginAttemptService.Reservation first = service.tryBeginAttempt("alice", "10.0.0.1");
+        assertNotNull(first);
+        assertNotNull(service.tryBeginAttempt("alice", "10.0.0.1"));
+        assertNotNull(service.tryBeginAttempt("alice", "10.0.0.1"));
+        assertNull(service.tryBeginAttempt("alice", "10.0.0.1"));
 
-        service.endAttempt("alice", "10.0.0.1");
-        assertTrue(service.tryBeginAttempt("alice", "10.0.0.1"));
+        service.endAttempt(first);
+        service.endAttempt(first);
+        assertNotNull(service.tryBeginAttempt("alice", "10.0.0.1"));
+        assertNull(service.tryBeginAttempt("alice", "10.0.0.1"));
     }
 
     @Test
     public void failedAttemptKeepsCountingAfterItEnds() {
         for (int i = 0; i < 3; i++) {
-            assertTrue(service.tryBeginAttempt("alice", "10.0.0.1"));
+            LoginAttemptService.Reservation reservation = service.tryBeginAttempt("alice", "10.0.0.1");
+            assertNotNull(reservation);
             service.loginFailed("alice", "10.0.0.1");
-            service.endAttempt("alice", "10.0.0.1");
+            service.endAttempt(reservation);
         }
 
-        assertFalse(service.tryBeginAttempt("alice", "10.0.0.1"));
+        assertNull(service.tryBeginAttempt("alice", "10.0.0.1"));
         assertTrue(service.isBlocked("alice", "10.0.0.1"));
+    }
+
+    @Test
+    public void releaseFreesTheReservedAccountSlotEvenIfTheLookupLaterFails() {
+        UserDao userDao = Mockito.mock(UserDao.class);
+        Mockito.when(userDao.findByUsername("alice")).thenReturn(user("alice"));
+        service = new LoginAttemptServiceImpl(1, 20, 15, clock, userDao);
+
+        LoginAttemptService.Reservation reservation = service.tryBeginAttempt("alice", "10.0.0.1");
+        assertNotNull(reservation);
+        Mockito.when(userDao.findByUsername("alice")).thenThrow(new IllegalStateException("db down"));
+        service.endAttempt(reservation);
+
+        Mockito.reset(userDao);
+        Mockito.when(userDao.findByUsername("alice")).thenReturn(user("alice"));
+        assertNotNull(service.tryBeginAttempt("alice", "10.0.0.1"));
     }
 
     @Test(expected = IllegalArgumentException.class)

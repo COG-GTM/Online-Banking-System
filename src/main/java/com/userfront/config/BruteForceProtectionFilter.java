@@ -42,7 +42,8 @@ public class BruteForceProtectionFilter extends OncePerRequestFilter {
         if (loginRequestMatcher.matches(request)) {
             String username = request.getParameter(UsernamePasswordAuthenticationFilter.SPRING_SECURITY_FORM_USERNAME_KEY);
             String ip = request.getRemoteAddr();
-            if (!loginAttemptService.tryBeginAttempt(username, ip)) {
+            LoginAttemptService.Reservation reservation = loginAttemptService.tryBeginAttempt(username, ip);
+            if (reservation == null) {
                 LOG.warn("Rejected sign-in attempt from {}: too many failed attempts", ip);
                 response.sendRedirect(request.getContextPath() + lockedRedirectUrl);
                 return;
@@ -50,7 +51,7 @@ public class BruteForceProtectionFilter extends OncePerRequestFilter {
             try {
                 chain.doFilter(request, response);
             } finally {
-                loginAttemptService.endAttempt(username, ip);
+                loginAttemptService.endAttempt(reservation);
             }
             return;
         }
