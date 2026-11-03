@@ -119,6 +119,21 @@ public class RecipientDeleteCsrfTest {
     }
 
     @Test
+    public void trailingSlashVariantStillRequiresCsrfToken() throws Exception {
+        mockMvc.perform(post("/transfer/recipient/delete/").session(session).param("recipientId", "7"))
+                .andExpect(status().isForbidden());
+
+        verify(transactionService, never()).deleteRecipientById(anyLong(), any(Principal.class));
+    }
+
+    @Test
+    public void suffixVariantDoesNotDeleteWithoutCsrfToken() throws Exception {
+        mockMvc.perform(post("/transfer/recipient/delete.json").session(session).param("recipientId", "7"));
+
+        verify(transactionService, never()).deleteRecipientById(anyLong(), any(Principal.class));
+    }
+
+    @Test
     public void deleteWithValidCsrfTokenSucceeds() throws Exception {
         mockMvc.perform(post("/transfer/recipient/delete").session(session).param("recipientId", "7")
                 .param("_csrf", "expected-token"))
