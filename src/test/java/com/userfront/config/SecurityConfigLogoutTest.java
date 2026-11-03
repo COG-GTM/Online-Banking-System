@@ -84,12 +84,17 @@ public class SecurityConfigLogoutTest {
         return session;
     }
 
-    private static void assertCookieCleared(MockHttpServletResponse response, String name) {
+    private static Cookie assertCookieCleared(MockHttpServletResponse response, String name, String path) {
         Cookie cookie = response.getCookie(name);
         assertNotNull("logout must expire the " + name + " cookie", cookie);
         assertEquals(0, cookie.getMaxAge());
         assertNull(cookie.getValue());
-        assertEquals("/", cookie.getPath());
+        assertEquals(path, cookie.getPath());
+        return cookie;
+    }
+
+    private static Cookie assertCookieCleared(MockHttpServletResponse response, String name) {
+        return assertCookieCleared(response, name, "/");
     }
 
     @Test
@@ -143,5 +148,33 @@ public class SecurityConfigLogoutTest {
 
         assertCookieCleared(response, "OBSSESSION");
         assertCookieCleared(response, "remember-me");
+    }
+
+    @Test
+    public void logoutExpiresSessionCookieWithConfiguredPathAndDomain() throws Exception {
+        MockMvc mvc = mockMvc(new MockPropertySource()
+                .withProperty("server.servlet.session.cookie.path", "/bank")
+                .withProperty("server.servlet.session.cookie.domain", "bank.example.com")
+                .withProperty("server.servlet.session.cookie.secure", "true"));
+
+        MockHttpServletResponse response = mvc.perform(
+                MockMvcRequestBuilders.get("/logout").session(authenticatedSession()))
+                .andReturn().getResponse();
+
+        Cookie cookie = assertCookieCleared(response, "JSESSIONID", "/bank");
+        assertEquals("bank.example.com", cookie.getDomain());
+        assertTrue(cookie.getSecure());
+        assertTrue(cookie.isHttpOnly());
+    }
+
+    @Test
+    public void logoutExpiresSessionCookieOnContextPath() throws Exception {
+        MockMvc mvc = mockMvc(new MockPropertySource());
+
+        MockHttpServletResponse response = mvc.perform(
+                MockMvcRequestBuilders.get("/obs/logout").contextPath("/obs").session(authenticatedSession()))
+                .andReturn().getResponse();
+
+        assertCookieCleared(response, "JSESSIONID", "/obs");
     }
 }
