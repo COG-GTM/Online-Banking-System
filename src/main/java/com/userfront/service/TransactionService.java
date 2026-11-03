@@ -32,7 +32,7 @@ public interface TransactionService {
 
     Recipient findRecipientById(Long id, User user);
 
-    void deleteRecipientByName(String recipientName, User user);
+    void deleteRecipientById(Long id, User user);
     
     void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount);
 }

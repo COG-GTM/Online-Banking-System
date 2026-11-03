@@ -96,10 +96,10 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/recipient/edit", method = RequestMethod.GET)
-    public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
+    public String recipientEdit(@RequestParam(value = "recipientId") Long recipientId, Model model, Principal principal){
 
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName, user);
+        Recipient recipient = transactionService.findRecipientById(recipientId, user);
         if (recipient == null) {
             return "redirect:/transfer/recipient";
         }
@@ -112,10 +112,10 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/recipient/delete", method = RequestMethod.POST)
-    public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Principal principal){
+    public String recipientDelete(@RequestParam(value = "recipientId") Long recipientId, Principal principal){
 
         User user = userService.findByUsername(principal.getName());
-        transactionService.deleteRecipientByName(recipientName, user);
+        transactionService.deleteRecipientById(recipientId, user);
 
         return "redirect:/transfer/recipient";
     }
