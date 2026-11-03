@@ -47,7 +47,7 @@ jobs:
         run: |
           git fetch --no-tags --depth=1 origin "$BASE_SHA"
           git worktree add base FETCH_HEAD
-          CDX_VERSION=$(./mvnw -B -q help:evaluate -Dexpression=cyclonedx-maven-plugin.version -DforceStdout)
+          CDX_VERSION=$(./mvnw -B -q help:evaluate -Dexpression=cyclonedx-maven-plugin.version -DforceStdout | tail -n1)
           ./mvnw -B -ntp -f base/pom.xml "org.cyclonedx:cyclonedx-maven-plugin:${CDX_VERSION}:makeAggregateBom"
           ./mvnw -B -ntp -f base/pom.xml dependency:resolve-plugins -DoutputFile="$PWD/target/base-plugins.txt"
           python3 .github/scripts/maven_inventory.py plugins-sbom target/base-plugins.txt target/base-plugins.cdx.json
