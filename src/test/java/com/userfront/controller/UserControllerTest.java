@@ -122,6 +122,27 @@ public class UserControllerTest {
         verify(userService, never()).saveUser(Mockito.any(User.class));
     }
 
+    @Test
+    public void rejectsMissingOrBlankEmail() throws Exception {
+        mockMvc.perform(post("/user/profile").principal(alicePrincipal)
+                .param("firstName", "Alice")
+                .param("lastName", "Smith")
+                .param("phone", "111"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("emailMissing", true));
+
+        mockMvc.perform(post("/user/profile").principal(alicePrincipal)
+                .param("firstName", "Alice")
+                .param("lastName", "Smith")
+                .param("email", "  ")
+                .param("phone", "111"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("emailMissing", true));
+
+        assertEquals("alice@example.com", alice.getEmail());
+        verify(userService, never()).saveUser(Mockito.any(User.class));
+    }
+
     private static User user(Long id, String username, String first, String last, String email, String phone,
             String password) {
         User u = new User();
