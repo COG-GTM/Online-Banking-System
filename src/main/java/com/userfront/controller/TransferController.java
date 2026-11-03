@@ -4,6 +4,7 @@ import java.security.Principal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -68,6 +69,10 @@ public class TransferController {
     @RequestMapping(value = "/recipient/save", method = RequestMethod.POST)
     public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
 
+        if (recipient.getId() != null && transactionService.findRecipientById(recipient.getId(), principal.getName()) == null) {
+            throw new AccessDeniedException("Recipient not found");
+        }
+
         User user = userService.findByUsername(principal.getName());
         recipient.setUser(user);
         transactionService.saveRecipient(recipient);
@@ -78,7 +83,10 @@ public class TransferController {
     @RequestMapping(value = "/recipient/edit", method = RequestMethod.GET)
     public String recipientEdit(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = transactionService.findRecipientByName(recipientName, principal.getName());
+        if (recipient == null) {
+            recipient = new Recipient();
+        }
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
         model.addAttribute("recipientList", recipientList);
@@ -87,11 +95,11 @@ public class TransferController {
         return "recipient";
     }
 
-    @RequestMapping(value = "/recipient/delete", method = RequestMethod.GET)
+    @RequestMapping(value = "/recipient/delete", method = RequestMethod.POST)
     @Transactional
     public String recipientDelete(@RequestParam(value = "recipientName") String recipientName, Model model, Principal principal){
 
-        transactionService.deleteRecipientByName(recipientName);
+        transactionService.deleteRecipientByName(recipientName, principal.getName());
 
         List<Recipient> recipientList = transactionService.findRecipientList(principal);
 
@@ -116,7 +124,10 @@ public class TransferController {
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
     public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
+        Recipient recipient = transactionService.findRecipientByName(recipientName, principal.getName());
+        if (recipient == null) {
+            throw new AccessDeniedException("Recipient not found");
+        }
         transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
 
         return "redirect:/userFront";
