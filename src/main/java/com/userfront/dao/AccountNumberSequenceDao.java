@@ -1,9 +1,7 @@
 package com.userfront.dao;
 
-import javax.persistence.LockModeType;
-
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -11,7 +9,10 @@ import com.userfront.domain.AccountNumberSequence;
 
 public interface AccountNumberSequenceDao extends JpaRepository<AccountNumberSequence, String> {
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select s from AccountNumberSequence s where s.name = :name")
-    AccountNumberSequence findByNameForUpdate(@Param("name") String name);
+    @Query(value = "SELECT last_issued FROM account_number_sequence WHERE name = :name FOR UPDATE", nativeQuery = true)
+    Integer lockLastIssued(@Param("name") String name);
+
+    @Modifying
+    @Query("update AccountNumberSequence s set s.lastIssued = :next where s.name = :name and s.lastIssued = :current")
+    int compareAndSetLastIssued(@Param("name") String name, @Param("current") int current, @Param("next") int next);
 }

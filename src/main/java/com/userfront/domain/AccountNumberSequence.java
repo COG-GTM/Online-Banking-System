@@ -8,14 +8,14 @@ public class AccountNumberSequence {
 
     @Id
     private String name;
-    private int lastValue;
+    private int lastIssued;
 
     public AccountNumberSequence() {
     }
 
-    public AccountNumberSequence(String name, int lastValue) {
+    public AccountNumberSequence(String name, int lastIssued) {
         this.name = name;
-        this.lastValue = lastValue;
+        this.lastIssued = lastIssued;
     }
 
     public String getName() {
@@ -26,11 +26,11 @@ public class AccountNumberSequence {
         this.name = name;
     }
 
-    public int getLastValue() {
-        return lastValue;
+    public int getLastIssued() {
+        return lastIssued;
     }
 
-    public void setLastValue(int lastValue) {
-        this.lastValue = lastValue;
+    public void setLastIssued(int lastIssued) {
+        this.lastIssued = lastIssued;
     }
 }

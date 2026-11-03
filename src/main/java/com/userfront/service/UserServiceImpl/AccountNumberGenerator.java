@@ -24,6 +24,7 @@ public class AccountNumberGenerator {
 
     static final String SEQUENCE_NAME = "account_number";
     static final int INITIAL_ACCOUNT_NUMBER = 11223145;
+    private static final int MAX_ALLOCATION_ATTEMPTS = 100;
 
     private final AccountNumberSequenceDao sequenceDao;
     private final PrimaryAccountDao primaryAccountDao;
@@ -67,15 +68,20 @@ public class AccountNumberGenerator {
                 ensureSequenceRow();
             }
 
-            AccountNumberSequence sequence = sequenceDao.findByNameForUpdate(SEQUENCE_NAME);
-            if (sequence == null) {
-                throw new IllegalStateException("Account number sequence row is missing");
-            }
+            // The locking read serializes allocators on InnoDB; the compare-and-set keeps
+            // allocation atomic on engines without row locks (e.g. MyISAM).
+            for (int attempt = 0; attempt < MAX_ALLOCATION_ATTEMPTS; attempt++) {
+                Integer lastIssued = sequenceDao.lockLastIssued(SEQUENCE_NAME);
+                if (lastIssued == null) {
+                    throw new IllegalStateException("Account number sequence row is missing");
+                }
 
-            int next = Math.addExact(Math.max(sequence.getLastValue(), highestIssuedAccountNumber()), 1);
-            sequence.setLastValue(next);
-            sequenceDao.save(sequence);
-            return next;
+                int next = Math.addExact(Math.max(lastIssued, highestIssuedAccountNumber()), 1);
+                if (sequenceDao.compareAndSetLastIssued(SEQUENCE_NAME, lastIssued, next) == 1) {
+                    return next;
+                }
+            }
+            throw new IllegalStateException("Could not allocate an account number");
         });
     }
 

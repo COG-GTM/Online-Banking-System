@@ -121,7 +121,7 @@ public class AccountNumberGeneratorTest {
         int next = generator.nextAccountNumber();
 
         assertEquals(AccountNumberGenerator.INITIAL_ACCOUNT_NUMBER + 501, next);
-        assertEquals(next, sequenceDao.findById(AccountNumberGenerator.SEQUENCE_NAME).get().getLastValue());
+        assertEquals(next, sequenceDao.findById(AccountNumberGenerator.SEQUENCE_NAME).get().getLastIssued());
     }
 
     @Test
