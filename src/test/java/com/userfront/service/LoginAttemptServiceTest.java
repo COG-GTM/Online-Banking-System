@@ -100,10 +100,8 @@ public class LoginAttemptServiceTest {
     }
 
     @Test
-    public void evictionDropsOldestEntryAndKeepsRecentLocks() {
-        LoginAttemptService bounded = new LoginAttemptService(2, 100, Duration.ofMinutes(15), clock, 3);
-        bounded.loginFailed("oldest", "10.0.0.1");
-        clock.advance(Duration.ofSeconds(1));
+    public void evictionPrefersUnlockedEntriesSoLockoutsSurvive() {
+        LoginAttemptService bounded = new LoginAttemptService(2, 1000, Duration.ofMinutes(15), clock, 3);
         bounded.loginFailed("alice", "10.0.0.1");
         bounded.loginFailed("alice", "10.0.0.1");
         clock.advance(Duration.ofSeconds(1));
@@ -111,10 +109,30 @@ public class LoginAttemptServiceTest {
         clock.advance(Duration.ofSeconds(1));
         bounded.loginFailed("carol", "10.0.0.1");
 
+        for (int i = 0; i < 100; i++) {
+            clock.advance(Duration.ofSeconds(1));
+            bounded.loginFailed("spray" + i, "10.0.2." + i);
+        }
+
         assertEquals(3, bounded.trackedUsernames());
-        assertTrue("recently locked user survives eviction", bounded.isBlocked("alice", "10.0.0.9"));
-        bounded.loginFailed("oldest", "10.0.0.1");
-        assertFalse("oldest entry was evicted, so its count restarted", bounded.isBlocked("oldest", "10.0.0.9"));
+        assertTrue("oldest entry is locked, so unlocked ones are evicted instead", bounded.isBlocked("alice", "10.0.0.9"));
+        bounded.loginFailed("bob", "10.0.0.1");
+        assertFalse("unlocked bob was evicted, so his count restarted", bounded.isBlocked("bob", "10.0.0.9"));
+    }
+
+    @Test
+    public void oldestLockIsDroppedOnlyWhenEveryEntryIsLocked() {
+        LoginAttemptService bounded = new LoginAttemptService(1, 1000, Duration.ofMinutes(15), clock, 2);
+        bounded.loginFailed("alice", "10.0.0.1");
+        clock.advance(Duration.ofSeconds(1));
+        bounded.loginFailed("bob", "10.0.0.1");
+        clock.advance(Duration.ofSeconds(1));
+        bounded.loginFailed("carol", "10.0.0.1");
+
+        assertEquals(2, bounded.trackedUsernames());
+        assertFalse(bounded.isBlocked("alice", "10.0.0.9"));
+        assertTrue(bounded.isBlocked("bob", "10.0.0.9"));
+        assertTrue(bounded.isBlocked("carol", "10.0.0.9"));
     }
 
     @Test(expected = IllegalArgumentException.class)
