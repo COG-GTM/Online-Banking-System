@@ -3,12 +3,14 @@ package com.userfront.resource;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsTransaction;
@@ -34,11 +36,13 @@ public class UserResource {
 
     @RequestMapping(value = "/user/primary/transaction", method = RequestMethod.GET)
     public List<PrimaryTransaction> getPrimaryTransactionList(@RequestParam("username") String username) {
+        requireUser(username);
         return transactionService.findPrimaryTransactionList(username);
     }
 
     @RequestMapping(value = "/user/savings/transaction", method = RequestMethod.GET)
     public List<SavingsTransaction> getSavingsTransactionList(@RequestParam("username") String username) {
+        requireUser(username);
         return transactionService.findSavingsTransactionList(username);
     }
 
@@ -50,5 +54,11 @@ public class UserResource {
     @RequestMapping("/user/{username}/disable")
     public void diableUser(@PathVariable("username") String username) {
         userService.disableUser(username);
+    }
+
+    private void requireUser(String username) {
+        if (userService.findByUsername(username) == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
     }
 }
