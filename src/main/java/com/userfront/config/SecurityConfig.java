@@ -66,8 +66,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .and()
                 .rememberMe();
 
-        // HSTS is only written for secure requests; behind a TLS-terminating proxy this relies on
-        // server.use-forward-headers so X-Forwarded-Proto marks the request as secure.
+        // HSTS is only written for secure requests; behind a TLS-terminating proxy enable
+        // TRUST_FORWARDED_HEADERS/TRUSTED_PROXIES (application.properties) so the request is seen as secure.
         http
                 .headers()
                 .contentTypeOptions()
