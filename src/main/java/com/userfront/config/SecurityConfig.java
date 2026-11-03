@@ -47,6 +47,19 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             "/signup"
     };
 
+    private static final long HSTS_MAX_AGE_SECONDS = 31536000;
+
+    private static final String CONTENT_SECURITY_POLICY =
+            "default-src 'self'; " +
+            "script-src 'self'; " +
+            "style-src 'self' 'unsafe-inline' https://maxcdn.bootstrapcdn.com https://fonts.googleapis.com; " +
+            "font-src 'self' https://maxcdn.bootstrapcdn.com https://fonts.gstatic.com; " +
+            "img-src 'self' data:; " +
+            "object-src 'none'; " +
+            "base-uri 'self'; " +
+            "form-action 'self'; " +
+            "frame-ancestors 'none'";
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
@@ -62,6 +75,15 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
                 .rememberMe();
+
+        http
+                .headers()
+                .httpStrictTransportSecurity().includeSubDomains(true).maxAgeInSeconds(HSTS_MAX_AGE_SECONDS)
+                .and()
+                .frameOptions().deny()
+                .contentTypeOptions()
+                .and()
+                .contentSecurityPolicy(CONTENT_SECURITY_POLICY);
     }
 
 
