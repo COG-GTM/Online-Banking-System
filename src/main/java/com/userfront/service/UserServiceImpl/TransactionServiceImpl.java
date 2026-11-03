@@ -7,7 +7,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.PrimaryTransactionDao;
@@ -114,12 +116,16 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName) {
-        return recipientDao.findByName(recipientName);
+    public Recipient findRecipientByIdAndUser(Long recipientId, User user) {
+        return recipientDao.findByIdAndUser(recipientId, user);
     }
 
-    public void deleteRecipientByName(String recipientName) {
-        recipientDao.deleteByName(recipientName);
+    public void deleteRecipientByIdAndUser(Long recipientId, User user) {
+        Recipient recipient = recipientDao.findByIdAndUser(recipientId, user);
+        if (recipient == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipient not found");
+        }
+        recipientDao.delete(recipient);
     }
     
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
