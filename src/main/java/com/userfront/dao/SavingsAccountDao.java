@@ -1,7 +1,12 @@
 package com.userfront.dao;
 
+import java.math.BigDecimal;
+
 import com.userfront.domain.SavingsAccount;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Created by z00382545 on 10/21/16.
@@ -9,4 +14,13 @@ import org.springframework.data.repository.CrudRepository;
 public interface SavingsAccountDao extends CrudRepository<SavingsAccount, Long> {
 
     SavingsAccount findByAccountNumber (int accountNumber);
+
+    @Modifying
+    @Query("update SavingsAccount a set a.accountBalance = a.accountBalance + :amount where a.id = :id")
+    int credit(@Param("id") Long id, @Param("amount") BigDecimal amount);
+
+    /** Atomic single-statement debit; returns 0 (no change) when the balance does not cover the amount. */
+    @Modifying
+    @Query("update SavingsAccount a set a.accountBalance = a.accountBalance - :amount where a.id = :id and a.accountBalance >= :amount")
+    int debitIfSufficient(@Param("id") Long id, @Param("amount") BigDecimal amount);
 }
