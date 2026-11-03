@@ -126,6 +126,23 @@ public class DatasourceCredentialsPolicyTest {
         postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd", "spring.datasource.hikari.username", "obs_pool");
     }
 
+    @Test
+    public void hikariSafeCredentialsOverridingUnsafeTopLevelAreAccepted() {
+        postProcess(MYSQL_URL, "root", "",
+                "spring.datasource.hikari.username", "obs_pool",
+                "spring.datasource.hikari.password", "s3cr3t-Passw0rd");
+    }
+
+    @Test
+    public void hikariInMemoryUrlOverridingMysqlUrlIsNotChecked() {
+        postProcess(MYSQL_URL, "root", "", "spring.datasource.hikari.jdbc-url", "jdbc:h2:mem:testdb");
+    }
+
+    @Test(expected = InsecureDatasourceCredentialsException.class)
+    public void hikariUsernameOverrideStillNeedsEffectivePassword() {
+        postProcess(MYSQL_URL, "root", "", "spring.datasource.hikari.username", "obs_pool");
+    }
+
     private void postProcess(String url, String username, String password, String... extra) {
         Map<String, Object> values = new HashMap<>();
         put(values, DatasourceCredentialsPolicy.URL, url);
