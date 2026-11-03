@@ -8,11 +8,18 @@ check-repos EFFECTIVE_POM
 
 plugins-sbom RESOLVE_PLUGINS_OUTPUT OUT_CDX_JSON
     Turn `mvn dependency:resolve-plugins -DoutputFile=...` output (build plugins
-    and their dependencies) into a CycloneDX SBOM so OSV-Scanner can scan it.
+    and their dependencies) into a CycloneDX SBOM.
+
+osv-check [--baseline BASE_CDX_JSON ...] [--output FINDINGS_JSON] CDX_JSON ...
+    Query the OSV API (https://api.osv.dev/v1/querybatch) for every Maven
+    component in the SBOMs. Fail if any component has a known vulnerability
+    that is not already present in the baseline SBOMs (e.g. the PR base).
 """
+import argparse
 import json
 import re
 import sys
+import urllib.request
 import xml.etree.ElementTree as ET
 
 ALLOWED_REPOSITORY_URLS = {
@@ -21,6 +28,8 @@ ALLOWED_REPOSITORY_URLS = {
 }
 
 SCOPES = {"compile", "runtime", "test", "provided", "system", "import"}
+OSV_QUERYBATCH_URL = "https://api.osv.dev/v1/querybatch"
+OSV_BATCH_SIZE = 1000
 COORDINATE = re.compile(r"^\s*([\w.\-]+):([\w.\-]+):([\w.\-]+(?::[\w.\-]+)*)\s*$")
 
 
@@ -94,11 +103,78 @@ def plugins_sbom(src, out):
     return 0
 
 
+def _osv_querybatch(queries):
+    req = urllib.request.Request(
+        OSV_QUERYBATCH_URL,
+        data=json.dumps({"queries": queries}).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return json.load(resp)["results"]
+
+
+def _maven_components(paths):
+    coords = set()
+    for path in paths:
+        with open(path) as f:
+            for c in json.load(f).get("components", []):
+                if c.get("group") and c.get("name") and c.get("version"):
+                    coords.add(("%s:%s" % (c["group"], c["name"]), c["version"]))
+    return sorted(coords)
+
+
+def osv_findings(coords):
+    findings = set()
+    for start in range(0, len(coords), OSV_BATCH_SIZE):
+        batch = coords[start:start + OSV_BATCH_SIZE]
+        queries = [{"package": {"ecosystem": "Maven", "name": n}, "version": v} for n, v in batch]
+        results = _osv_querybatch(queries)
+        if len(results) != len(batch):
+            raise RuntimeError("OSV returned %d results for %d queries" % (len(results), len(batch)))
+        for (name, version), result in zip(batch, results):
+            for vuln in result.get("vulns", []):
+                findings.add((name, version, vuln["id"]))
+    return findings
+
+
+def osv_check(argv):
+    parser = argparse.ArgumentParser(prog="maven_inventory.py osv-check")
+    parser.add_argument("--baseline", action="append", default=[])
+    parser.add_argument("--output")
+    parser.add_argument("sboms", nargs="+")
+    args = parser.parse_args(argv)
+
+    coords = _maven_components(args.sboms)
+    if not coords:
+        print("error: no Maven components in %s" % ", ".join(args.sboms))
+        return 1
+    findings = osv_findings(coords)
+    known = set()
+    if args.baseline:
+        known = {(n, i) for n, _, i in osv_findings(_maven_components(args.baseline))}
+    new = sorted(f for f in findings if (f[0], f[2]) not in known)
+
+    print("checked %d components against OSV: %d known vulnerabilities, %d not in baseline"
+          % (len(coords), len(findings), len(new)))
+    if args.output:
+        with open(args.output, "w") as f:
+            json.dump([{"package": n, "version": v, "id": i, "new": (n, v, i) in new}
+                       for n, v, i in sorted(findings)], f, indent=2)
+    for name, version, vuln_id in sorted(findings):
+        if (name, version, vuln_id) not in new:
+            print("baseline: %s:%s %s" % (name, version, vuln_id))
+    for name, version, vuln_id in new:
+        print("error: %s:%s %s" % (name, version, vuln_id))
+    return 1 if new else 0
+
+
 def main(argv):
     if len(argv) == 3 and argv[1] == "check-repos":
         return check_repos(argv[2])
     if len(argv) == 4 and argv[1] == "plugins-sbom":
         return plugins_sbom(argv[2], argv[3])
+    if len(argv) >= 3 and argv[1] == "osv-check":
+        return osv_check(argv[2:])
     print(__doc__)
     return 2
 

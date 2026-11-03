@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   maven-governance:
-    name: Enforcer rules and SBOM
+    name: Enforcer rules, SBOM and OSV check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,17 +31,33 @@ jobs:
           python3 .github/scripts/maven_inventory.py check-repos target/effective-pom.xml
       - name: Resolved dependency tree
         run: ./mvnw -B -ntp dependency:tree -DoutputFile=target/dependency-tree.txt
-      - name: CycloneDX SBOM
+      - name: Dependency SBOM
         run: ./mvnw -B -ntp cyclonedx:makeAggregateBom
       - name: Build-plugin SBOM
         run: |
           ./mvnw -B -ntp dependency:resolve-plugins -DoutputFile=target/plugins.txt
           python3 .github/scripts/maven_inventory.py plugins-sbom target/plugins.txt target/plugins.cdx.json
-      - name: OSV-Scanner (build plugins)
-        uses: google/osv-scanner-action/osv-scanner-action@v2.0.2
-        with:
-          scan-args: |-
-            --lockfile=target/plugins.cdx.json
+      - name: Base-branch SBOMs
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add base FETCH_HEAD
+          CDX_VERSION=$(./mvnw -B -q help:evaluate -Dexpression=cyclonedx-maven-plugin.version -DforceStdout)
+          ./mvnw -B -ntp -f base/pom.xml "org.cyclonedx:cyclonedx-maven-plugin:${CDX_VERSION}:makeAggregateBom"
+          ./mvnw -B -ntp -f base/pom.xml dependency:resolve-plugins -DoutputFile="$PWD/target/base-plugins.txt"
+          python3 .github/scripts/maven_inventory.py plugins-sbom target/base-plugins.txt target/base-plugins.cdx.json
+      - name: OSV check
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          baseline=()
+          if [ "$EVENT_NAME" = pull_request ]; then
+            baseline=(--baseline base/target/bom.json --baseline target/base-plugins.cdx.json)
+          fi
+          python3 .github/scripts/maven_inventory.py osv-check "${baseline[@]}" \
+            --output target/osv-findings.json target/bom.json target/plugins.cdx.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -52,27 +68,4 @@ jobs:
             target/effective-pom.xml
             target/plugins.txt
             target/plugins.cdx.json
-
-  osv-pr:
-    name: OSV-Scanner (new vulnerabilities in this PR)
-    if: github.event_name == 'pull_request'
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.0.2
-    with:
-      scan-args: |-
-        --lockfile=pom.xml
-
-  osv-full:
-    name: OSV-Scanner (full report)
-    if: github.event_name != 'pull_request'
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.0.2
-    with:
-      scan-args: |-
-        --lockfile=pom.xml
+            target/osv-findings.json

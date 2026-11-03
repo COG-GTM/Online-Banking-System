@@ -27,12 +27,11 @@ Online banking system detail diagram
 Third-party versions are declared in `pom.xml` (the Spring Boot parent manages most transitive versions) and are reviewed through:
 
 * **Dependabot** (`.github/dependabot.yml`): weekly update PRs for Maven dependencies, the Spring Boot parent, Maven plugins and GitHub Actions.
-* **Dependency scan workflow** (`.github/workflows/dependency-scan.yml`):
+* **Dependency scan workflow** (`.github/workflows/dependency-scan.yml`), on pull requests, `master` pushes, weekly and on demand:
   * `maven-enforcer-plugin` checks on every build (Maven 3.6.3+, Java 8+, no duplicate dependency declarations, no repositories other than Maven Central and Spring milestones).
   * Every repository URL in the effective POM must be Maven Central or `https://repo.spring.io/milestone` (`.github/scripts/maven_inventory.py check-repos`).
-  * A CycloneDX SBOM (`target/bom.json`), the resolved dependency tree and the resolved build plugins, uploaded as the `dependency-inventory` artifact.
-  * OSV-Scanner over the build plugins and their dependencies (`target/plugins.cdx.json`); any known vulnerability fails the job.
-  * OSV-Scanner over `pom.xml`, including transitive dependencies: on pull requests it fails only on vulnerabilities the PR introduces; on `master` and weekly it reports all known vulnerabilities to code scanning.
+  * A CycloneDX SBOM of the Maven-resolved dependencies (`target/bom.json`) and of the build plugins plus their dependencies (`target/plugins.cdx.json`), uploaded with the dependency tree and `osv-findings.json` as the `dependency-inventory` artifact.
+  * Both SBOMs are checked against the OSV database (`maven_inventory.py osv-check`). On pull requests only vulnerabilities not already present on the base branch fail the job; on `master`, weekly and on demand any known vulnerability fails it.
 
 Review cadence:
 
