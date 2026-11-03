@@ -54,6 +54,7 @@ public class UserServiceImpl implements UserService{
         if (localUser != null) {
             LOG.info("User with username {} already exist. Nothing will be done. ", user.getUsername());
         } else {
+            user.setUserId(null);
             String encryptedPassword = passwordEncoder.encode(user.getPassword());
             user.setPassword(encryptedPassword);
 
@@ -73,7 +74,7 @@ public class UserServiceImpl implements UserService{
     }
     
     public boolean checkUserExists(String username, String email){
-        if (checkUsernameExists(username) || checkEmailExists(username)) {
+        if (checkUsernameExists(username) || checkEmailExists(email)) {
             return true;
         } else {
             return false;
