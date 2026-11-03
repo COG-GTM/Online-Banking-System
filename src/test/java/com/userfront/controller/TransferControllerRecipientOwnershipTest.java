@@ -64,32 +64,32 @@ public class TransferControllerRecipientOwnershipTest {
     }
 
     @Test
-    public void editLooksUpRecipientWithinPrincipalsList() throws Exception {
-        Recipient own = recipient(7L, "Bob");
-        when(transactionService.findRecipientByName(eq("Bob"), any(Principal.class))).thenReturn(own);
+    public void editLooksUpRecipientByIdWithinPrincipalsList() throws Exception {
+        Recipient own = recipient(8L, "Sam");
+        when(transactionService.findRecipientById(eq(8L), any(Principal.class))).thenReturn(own);
 
-        mockMvc.perform(get("/transfer/recipient/edit").param("recipientName", "Bob").principal(ALICE))
+        mockMvc.perform(get("/transfer/recipient/edit").param("recipientId", "8").principal(ALICE))
                 .andExpect(status().isOk())
                 .andExpect(view().name("recipient"))
                 .andExpect(model().attribute("recipient", own));
 
-        verify(transactionService).findRecipientByName(eq("Bob"), eq(ALICE));
+        verify(transactionService).findRecipientById(eq(8L), eq(ALICE));
     }
 
     @Test
     public void editOfRecipientNotInPrincipalsListIsNotFound() throws Exception {
-        when(transactionService.findRecipientByName(anyString(), any(Principal.class))).thenReturn(null);
+        when(transactionService.findRecipientById(any(Long.class), any(Principal.class))).thenReturn(null);
 
-        mockMvc.perform(get("/transfer/recipient/edit").param("recipientName", "Mallory").principal(ALICE))
+        mockMvc.perform(get("/transfer/recipient/edit").param("recipientId", "42").principal(ALICE))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     public void deleteIsScopedToPrincipal() throws Exception {
-        mockMvc.perform(get("/transfer/recipient/delete").param("recipientName", "Bob").principal(ALICE))
+        mockMvc.perform(get("/transfer/recipient/delete").param("recipientId", "7").principal(ALICE))
                 .andExpect(status().isOk());
 
-        verify(transactionService).deleteRecipientByName(eq("Bob"), eq(ALICE));
+        verify(transactionService).deleteRecipientById(eq(7L), eq(ALICE));
     }
 
     @Test
@@ -123,10 +123,10 @@ public class TransferControllerRecipientOwnershipTest {
 
     @Test
     public void transferToRecipientNotInPrincipalsListIsNotFoundAndMovesNoMoney() throws Exception {
-        when(transactionService.findRecipientByName(anyString(), any(Principal.class))).thenReturn(null);
+        when(transactionService.findRecipientById(any(Long.class), any(Principal.class))).thenReturn(null);
 
         mockMvc.perform(post("/transfer/toSomeoneElse")
-                .param("recipientName", "Mallory").param("accountType", "Primary").param("amount", "10")
+                .param("recipientId", "42").param("accountType", "Primary").param("amount", "10")
                 .principal(ALICE))
                 .andExpect(status().isNotFound());
 
@@ -137,10 +137,10 @@ public class TransferControllerRecipientOwnershipTest {
     @Test
     public void transferToOwnRecipientProceeds() throws Exception {
         Recipient own = recipient(7L, "Bob");
-        when(transactionService.findRecipientByName(eq("Bob"), any(Principal.class))).thenReturn(own);
+        when(transactionService.findRecipientById(eq(7L), any(Principal.class))).thenReturn(own);
 
         mockMvc.perform(post("/transfer/toSomeoneElse")
-                .param("recipientName", "Bob").param("accountType", "Primary").param("amount", "10")
+                .param("recipientId", "7").param("accountType", "Primary").param("amount", "10")
                 .principal(ALICE))
                 .andExpect(status().is3xxRedirection());
 
