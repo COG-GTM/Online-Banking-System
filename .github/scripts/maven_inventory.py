@@ -29,6 +29,7 @@ ALLOWED_REPOSITORY_URLS = {
 
 SCOPES = {"compile", "runtime", "test", "provided", "system", "import"}
 OSV_QUERYBATCH_URL = "https://api.osv.dev/v1/querybatch"
+OSV_VULN_URL = "https://api.osv.dev/v1/vulns/"
 OSV_BATCH_SIZE = 1000
 COORDINATE = re.compile(r"^\s*([\w.\-]+):([\w.\-]+):([\w.\-]+(?::[\w.\-]+)*)\s*$")
 
@@ -61,7 +62,9 @@ def check_repos(path):
 
 
 def parse_coordinates(lines):
+    """Return {(group, artifact, version): set(plugin coordinates that pull it in)}."""
     components = {}
+    plugin = None
     for line in lines:
         m = COORDINATE.match(line)
         if not m:
@@ -72,8 +75,10 @@ def parse_coordinates(lines):
         if len(parts) < 4:
             continue
         group, artifact, version = parts[0], parts[1], parts[-1]
-        components[(group, artifact, version)] = None
-    return sorted(components)
+        if parts[2] == "maven-plugin":
+            plugin = "%s:%s:%s" % (group, artifact, version)
+        components.setdefault((group, artifact, version), set()).add(plugin)
+    return components
 
 
 def plugins_sbom(src, out):
@@ -93,8 +98,9 @@ def plugins_sbom(src, out):
                 "name": a,
                 "version": v,
                 "purl": "pkg:maven/%s/%s@%s" % (g, a, v),
+                "properties": [{"name": "maven:plugin", "value": p} for p in sorted(coords[(g, a, v)])],
             }
-            for g, a, v in coords
+            for g, a, v in sorted(coords)
         ],
     }
     with open(out, "w") as f:
@@ -113,13 +119,29 @@ def _osv_querybatch(queries):
         return json.load(resp)["results"]
 
 
-def _maven_components(paths):
+def _osv_fixed_versions(vuln_id, package):
+    with urllib.request.urlopen(OSV_VULN_URL + vuln_id, timeout=60) as resp:
+        vuln = json.load(resp)
+    fixed = []
+    for affected in vuln.get("affected", []):
+        if affected.get("package", {}).get("name") != package:
+            continue
+        for r in affected.get("ranges", []):
+            fixed += [e["fixed"] for e in r.get("events", []) if "fixed" in e]
+    return fixed
+
+
+def _maven_components(paths, via=None):
     coords = set()
     for path in paths:
         with open(path) as f:
             for c in json.load(f).get("components", []):
                 if c.get("group") and c.get("name") and c.get("version"):
-                    coords.add(("%s:%s" % (c["group"], c["name"]), c["version"]))
+                    coord = ("%s:%s" % (c["group"], c["name"]), c["version"])
+                    coords.add(coord)
+                    if via is not None:
+                        via.setdefault(coord, set()).update(
+                            p["value"] for p in c.get("properties", []) if p.get("name") == "maven:plugin")
     return sorted(coords)
 
 
@@ -144,7 +166,8 @@ def osv_check(argv):
     parser.add_argument("sboms", nargs="+")
     args = parser.parse_args(argv)
 
-    coords = _maven_components(args.sboms)
+    via = {}
+    coords = _maven_components(args.sboms, via)
     if not coords:
         print("error: no Maven components in %s" % ", ".join(args.sboms))
         return 1
@@ -164,7 +187,9 @@ def osv_check(argv):
         if (name, version, vuln_id) not in new:
             print("baseline: %s:%s %s" % (name, version, vuln_id))
     for name, version, vuln_id in new:
-        print("error: %s:%s %s" % (name, version, vuln_id))
+        fixed = ", ".join(_osv_fixed_versions(vuln_id, name)) or "no fix listed"
+        plugins = ", ".join(sorted(via.get((name, version), ()))) or "project dependencies"
+        print("error: %s:%s %s (fixed in: %s; via %s)" % (name, version, vuln_id, fixed, plugins))
     return 1 if new else 0
 
 
