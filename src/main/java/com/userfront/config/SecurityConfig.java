@@ -12,7 +12,12 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.util.matcher.AndRequestMatcher;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestHeaderRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
@@ -55,8 +60,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 antMatchers(PUBLIC_MATCHERS).
                 permitAll().anyRequest().authenticated();
 
+        // The AdminPortal SPA logs in cross-origin and cannot obtain a token; the browser-set
+        // Origin header (already trusted with credentials by RequestFilter) authenticates it instead.
+        RequestMatcher adminPortalLogin = new AndRequestMatcher(
+                new AntPathRequestMatcher("/index", "POST"),
+                new RequestHeaderRequestMatcher("Origin", RequestFilter.ADMIN_PORTAL_ORIGIN));
+
         http
-                .csrf().disable().cors().disable()
+                .csrf().requireCsrfProtectionMatcher(new AndRequestMatcher(
+                        CsrfFilter.DEFAULT_CSRF_MATCHER, new NegatedRequestMatcher(adminPortalLogin)))
+                .and()
+                .cors().disable()
                 .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
