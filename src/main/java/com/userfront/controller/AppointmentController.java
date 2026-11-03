@@ -8,6 +8,8 @@ import java.util.Date;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -26,6 +28,11 @@ public class AppointmentController {
 
     @Autowired
     private UserService userService;
+
+    @InitBinder("appointment")
+    public void initAppointmentBinder(WebDataBinder binder) {
+        binder.setAllowedFields("location", "description");
+    }
 
     @RequestMapping(value = "/create",method = RequestMethod.GET)
     public String createAppointment(Model model) {
@@ -46,6 +53,8 @@ public class AppointmentController {
         User user = userService.findByUsername(principal.getName());
         appointment.setUser(user);
 
+        appointment.setId(null);
+        appointment.setConfirmed(false);
         appointmentService.createAppointment(appointment);
 
         return "redirect:/userFront";
