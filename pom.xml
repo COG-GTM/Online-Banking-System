@@ -22,6 +22,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
+		<maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+		<cyclonedx-maven-plugin.version>2.9.1</cyclonedx-maven-plugin.version>
 	</properties>
 
 	<dependencies>
@@ -72,23 +74,61 @@
 	</dependencies>
 
 	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.cyclonedx</groupId>
+					<artifactId>cyclonedx-maven-plugin</artifactId>
+					<version>${cyclonedx-maven-plugin.version}</version>
+					<configuration>
+						<outputFormat>json</outputFormat>
+						<outputName>bom</outputName>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<version>${maven-enforcer-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>dependency-governance</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireMavenVersion>
+									<version>[3.6.3,)</version>
+								</requireMavenVersion>
+								<requireJavaVersion>
+									<version>[1.8,)</version>
+								</requireJavaVersion>
+								<banDuplicatePomDependencyVersions/>
+								<requireNoRepositories>
+									<message>Only Maven Central and the Spring milestone repository (needed until the Spring Boot parent is on a GA release) may be declared.</message>
+									<allowedRepositories>
+										<allowedRepository>spring-milestones</allowedRepository>
+									</allowedRepositories>
+									<allowedPluginRepositories>
+										<allowedPluginRepository>spring-milestones</allowedPluginRepository>
+									</allowedPluginRepositories>
+								</requireNoRepositories>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 
 	<repositories>
-		<repository>
-			<id>spring-snapshots</id>
-			<name>Spring Snapshots</name>
-			<url>https://repo.spring.io/snapshot</url>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-		</repository>
 		<repository>
 			<id>spring-milestones</id>
 			<name>Spring Milestones</name>
@@ -100,14 +140,6 @@
 	</repositories>
 
 	<pluginRepositories>
-		<pluginRepository>
-			<id>spring-snapshots</id>
-			<name>Spring Snapshots</name>
-			<url>https://repo.spring.io/snapshot</url>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-		</pluginRepository>
 		<pluginRepository>
 			<id>spring-milestones</id>
 			<name>Spring Milestones</name>

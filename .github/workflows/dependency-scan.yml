@@ -1,0 +1,61 @@
+name: Dependency scan
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  maven-governance:
+    name: Enforcer rules and SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "8"
+          cache: maven
+      - name: Enforce dependency rules
+        run: ./mvnw -B -ntp validate
+      - name: Resolved dependency tree
+        run: ./mvnw -B -ntp dependency:tree -DoutputFile=target/dependency-tree.txt
+      - name: CycloneDX SBOM
+        run: ./mvnw -B -ntp cyclonedx:makeAggregateBom
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dependency-inventory
+          path: |
+            target/bom.json
+            target/dependency-tree.txt
+
+  osv-pr:
+    name: OSV-Scanner (new vulnerabilities in this PR)
+    if: github.event_name == 'pull_request'
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.0.2
+    with:
+      scan-args: |-
+        --lockfile=pom.xml
+
+  osv-full:
+    name: OSV-Scanner (full report)
+    if: github.event_name != 'pull_request'
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.0.2
+    with:
+      scan-args: |-
+        --lockfile=pom.xml
