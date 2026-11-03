@@ -1,11 +1,15 @@
 package com.userfront.controller;
 
+import java.io.IOException;
 import java.security.Principal;
 import java.util.List;
+
+import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -18,6 +22,7 @@ import com.userfront.domain.User;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.util.TransactionCsvWriter;
 
 @Controller
 @RequestMapping("/account")
@@ -57,6 +62,24 @@ public class AccountController {
         return "savingsAccount";
     }
 	
+	@GetMapping("/primaryAccount/export")
+	public void exportPrimaryTransactions(Principal principal, HttpServletResponse response) throws IOException {
+		prepareCsvResponse(response, "primary-account-transactions.csv");
+		TransactionCsvWriter.writePrimary(transactionService.findPrimaryTransactionList(principal.getName()), response.getWriter());
+	}
+
+	@GetMapping("/savingsAccount/export")
+	public void exportSavingsTransactions(Principal principal, HttpServletResponse response) throws IOException {
+		prepareCsvResponse(response, "savings-account-transactions.csv");
+		TransactionCsvWriter.writeSavings(transactionService.findSavingsTransactionList(principal.getName()), response.getWriter());
+	}
+
+	private void prepareCsvResponse(HttpServletResponse response, String filename) {
+		response.setContentType("text/csv");
+		response.setCharacterEncoding("UTF-8");
+		response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+	}
+
 	@RequestMapping(value = "/deposit", method = RequestMethod.GET)
     public String deposit(Model model) {
         model.addAttribute("accountType", "");
