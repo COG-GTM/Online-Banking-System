@@ -1,0 +1,74 @@
+name: Dependency scan
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  maven-governance:
+    name: Enforcer rules, SBOM and OSV check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "8"
+          cache: maven
+      - name: Enforce dependency rules
+        run: ./mvnw -B -ntp validate
+      - name: Repository URL allowlist
+        run: |
+          ./mvnw -B -ntp help:effective-pom -Doutput=target/effective-pom.xml
+          python3 .github/scripts/maven_inventory.py check-repos target/effective-pom.xml
+      - name: Resolved dependency tree
+        run: ./mvnw -B -ntp dependency:tree -DoutputFile=target/dependency-tree.txt
+      - name: Dependency SBOM
+        run: ./mvnw -B -ntp cyclonedx:makeAggregateBom
+      - name: Build-plugin SBOM
+        run: |
+          ./mvnw -B -ntp dependency:resolve-plugins -DoutputFile=target/plugins.txt
+          for plugin in maven-enforcer-plugin maven-help-plugin maven-dependency-plugin cyclonedx-maven-plugin; do
+            grep -q ":${plugin}:" target/plugins.txt || { echo "error: ${plugin} missing from plugin inventory"; exit 1; }
+          done
+          python3 .github/scripts/maven_inventory.py plugins-sbom target/plugins.txt target/plugins.cdx.json target/effective-pom.xml
+      - name: Base-branch SBOMs
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add base FETCH_HEAD
+          CDX_VERSION=$(./mvnw -B -q help:evaluate -Dexpression=cyclonedx-maven-plugin.version -DforceStdout | tail -n1)
+          ./mvnw -B -ntp -f base/pom.xml "org.cyclonedx:cyclonedx-maven-plugin:${CDX_VERSION}:makeAggregateBom"
+          ./mvnw -B -ntp -f base/pom.xml dependency:resolve-plugins -DoutputFile="$PWD/target/base-plugins.txt"
+          python3 .github/scripts/maven_inventory.py plugins-sbom target/base-plugins.txt target/base-plugins.cdx.json
+      - name: OSV check
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          baseline=()
+          if [ "$EVENT_NAME" = pull_request ]; then
+            baseline=(--baseline base/target/bom.json --baseline target/base-plugins.cdx.json)
+          fi
+          python3 .github/scripts/maven_inventory.py osv-check "${baseline[@]}" \
+            --output target/osv-findings.json target/bom.json target/plugins.cdx.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-inventory
+          path: |
+            target/bom.json
+            target/dependency-tree.txt
+            target/effective-pom.xml
+            target/plugins.txt
+            target/plugins.cdx.json
+            target/osv-findings.json

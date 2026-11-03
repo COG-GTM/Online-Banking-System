@@ -22,6 +22,10 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
+		<maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+		<cyclonedx-maven-plugin.version>2.9.1</cyclonedx-maven-plugin.version>
+		<maven-help-plugin.version>3.5.1</maven-help-plugin.version>
+		<maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
 	</properties>
 
 	<dependencies>
@@ -77,18 +81,100 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<!-- Declared (without executions) so the plugins the dependency-scan workflow runs are in the plugin SBOM.
+			     Plugin <dependencies> override transitive versions with known vulnerabilities (OSV); drop them once the plugin releases ship fixed versions. -->
+			<plugin>
+				<groupId>org.cyclonedx</groupId>
+				<artifactId>cyclonedx-maven-plugin</artifactId>
+				<version>${cyclonedx-maven-plugin.version}</version>
+				<configuration>
+					<outputFormat>json</outputFormat>
+					<outputName>bom</outputName>
+				</configuration>
+				<dependencies>
+					<dependency>
+						<groupId>com.fasterxml.jackson.core</groupId>
+						<artifactId>jackson-core</artifactId>
+						<version>2.18.11</version>
+					</dependency>
+					<dependency>
+						<groupId>com.fasterxml.jackson.core</groupId>
+						<artifactId>jackson-databind</artifactId>
+						<version>2.18.10</version>
+					</dependency>
+					<dependency>
+						<groupId>org.cyclonedx</groupId>
+						<artifactId>cyclonedx-core-java</artifactId>
+						<version>11.0.1</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-help-plugin</artifactId>
+				<version>${maven-help-plugin.version}</version>
+				<dependencies>
+					<dependency>
+						<groupId>com.thoughtworks.xstream</groupId>
+						<artifactId>xstream</artifactId>
+						<version>1.4.21</version>
+					</dependency>
+					<dependency>
+						<groupId>org.jsoup</groupId>
+						<artifactId>jsoup</artifactId>
+						<version>1.23.2</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>${maven-dependency-plugin.version}</version>
+				<dependencies>
+					<dependency>
+						<groupId>io.airlift</groupId>
+						<artifactId>aircompressor</artifactId>
+						<version>2.0.3</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<version>${maven-enforcer-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>dependency-governance</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireMavenVersion>
+									<version>[3.6.3,)</version>
+								</requireMavenVersion>
+								<requireJavaVersion>
+									<version>[1.8,)</version>
+								</requireJavaVersion>
+								<banDuplicatePomDependencyVersions/>
+								<requireNoRepositories>
+									<message>Only Maven Central and the Spring milestone repository (needed until the Spring Boot parent is on a GA release) may be declared.</message>
+									<allowedRepositories>
+										<allowedRepository>spring-milestones</allowedRepository>
+									</allowedRepositories>
+									<allowedPluginRepositories>
+										<allowedPluginRepository>spring-milestones</allowedPluginRepository>
+									</allowedPluginRepositories>
+								</requireNoRepositories>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 
 	<repositories>
-		<repository>
-			<id>spring-snapshots</id>
-			<name>Spring Snapshots</name>
-			<url>https://repo.spring.io/snapshot</url>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-		</repository>
 		<repository>
 			<id>spring-milestones</id>
 			<name>Spring Milestones</name>
@@ -100,14 +186,6 @@
 	</repositories>
 
 	<pluginRepositories>
-		<pluginRepository>
-			<id>spring-snapshots</id>
-			<name>Spring Snapshots</name>
-			<url>https://repo.spring.io/snapshot</url>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-		</pluginRepository>
 		<pluginRepository>
 			<id>spring-milestones</id>
 			<name>Spring Milestones</name>
