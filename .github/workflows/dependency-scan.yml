@@ -39,7 +39,7 @@ jobs:
           for plugin in maven-enforcer-plugin maven-help-plugin maven-dependency-plugin cyclonedx-maven-plugin; do
             grep -q ":${plugin}:" target/plugins.txt || { echo "error: ${plugin} missing from plugin inventory"; exit 1; }
           done
-          python3 .github/scripts/maven_inventory.py plugins-sbom target/plugins.txt target/plugins.cdx.json
+          python3 .github/scripts/maven_inventory.py plugins-sbom target/plugins.txt target/plugins.cdx.json target/effective-pom.xml
       - name: Base-branch SBOMs
         if: github.event_name == 'pull_request'
         env:

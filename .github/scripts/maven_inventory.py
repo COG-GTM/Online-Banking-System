@@ -6,7 +6,7 @@ check-repos EFFECTIVE_POM
     is on ALLOWED_REPOSITORY_URLS (maven-enforcer's requireNoRepositories only
     checks repository ids, not where they point).
 
-plugins-sbom RESOLVE_PLUGINS_OUTPUT OUT_CDX_JSON
+plugins-sbom RESOLVE_PLUGINS_OUTPUT OUT_CDX_JSON [EFFECTIVE_POM]
     Turn `mvn dependency:resolve-plugins -DoutputFile=...` output (build plugins
     and their dependencies) into a CycloneDX SBOM.
 
@@ -81,9 +81,42 @@ def parse_coordinates(lines):
     return components
 
 
-def plugins_sbom(src, out):
+def plugin_dependency_overrides(effective_pom):
+    """Return {"group:artifact" of plugin: {(group, artifact): version}} from <plugin><dependencies>."""
+    overrides = {}
+    for plugin in ET.parse(effective_pom).getroot().iter():
+        if _local(plugin.tag) != "plugin":
+            continue
+        fields = {_local(c.tag): c for c in plugin}
+        if "dependencies" not in fields:
+            continue
+        key = "%s:%s" % ((fields["groupId"].text or "").strip() if "groupId" in fields else "org.apache.maven.plugins",
+                         (fields["artifactId"].text or "").strip())
+        for dep in fields["dependencies"]:
+            d = {_local(c.tag): (c.text or "").strip() for c in dep}
+            overrides.setdefault(key, {})[(d["groupId"], d["artifactId"])] = d["version"]
+    return overrides
+
+
+def apply_overrides(coords, overrides):
+    """resolve-plugins ignores plugin-level <dependencies>; apply them so the SBOM matches what runs."""
+    result = {}
+    for (g, a, v), plugins in coords.items():
+        for plugin in plugins:
+            pkey = ":".join(plugin.split(":")[:2]) if plugin else None
+            version = overrides.get(pkey, {}).get((g, a), v)
+            result.setdefault((g, a, version), set()).add(plugin)
+    for plugin in {p for ps in coords.values() for p in ps if p}:
+        for (g, a), version in overrides.get(":".join(plugin.split(":")[:2]), {}).items():
+            result.setdefault((g, a, version), set()).add(plugin)
+    return result
+
+
+def plugins_sbom(src, out, effective_pom=None):
     with open(src) as f:
         coords = parse_coordinates(f)
+    if effective_pom:
+        coords = apply_overrides(coords, plugin_dependency_overrides(effective_pom))
     if not coords:
         print("error: no plugin coordinates parsed from %s" % src)
         return 1
@@ -199,8 +232,8 @@ def osv_check(argv):
 def main(argv):
     if len(argv) == 3 and argv[1] == "check-repos":
         return check_repos(argv[2])
-    if len(argv) == 4 and argv[1] == "plugins-sbom":
-        return plugins_sbom(argv[2], argv[3])
+    if len(argv) in (4, 5) and argv[1] == "plugins-sbom":
+        return plugins_sbom(*argv[2:])
     if len(argv) >= 3 and argv[1] == "osv-check":
         return osv_check(argv[2:])
     print(__doc__)
