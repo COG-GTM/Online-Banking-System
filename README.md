@@ -21,3 +21,25 @@ Online banking system detail diagram
 
 ![online banking system detail diagram](https://user-images.githubusercontent.com/34470526/37703353-999023fe-2d1f-11e8-96f6-db40724c5d14.png)
 
+## Database setup
+
+The application does not create or alter its own tables:
+`spring.jpa.hibernate.ddl-auto=validate` makes Hibernate only check the schema at
+startup, and `spring.jpa.show-sql=false` keeps SQL statements out of the logs.
+Before the first start, create the `OnlineBankingSystem` database and apply the
+baseline schema (which also seeds the `hibernate_sequence` row and `ROLE_USER`):
+
+```
+mysql -u <admin> -p -e "CREATE DATABASE IF NOT EXISTS OnlineBankingSystem"
+mysql -u <admin> -p OnlineBankingSystem < src/main/resources/db/V1__baseline_schema.sql
+```
+
+Schema changes ship as a new `src/main/resources/db/V<n>__<description>.sql`
+script alongside the entity change.
+
+For a disposable local database only, the `dev` profile restores
+`ddl-auto=update` and SQL logging: run with `--spring.profiles.active=dev`
+(or `SPRING_PROFILES_ACTIVE=dev`). Never enable it in production; the app refuses to
+start with `dev` unless `spring.datasource.url` points at localhost, 127.0.0.1, ::1
+or an in-memory H2 database and no `spring.datasource.jndi-name` is set
+(`config.DevProfileGuard`).
