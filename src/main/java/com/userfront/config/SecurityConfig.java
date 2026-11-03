@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import com.userfront.service.UserServiceImpl.UserSecurityService;
@@ -33,6 +34,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12, new SecureRandom(SALT.getBytes()));
     }
+
+    static final long HSTS_MAX_AGE_SECONDS = 31536000;
 
     private static final String[] PUBLIC_MATCHERS = {
             "/webjars/**",
@@ -62,6 +65,21 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
                 .rememberMe();
+
+        // HSTS is only written for secure requests; behind a TLS-terminating proxy enable
+        // TRUST_FORWARDED_HEADERS/TRUSTED_PROXIES (application.properties) so the request is seen as secure.
+        http
+                .headers()
+                .contentTypeOptions()
+                .and()
+                .xssProtection().block(true)
+                .and()
+                .cacheControl()
+                .and()
+                .frameOptions().deny()
+                .httpStrictTransportSecurity().includeSubDomains(true).maxAgeInSeconds(HSTS_MAX_AGE_SECONDS)
+                .and()
+                .referrerPolicy(ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN);
     }
 
 
