@@ -14,16 +14,19 @@ import org.springframework.stereotype.Service;
 /**
  * Counts failed form logins per username and per client address and blocks further attempts
  * once a threshold is reached. A block lasts {@code lockoutDuration} from the last recorded failure.
+ * Each map holds at most {@code maxTrackedKeys} entries; when full, expired entries are purged first and
+ * then the entry with the oldest failure is evicted.
  */
 @Service
 public class LoginAttemptService {
 
-    private static final int MAX_TRACKED_KEYS = 10_000;
+    static final int DEFAULT_MAX_TRACKED_KEYS = 10_000;
 
     private final int maxUserFailures;
     private final int maxAddressFailures;
     private final Duration lockoutDuration;
     private final Clock clock;
+    private final int maxTrackedKeys;
 
     private final Map<String, Attempts> userAttempts = new ConcurrentHashMap<>();
     private final Map<String, Attempts> addressAttempts = new ConcurrentHashMap<>();
@@ -37,13 +40,28 @@ public class LoginAttemptService {
     }
 
     public LoginAttemptService(int maxUserFailures, int maxAddressFailures, Duration lockoutDuration, Clock clock) {
-        if (maxUserFailures < 1 || maxAddressFailures < 1 || lockoutDuration.isNegative() || lockoutDuration.isZero()) {
+        this(maxUserFailures, maxAddressFailures, lockoutDuration, clock, DEFAULT_MAX_TRACKED_KEYS);
+    }
+
+    LoginAttemptService(int maxUserFailures, int maxAddressFailures, Duration lockoutDuration, Clock clock,
+                        int maxTrackedKeys) {
+        if (maxUserFailures < 1 || maxAddressFailures < 1 || maxTrackedKeys < 1
+                || lockoutDuration.isNegative() || lockoutDuration.isZero()) {
             throw new IllegalArgumentException("Login throttling limits must be positive");
         }
         this.maxUserFailures = maxUserFailures;
         this.maxAddressFailures = maxAddressFailures;
         this.lockoutDuration = lockoutDuration;
         this.clock = clock;
+        this.maxTrackedKeys = maxTrackedKeys;
+    }
+
+    int trackedUsernames() {
+        return userAttempts.size();
+    }
+
+    int trackedAddresses() {
+        return addressAttempts.size();
     }
 
     public boolean isBlocked(String username, String address) {
@@ -78,12 +96,31 @@ public class LoginAttemptService {
         if (key == null) {
             return;
         }
-        if (attempts.size() >= MAX_TRACKED_KEYS) {
-            attempts.values().removeIf(a -> a.isExpired(now, lockoutDuration));
+        synchronized (attempts) {
+            if (!attempts.containsKey(key) && attempts.size() >= maxTrackedKeys) {
+                attempts.values().removeIf(a -> a.isExpired(now, lockoutDuration));
+                if (attempts.size() >= maxTrackedKeys) {
+                    evictOldest(attempts);
+                }
+            }
+            attempts.compute(key, (k, existing) -> existing == null || existing.isExpired(now, lockoutDuration)
+                    ? new Attempts(1, now)
+                    : new Attempts(existing.failures + 1, now));
         }
-        attempts.compute(key, (k, existing) -> existing == null || existing.isExpired(now, lockoutDuration)
-                ? new Attempts(1, now)
-                : new Attempts(existing.failures + 1, now));
+    }
+
+    private static void evictOldest(Map<String, Attempts> attempts) {
+        String oldest = null;
+        Instant oldestFailure = null;
+        for (Map.Entry<String, Attempts> entry : attempts.entrySet()) {
+            if (oldestFailure == null || entry.getValue().lastFailure.isBefore(oldestFailure)) {
+                oldest = entry.getKey();
+                oldestFailure = entry.getValue().lastFailure;
+            }
+        }
+        if (oldest != null) {
+            attempts.remove(oldest);
+        }
     }
 
     private static String normalize(String username) {
