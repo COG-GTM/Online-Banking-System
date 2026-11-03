@@ -2,6 +2,10 @@ package com.userfront.config;
 
 import java.security.SecureRandom;
 
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,8 +15,10 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.util.StringUtils;
 
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
@@ -59,12 +65,36 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .csrf().disable().cors().disable()
                 .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
                 .and()
-                .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
+                .logout()
+                .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
+                .logoutSuccessUrl("/index?logout")
+                .invalidateHttpSession(true)
+                .clearAuthentication(true)
+                .addLogoutHandler(this::expireSessionCookie)
+                .deleteCookies("remember-me")
+                .permitAll()
                 .and()
                 .rememberMe();
     }
 
 
+
+    private void expireSessionCookie(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
+        Cookie cookie = new Cookie(env.getProperty("server.servlet.session.cookie.name", "JSESSIONID"), null);
+        String path = env.getProperty("server.servlet.session.cookie.path");
+        if (!StringUtils.hasText(path)) {
+            path = StringUtils.hasText(request.getContextPath()) ? request.getContextPath() : "/";
+        }
+        cookie.setPath(path);
+        String domain = env.getProperty("server.servlet.session.cookie.domain");
+        if (StringUtils.hasText(domain)) {
+            cookie.setDomain(domain);
+        }
+        cookie.setHttpOnly(env.getProperty("server.servlet.session.cookie.http-only", Boolean.class, true));
+        cookie.setSecure(env.getProperty("server.servlet.session.cookie.secure", Boolean.class, request.isSecure()));
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+    }
 
     @Autowired
     public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
