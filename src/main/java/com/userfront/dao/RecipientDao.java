@@ -11,5 +11,5 @@ public interface RecipientDao extends CrudRepository<Recipient, Long> {
 
     Recipient findByName(String recipientName);
 
-    void deleteByName(String recipientName);
+    Recipient findByIdAndUserUsername(Long id, String username);
 }
