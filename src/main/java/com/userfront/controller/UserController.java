@@ -35,6 +35,11 @@ public class UserController {
 
         model.addAttribute("user", user);
 
+        if (profileForm.getEmail() == null || profileForm.getEmail().trim().isEmpty()) {
+            model.addAttribute("emailMissing", true);
+            return "profile";
+        }
+
         User emailOwner = userService.findByEmail(profileForm.getEmail());
         if (emailOwner != null && !emailOwner.getUserId().equals(user.getUserId())) {
             model.addAttribute("emailExists", true);
