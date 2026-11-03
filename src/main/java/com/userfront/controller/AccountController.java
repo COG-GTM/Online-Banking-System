@@ -2,6 +2,9 @@ package com.userfront.controller;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Optional;
+
+import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -10,6 +13,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
+import com.userfront.domain.AccountType;
 import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsAccount;
@@ -66,8 +70,12 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
-    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.deposit(accountType, Double.parseDouble(amount), principal);
+    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model, HttpServletResponse response) {
+        Optional<AccountType> type = AccountType.fromValue(accountType);
+        if (!type.isPresent()) {
+            return rejectAccountType("deposit", model, response);
+        }
+        accountService.deposit(type.get(), Double.parseDouble(amount), principal);
 
         return "redirect:/userFront";
     }
@@ -81,9 +89,20 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
-    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model, HttpServletResponse response) {
+        Optional<AccountType> type = AccountType.fromValue(accountType);
+        if (!type.isPresent()) {
+            return rejectAccountType("withdraw", model, response);
+        }
+        accountService.withdraw(type.get(), Double.parseDouble(amount), principal);
 
         return "redirect:/userFront";
+    }
+
+    private String rejectAccountType(String view, Model model, HttpServletResponse response) {
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        model.addAttribute("accountType", "");
+        model.addAttribute("invalidAccountType", true);
+        return view;
     }
 }
