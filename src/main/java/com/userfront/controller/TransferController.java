@@ -3,6 +3,8 @@ package com.userfront.controller;
 import java.security.Principal;
 import java.util.List;
 
+import javax.servlet.http.HttpServletResponse;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +18,9 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.service.InvalidTransferException;
 import com.userfront.service.TransactionService;
+import com.userfront.service.TransferAmount;
 import com.userfront.service.UserService;
 
 @Controller
@@ -114,11 +118,31 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
-    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal) {
+    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Model model, Principal principal, HttpServletResponse response) {
+        Recipient recipient = transactionService.findRecipientByName(recipientName, principal);
+        if (recipient == null) {
+            return rejectToSomeoneElse("Please choose one of your saved recipients.", model, principal, response);
+        }
+        if (!"Primary".equalsIgnoreCase(accountType) && !"Savings".equalsIgnoreCase(accountType)) {
+            return rejectToSomeoneElse("Please select the Primary or Savings account.", model, principal, response);
+        }
+        try {
+            TransferAmount.parse(amount);
+        } catch (InvalidTransferException e) {
+            return rejectToSomeoneElse(e.getMessage(), model, principal, response);
+        }
+
         User user = userService.findByUsername(principal.getName());
-        Recipient recipient = transactionService.findRecipientByName(recipientName);
         transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
 
         return "redirect:/userFront";
+    }
+
+    private String rejectToSomeoneElse(String errorMessage, Model model, Principal principal, HttpServletResponse response) {
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        model.addAttribute("recipientList", transactionService.findRecipientList(principal));
+        model.addAttribute("errorMessage", errorMessage);
+
+        return "toSomeoneElse";
     }
 }
