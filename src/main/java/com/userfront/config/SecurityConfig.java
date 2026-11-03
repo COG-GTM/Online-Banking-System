@@ -11,7 +11,10 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import com.userfront.service.UserServiceImpl.UserSecurityService;
@@ -34,12 +37,25 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         return new BCryptPasswordEncoder(12, new SecureRandom(SALT.getBytes()));
     }
 
+    static final int MAXIMUM_SESSIONS_PER_USER = 1;
+
+    @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
+    }
+
     private static final String[] PUBLIC_MATCHERS = {
             "/webjars/**",
             "/css/**",
             "/js/**",
             "/images/**",
             "/",
+            "/index",
             "/about/**",
             "/contact/**",
             "/error/**/*",
@@ -62,6 +78,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
                 .rememberMe();
+
+        http
+                .sessionManagement()
+                .sessionFixation().migrateSession()
+                .maximumSessions(MAXIMUM_SESSIONS_PER_USER)
+                .sessionRegistry(sessionRegistry())
+                .expiredUrl("/index?expired");
     }
 
 

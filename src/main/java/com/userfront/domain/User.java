@@ -3,6 +3,7 @@ package com.userfront.domain;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.persistence.CascadeType;
@@ -155,6 +156,22 @@ public class User implements UserDetails{
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof User) || userId == null) {
+            return false;
+        }
+        return userId.equals(((User) o).userId);
+    }
+
+    @Override
+    public int hashCode() {
+        return userId == null ? System.identityHashCode(this) : Objects.hash(userId);
     }
 
     @Override
