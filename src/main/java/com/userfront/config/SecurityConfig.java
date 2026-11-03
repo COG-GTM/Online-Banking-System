@@ -1,8 +1,13 @@
 package com.userfront.config;
 
 import java.security.SecureRandom;
+import java.util.Base64;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -12,6 +17,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.util.StringUtils;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import com.userfront.service.UserServiceImpl.UserSecurityService;
@@ -20,6 +26,19 @@ import com.userfront.service.UserServiceImpl.UserSecurityService;
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled=true)
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SecurityConfig.class);
+
+    private static final String REMEMBER_ME_COOKIE = "remember-me";
+
+    @Value("${app.security.remember-me.key:}")
+    private String rememberMeKey;
+
+    @Value("${app.security.remember-me.token-validity-seconds:86400}")
+    private int rememberMeTokenValiditySeconds;
+
+    @Value("${app.security.remember-me.secure-cookie:true}")
+    private boolean rememberMeSecureCookie;
 
     @Autowired
     private Environment env;
@@ -59,9 +78,25 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .csrf().disable().cors().disable()
                 .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
                 .and()
-                .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
+                .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies(REMEMBER_ME_COOKIE).permitAll()
                 .and()
-                .rememberMe();
+                .rememberMe()
+                .key(resolveRememberMeKey())
+                .rememberMeCookieName(REMEMBER_ME_COOKIE)
+                .tokenValiditySeconds(rememberMeTokenValiditySeconds)
+                .useSecureCookie(rememberMeSecureCookie)
+                .userDetailsService(userSecurityService);
+    }
+
+    private String resolveRememberMeKey() {
+        if (StringUtils.hasText(rememberMeKey)) {
+            return rememberMeKey;
+        }
+        LOG.warn("app.security.remember-me.key (REMEMBER_ME_KEY) is not set; using a random per-startup key, "
+                + "so remember-me cookies will not survive a restart.");
+        byte[] random = new byte[32];
+        new SecureRandom().nextBytes(random);
+        return Base64.getEncoder().encodeToString(random);
     }
 
 
