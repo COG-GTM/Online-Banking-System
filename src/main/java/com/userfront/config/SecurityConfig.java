@@ -27,6 +27,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     private UserSecurityService userSecurityService;
 
+    @Autowired
+    private RememberMeProperties rememberMeProperties;
+
+    static final String REMEMBER_ME_COOKIE = "remember-me";
+
     private static final String SALT = "salt"; // Salt should be protected carefully
 
     @Bean
@@ -59,9 +64,18 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .csrf().disable().cors().disable()
                 .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
                 .and()
-                .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
-                .and()
-                .rememberMe();
+                .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies(REMEMBER_ME_COOKIE).permitAll();
+
+        if (rememberMeProperties.isEnabled()) {
+            http
+                    .rememberMe()
+                    .key(rememberMeProperties.getKey())
+                    .tokenValiditySeconds(rememberMeProperties.getTokenValiditySeconds())
+                    .useSecureCookie(rememberMeProperties.isSecureCookie())
+                    .rememberMeParameter("remember-me")
+                    .rememberMeCookieName(REMEMBER_ME_COOKIE)
+                    .userDetailsService(userSecurityService);
+        }
     }
 
 
