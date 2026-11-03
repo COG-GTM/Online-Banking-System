@@ -1,7 +1,9 @@
 package com.userfront.controller;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
@@ -39,11 +41,20 @@ public class AppointmentDateParser {
             throw new InvalidAppointmentDateException("Please enter a valid date and time in the format yyyy-mm-dd hh:mm (24-hour).");
         }
 
-        if (!dateTime.isAfter(LocalDateTime.now(clock))) {
+        ZonedDateTime zoned = dateTime.atZone(clock.getZone());
+        if (!zoned.toLocalDateTime().equals(dateTime)) {
+            throw new InvalidAppointmentDateException("That time does not exist because of a daylight saving change. Please pick another time.");
+        }
+
+        Instant now = clock.instant();
+        if (!zoned.toInstant().isAfter(now)) {
+            zoned = zoned.withLaterOffsetAtOverlap();
+        }
+        if (!zoned.toInstant().isAfter(now)) {
             throw new InvalidAppointmentDateException("The appointment must be scheduled in the future.");
         }
 
-        return Date.from(dateTime.atZone(clock.getZone()).toInstant());
+        return Date.from(zoned.toInstant());
     }
 
     public static class InvalidAppointmentDateException extends Exception {

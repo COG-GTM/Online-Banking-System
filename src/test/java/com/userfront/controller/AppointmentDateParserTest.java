@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -71,7 +72,41 @@ public class AppointmentDateParserTest {
         assertEquals(at(2026, 6, 15, 9, 1), parser.parse("2026-06-15 09:01"));
     }
 
+    @Test
+    public void repeatedFallBackHourUsesTheFutureOccurrence() throws Exception {
+        ZoneId newYork = ZoneId.of("America/New_York");
+        Instant now = LocalDateTime.of(2026, 11, 1, 1, 40).atZone(newYork).withLaterOffsetAtOverlap().toInstant();
+        AppointmentDateParser fallBack = new AppointmentDateParser(Clock.fixed(now, newYork));
+
+        Date parsed = fallBack.parse("2026-11-01 01:50");
+
+        assertEquals(Date.from(now.plusSeconds(600)), parsed);
+        assertRejected(fallBack, "2026-11-01 01:30");
+    }
+
+    @Test
+    public void firstOccurrenceOfRepeatedHourIsKeptWhenStillAhead() throws Exception {
+        ZoneId newYork = ZoneId.of("America/New_York");
+        Instant now = LocalDateTime.of(2026, 11, 1, 1, 10).atZone(newYork).withEarlierOffsetAtOverlap().toInstant();
+        AppointmentDateParser fallBack = new AppointmentDateParser(Clock.fixed(now, newYork));
+
+        assertEquals(Date.from(now.plusSeconds(1200)), fallBack.parse("2026-11-01 01:30"));
+    }
+
+    @Test
+    public void nonexistentSpringForwardTimeIsRejected() {
+        ZoneId newYork = ZoneId.of("America/New_York");
+        AppointmentDateParser springForward = new AppointmentDateParser(
+                Clock.fixed(LocalDateTime.of(2026, 3, 7, 9, 0).atZone(newYork).toInstant(), newYork));
+
+        assertRejected(springForward, "2026-03-08 02:30");
+    }
+
     private void assertRejected(String value) {
+        assertRejected(parser, value);
+    }
+
+    private static void assertRejected(AppointmentDateParser parser, String value) {
         try {
             parser.parse(value);
             fail("Expected rejection of " + value);
