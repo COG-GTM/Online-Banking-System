@@ -5,6 +5,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -76,7 +77,7 @@ public class AppointmentResourceSecurityTest {
 
     @Test
     public void adminCanConfirmWithPost() throws Exception {
-        mvc.perform(post("/api/appointment/5/confirm").with(user("admin").roles("ADMIN")))
+        mvc.perform(post("/api/appointment/5/confirm").with(csrf()).with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk());
 
         verify(appointmentService).confirmAppointment(5L);
@@ -100,7 +101,7 @@ public class AppointmentResourceSecurityTest {
 
     @Test
     public void nonAdminCannotConfirm() throws Exception {
-        mvc.perform(post("/api/appointment/5/confirm").with(user("alice").roles("USER")))
+        mvc.perform(post("/api/appointment/5/confirm").with(csrf()).with(user("alice").roles("USER")))
                 .andExpect(status().isForbidden());
 
         verify(appointmentService, never()).confirmAppointment(anyLong());
@@ -108,7 +109,7 @@ public class AppointmentResourceSecurityTest {
 
     @Test
     public void anonymousCannotConfirm() throws Exception {
-        mvc.perform(post("/api/appointment/5/confirm"))
+        mvc.perform(post("/api/appointment/5/confirm").with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
         verify(appointmentService, never()).confirmAppointment(anyLong());
@@ -118,7 +119,7 @@ public class AppointmentResourceSecurityTest {
     public void confirmingUnknownAppointmentReturnsNotFound() throws Exception {
         doThrow(new AppointmentNotFoundException(99L)).when(appointmentService).confirmAppointment(99L);
 
-        mvc.perform(post("/api/appointment/99/confirm").with(user("admin").roles("ADMIN")))
+        mvc.perform(post("/api/appointment/99/confirm").with(csrf()).with(user("admin").roles("ADMIN")))
                 .andExpect(status().isNotFound());
     }
 
@@ -128,7 +129,31 @@ public class AppointmentResourceSecurityTest {
                 .andExpect(status().isOk());
         mvc.perform(get("/api/appointment/all").with(user("alice").roles("USER")))
                 .andExpect(status().isForbidden());
-        mvc.perform(post("/api/appointment/all").with(user("admin").roles("ADMIN")))
+        mvc.perform(post("/api/appointment/all").with(csrf()).with(user("admin").roles("ADMIN")))
                 .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    public void adminConfirmWithoutCsrfTokenIsRejected() throws Exception {
+        mvc.perform(post("/api/appointment/5/confirm").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isForbidden());
+
+        verify(appointmentService, never()).confirmAppointment(anyLong());
+    }
+
+    @Test
+    public void adminConfirmWithInvalidCsrfTokenIsRejected() throws Exception {
+        mvc.perform(post("/api/appointment/5/confirm").with(csrf().useInvalidToken()).with(user("admin").roles("ADMIN")))
+                .andExpect(status().isForbidden());
+
+        verify(appointmentService, never()).confirmAppointment(anyLong());
+    }
+
+    @Test
+    public void adminConfirmAcceptsCsrfTokenInHeader() throws Exception {
+        mvc.perform(post("/api/appointment/5/confirm").with(csrf().asHeader()).with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk());
+
+        verify(appointmentService).confirmAppointment(5L);
     }
 }
