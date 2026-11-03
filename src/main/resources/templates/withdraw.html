@@ -6,21 +6,23 @@
 <div class="container main">
     <div class="row">
         <div class="col-md-6">
+            <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
             <form th:action="@{/account/withdraw}" method="post">
                 <div class="form-group" >
                     <label for="accountType">1. Please select the account you would like to withdraw:</label>
                     <select class="form-control" th:value="${accountType}" name="accountType" id="accountType" required="required" >
-                        <option disabled="disabled" selected="selected"> -- select your account -- </option>
-                        <option>Primary</option>
-                        <option>Savings</option>
+                        <option value="" disabled="disabled" th:selected="${!#strings.equalsIgnoreCase(accountType, 'Primary') and !#strings.equalsIgnoreCase(accountType, 'Savings')}"> -- select your account -- </option>
+                        <option value="Primary" th:selected="${#strings.equalsIgnoreCase(accountType, 'Primary')}">Primary</option>
+                        <option value="Savings" th:selected="${#strings.equalsIgnoreCase(accountType, 'Savings')}">Savings</option>
                     </select>
                     <br />
                 </div>
 
                 <div class="form-group">
-                    <label>2. Please specify the amount you would like to withdraw: </label>
+                    <label for="amount">2. Please specify the amount you would like to withdraw: </label>
                     <span class="input-group-addon">Amount $</span>
-                    <input th:value="${amount}" type="text" name="amount" id="amount" class="form-control" aria-label="Amount (to the nearest dollar)" />
+                    <input th:value="${amount}" type="text" name="amount" id="amount" class="form-control" inputmode="decimal" aria-describedby="amountHelp" th:attr="aria-invalid=${errorMessage != null}" th:autofocus="${errorMessage != null}" />
+                    <small id="amountHelp" class="help-block">Enter a positive amount up to 1,000,000.00 with at most two decimal places, e.g. 125.50.</small>
                 </div>
 
                 <input type="hidden"
