@@ -28,8 +28,8 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
     static final String TYPE = "spring.datasource.type";
 
     // Spring Boot binds the selected pool's spring.datasource.<pool>.* properties after
-    // spring.datasource.*, so they override the top-level values. Listed in Boot's
-    // auto-detection order.
+    // spring.datasource.*, so they override the top-level values; only the effective
+    // (merged) configuration is validated. Listed in Boot's auto-detection order.
     static final List<Pool> POOLS = Arrays.asList(
             new Pool("com.zaxxer.hikari.HikariDataSource", "spring.datasource.hikari.", "jdbc-url", "jdbcUrl"),
             new Pool("org.apache.tomcat.jdbc.pool.DataSource", "spring.datasource.tomcat.", "url"),
@@ -38,20 +38,31 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
         String url = resolve(environment, URL);
+        String usernameKey = USERNAME;
         String username = resolve(environment, USERNAME);
+        String passwordKey = PASSWORD;
         String password = resolve(environment, PASSWORD);
-        check("spring.datasource.", url, username, password);
         Pool pool = activePool(resolve(environment, TYPE), application.getClassLoader());
         if (pool != null) {
             String poolUrl = pool.url(environment);
             String poolUsername = resolve(environment, pool.prefix + "username");
             String poolPassword = resolve(environment, pool.prefix + "password");
-            if (poolUrl != null || poolUsername != null || poolPassword != null) {
-                check(pool.prefix, poolUrl != null ? poolUrl : url,
-                        poolUsername != null ? poolUsername : username,
-                        poolPassword != null ? poolPassword : password);
+            if (poolUrl != null) {
+                url = poolUrl;
+            }
+            if (poolUsername != null) {
+                usernameKey = pool.prefix + "username";
+                username = poolUsername;
+            }
+            if (poolPassword != null) {
+                passwordKey = pool.prefix + "password";
+                password = poolPassword;
             }
         }
+        if (url == null || isInMemory(url)) {
+            return;
+        }
+        validate(usernameKey, username, passwordKey, password);
     }
 
     static Pool activePool(String type, ClassLoader classLoader) {
@@ -63,22 +74,15 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
         return null;
     }
 
-    private static void check(String prefix, String url, String username, String password) {
-        if (url == null || isInMemory(url)) {
-            return;
-        }
-        validate(prefix, username, password);
-    }
-
-    static void validate(String prefix, String username, String password) {
+    static void validate(String usernameKey, String username, String passwordKey, String password) {
         if (isBlank(username)) {
-            throw new InsecureDatasourceCredentialsException(prefix + "username is not set; provide DB_USERNAME");
+            throw new InsecureDatasourceCredentialsException(usernameKey + " is not set; provide DB_USERNAME");
         }
         if (PRIVILEGED_ACCOUNTS.contains(username.trim().toLowerCase(Locale.ROOT))) {
-            throw new InsecureDatasourceCredentialsException(prefix + "username must be a least-privilege application account, not '" + username.trim() + "'");
+            throw new InsecureDatasourceCredentialsException(usernameKey + " must be a least-privilege application account, not '" + username.trim() + "'");
         }
         if (isBlank(password)) {
-            throw new InsecureDatasourceCredentialsException(prefix + "password is empty; provide DB_PASSWORD");
+            throw new InsecureDatasourceCredentialsException(passwordKey + " is empty; provide DB_PASSWORD");
         }
     }
 
