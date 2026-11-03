@@ -6,6 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.security.authentication.CredentialsExpiredException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -14,6 +17,7 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
+import com.userfront.service.UserServiceImpl.LoginAttemptService;
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
 @Configuration
@@ -26,6 +30,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
     private UserSecurityService userSecurityService;
+
+    @Autowired
+    private LoginAttemptService loginAttemptService;
 
     private static final String SALT = "salt"; // Salt should be protected carefully
 
@@ -57,7 +64,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         http
                 .csrf().disable().cors().disable()
-                .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
+                .formLogin().loginPage("/index")
+                .failureHandler(new LoginFailureHandler("/index?error", loginAttemptService))
+                .successHandler(new LoginSuccessHandler("/userFront", loginAttemptService))
+                .permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
@@ -69,7 +79,20 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
 //    	 auth.inMemoryAuthentication().withUser("user").password("password").roles("USER"); //This is in-memory authentication
-        auth.userDetailsService(userSecurityService).passwordEncoder(passwordEncoder());
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userSecurityService);
+        provider.setPasswordEncoder(passwordEncoder());
+        // Re-read the lock after the password check so requests already in flight when the
+        // account was locked cannot complete a login.
+        provider.setPostAuthenticationChecks(user -> {
+            if (loginAttemptService.isLocked(user.getUsername())) {
+                throw new LockedException("User account is locked");
+            }
+            if (!user.isCredentialsNonExpired()) {
+                throw new CredentialsExpiredException("User credentials have expired");
+            }
+        });
+        auth.authenticationProvider(provider);
     }
 
 
