@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
+import com.userfront.service.UserServiceImpl.LoginAttemptService;
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
 @Configuration
@@ -26,6 +27,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
     private UserSecurityService userSecurityService;
+
+    @Autowired
+    private LoginAttemptService loginAttemptService;
 
     private static final String SALT = "salt"; // Salt should be protected carefully
 
@@ -57,7 +61,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         http
                 .csrf().disable().cors().disable()
-                .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
+                .formLogin().loginPage("/index")
+                .failureHandler(new LoginFailureHandler("/index?error", loginAttemptService))
+                .successHandler(new LoginSuccessHandler("/userFront", loginAttemptService))
+                .permitAll()
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()

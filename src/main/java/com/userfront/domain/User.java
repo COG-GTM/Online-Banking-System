@@ -1,6 +1,7 @@
 package com.userfront.domain;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -14,6 +15,8 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -39,6 +42,14 @@ public class User implements UserDetails{
     private String phone;
 
     private boolean enabled=true;
+
+    // No public setters: keeps these fields out of @ModelAttribute data binding.
+    @JsonIgnore
+    private Integer failedLoginAttempts;
+
+    @JsonIgnore
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date lockoutUntil;
 
     @OneToOne
     private PrimaryAccount primaryAccount;
@@ -188,8 +199,30 @@ public class User implements UserDetails{
 
     @Override
     public boolean isAccountNonLocked() {
-        // TODO Auto-generated method stub
-        return true;
+        return lockoutUntil == null || !lockoutUntil.after(new Date());
+    }
+
+    public int getFailedLoginAttempts() {
+        return failedLoginAttempts == null ? 0 : failedLoginAttempts;
+    }
+
+    public Date getLockoutUntil() {
+        return lockoutUntil;
+    }
+
+    public void recordFailedLogin(int maxAttempts, long lockoutMillis) {
+        if (lockoutUntil != null && isAccountNonLocked()) {
+            resetFailedLogins();
+        }
+        failedLoginAttempts = getFailedLoginAttempts() + 1;
+        if (failedLoginAttempts >= maxAttempts) {
+            lockoutUntil = new Date(System.currentTimeMillis() + lockoutMillis);
+        }
+    }
+
+    public void resetFailedLogins() {
+        failedLoginAttempts = 0;
+        lockoutUntil = null;
     }
 
     @Override
