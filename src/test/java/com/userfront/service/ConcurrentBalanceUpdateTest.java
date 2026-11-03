@@ -26,6 +26,7 @@ import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.SavingsAccountDao;
 import com.userfront.dao.UserDao;
 import com.userfront.domain.PrimaryAccount;
+import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
 
@@ -104,6 +105,33 @@ public class ConcurrentBalanceUpdateTest {
         });
 
         assertBalance("800.00", savingsAccountDao.findById(user.getSavingsAccount().getId()).get().getAccountBalance());
+    }
+
+    @Test
+    public void concurrentDepositsDoNotLoseUpdates() throws Exception {
+        final Principal principal = user::getUsername;
+
+        runConcurrently(() -> {
+            accountService.deposit("Primary", 10, principal);
+            return null;
+        });
+
+        assertBalance("1200.00", primaryAccountDao.findById(user.getPrimaryAccount().getId()).get().getAccountBalance());
+    }
+
+    @Test
+    public void concurrentRecipientTransfersDoNotLoseUpdates() throws Exception {
+        final Recipient recipient = new Recipient();
+        recipient.setName("recipient");
+        final PrimaryAccount stalePrimary = primaryAccountDao.findById(user.getPrimaryAccount().getId()).get();
+        final SavingsAccount staleSavings = savingsAccountDao.findById(user.getSavingsAccount().getId()).get();
+
+        runConcurrently(() -> {
+            transactionService.toSomeoneElseTransfer(recipient, "Primary", "10", stalePrimary, staleSavings);
+            return null;
+        });
+
+        assertBalance("800.00", primaryAccountDao.findById(stalePrimary.getId()).get().getAccountBalance());
     }
 
     private void runConcurrently(Callable<Void> request) throws Exception {
