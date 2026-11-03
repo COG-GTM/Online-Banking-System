@@ -6,6 +6,7 @@
 <div class="container main">
     <div class="row">
         <div class="col-md-6">
+            <div class="alert alert-danger" role="alert" th:if="${errorMessage}" th:text="${errorMessage}"></div>
             <form th:action="@{/transfer/toSomeoneElse}" method="post">
                 <div class="form-group" >
                     <label for="recipientName">1. Please choose the recipient:</label>
@@ -29,7 +30,7 @@
                 <div class="form-group">
                     <label>3. Please specify the amount you would like to transfer: </label>
                     <span class="input-group-addon">Amount $</span>
-                    <input th:value="${amount}" type="text" name="amount" id="amount" class="form-control" aria-label="Amount (to the nearest dollar)" />
+                    <input th:value="${amount}" type="number" min="0.01" step="0.01" name="amount" id="amount" class="form-control" aria-label="Amount in dollars and cents" required="required" />
                 </div>
 
                 <input type="hidden"
