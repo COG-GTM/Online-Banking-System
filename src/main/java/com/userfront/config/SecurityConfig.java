@@ -59,12 +59,22 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .csrf().disable().cors().disable()
                 .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
                 .and()
-                .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
+                .logout()
+                .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
+                .logoutSuccessUrl("/index?logout")
+                .invalidateHttpSession(true)
+                .clearAuthentication(true)
+                .deleteCookies(sessionCookieName(), "remember-me")
+                .permitAll()
                 .and()
                 .rememberMe();
     }
 
 
+
+    private String sessionCookieName() {
+        return env.getProperty("server.servlet.session.cookie.name", "JSESSIONID");
+    }
 
     @Autowired
     public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
