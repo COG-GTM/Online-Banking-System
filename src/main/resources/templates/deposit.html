@@ -6,10 +6,11 @@
 <div class="container main">
     <div class="row">
         <div class="col-md-6">
+            <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
             <form th:action="@{/account/deposit}" method="post">
                 <div class="form-group" >
                     <label for="accountType">1. Please select the account you would like to deposit:</label>
-                    <select class="form-control" th:value="${accountType}" name="accountType" id="accountType" required="required" autofocus="autofocus">
+                    <select class="form-control" th:value="${accountType}" name="accountType" id="accountType" required="required" th:autofocus="${errorMessage == null}">
                         <option disabled="disabled" selected="selected"> -- select your account -- </option>
                         <option>Primary</option>
                         <option>Savings</option>
@@ -18,9 +19,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label>2. Please specify the amount you would like to deposit: </label>
+                    <label for="amount">2. Please specify the amount you would like to deposit: </label>
                     <span class="input-group-addon">Amount $</span>
-                    <input th:value="${amount}" type="text" name="amount" id="amount" class="form-control" aria-label="Amount (to the nearest dollar)"/>
+                    <input th:value="${amount}" type="text" name="amount" id="amount" class="form-control" inputmode="decimal" aria-describedby="amountHelp" th:attr="aria-invalid=${errorMessage != null}" th:autofocus="${errorMessage != null}"/>
+                    <small id="amountHelp" class="help-block">Enter a positive amount up to 1,000,000.00 with at most two decimal places, e.g. 125.50.</small>
                 </div>
 
                 <input type="hidden"
