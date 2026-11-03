@@ -81,6 +81,20 @@ public class SignupFormValidationTest {
     }
 
     @Test
+    public void phoneRequiresSevenToTwentyDigits() {
+        for (String phone : new String[] {"1------", "12 34 56", "123456789012345678901", "+1 (555) 123-4567 ext"}) {
+            SignupForm form = validForm();
+            form.setPhone(phone);
+            assertEquals(phone, setOf("phone"), invalidFields(form));
+        }
+        for (String phone : new String[] {"5551234", "+1 (555) 123-4567", "555.123.4567"}) {
+            SignupForm form = validForm();
+            form.setPhone(phone);
+            assertTrue(phone, invalidFields(form).isEmpty());
+        }
+    }
+
+    @Test
     public void rejectsBadPhoneAndOverlongNames() {
         SignupForm form = validForm();
         form.setPhone("call me");

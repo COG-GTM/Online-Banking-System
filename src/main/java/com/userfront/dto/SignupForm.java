@@ -21,7 +21,8 @@ public class SignupForm {
     private String lastName;
 
     @NotBlank(message = "Phone is required")
-    @Pattern(regexp = "^\\+?[0-9][0-9 ().-]{6,19}$", message = "Phone must be 7-20 digits and may contain spaces, dashes, dots or parentheses")
+    @Size(max = 30, message = "Phone must be at most 30 characters")
+    @Pattern(regexp = "^(?=(?:[^0-9]*[0-9]){7,20}[^0-9]*$)\\+?[0-9][0-9 ().-]*$", message = "Phone must have 7-20 digits and may contain spaces, dashes, dots or parentheses")
     private String phone;
 
     @NotBlank(message = "Email is required")
