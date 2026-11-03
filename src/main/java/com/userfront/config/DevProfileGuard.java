@@ -8,18 +8,34 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
 
 /**
  * Refuses to start with the "dev" profile (ddl-auto=update, SQL logging)
- * unless the datasource is a local database. Runs before any bean is created,
- * so Hibernate never touches a remote schema.
+ * unless every configured JDBC URL points at a local database. Runs before any
+ * bean is created, so Hibernate never touches a remote schema.
  */
 public class DevProfileGuard implements EnvironmentPostProcessor, Ordered {
 
     static final String DEV_PROFILE = "dev";
+
+    /** Properties from which the pool may take its JDBC URL; the pool-specific ones override spring.datasource.url. */
+    static final String[] URL_PROPERTIES = {
+            "spring.datasource.url",
+            "spring.datasource.hikari.jdbc-url",
+            "spring.datasource.tomcat.url",
+            "spring.datasource.dbcp2.url",
+    };
+
+    /** Properties that connect without a JDBC URL this guard can check. */
+    static final String[] UNCHECKABLE_PROPERTIES = {
+            "spring.datasource.jndi-name",
+            "spring.datasource.hikari.data-source-class-name",
+            "spring.datasource.hikari.data-source-j-n-d-i",
+    };
 
     private static final Set<String> LOCAL_HOSTS =
             new HashSet<>(Arrays.asList("localhost", "127.0.0.1", "::1"));
@@ -31,22 +47,31 @@ public class DevProfileGuard implements EnvironmentPostProcessor, Ordered {
         if (!Arrays.asList(environment.getActiveProfiles()).contains(DEV_PROFILE)) {
             return;
         }
-        String url = environment.getProperty("spring.datasource.url", "");
-        String jndiName = environment.getProperty("spring.datasource.jndi-name", "");
-        if (!jndiName.trim().isEmpty() || !isLocal(url)) {
-            throw new IllegalStateException("The '" + DEV_PROFILE + "' profile enables ddl-auto=update and SQL "
-                    + "logging and may only be used with a local database (localhost, 127.0.0.1, ::1 or an "
-                    + "in-memory H2 database) configured through spring.datasource.url, not through "
-                    + "spring.datasource.jndi-name.");
+        Binder binder = Binder.get(environment);
+        for (String name : UNCHECKABLE_PROPERTIES) {
+            if (!binder.bind(name, String.class).orElse("").trim().isEmpty()) {
+                throw refused(name + " is set");
+            }
+        }
+        for (String name : URL_PROPERTIES) {
+            String url = binder.bind(name, String.class).orElse(null);
+            if (url != null && !isLocal(url)) {
+                throw refused(name + " is not a local database");
+            }
+        }
+        if (!binder.bind(URL_PROPERTIES[0], String.class).isBound()) {
+            throw refused(URL_PROPERTIES[0] + " is not set");
         }
     }
 
+    private static IllegalStateException refused(String reason) {
+        return new IllegalStateException("The '" + DEV_PROFILE + "' profile enables ddl-auto=update and SQL "
+                + "logging and may only be used with a MySQL database on localhost, 127.0.0.1 or ::1 ("
+                + reason + ").");
+    }
+
     static boolean isLocal(String url) {
-        String u = url.trim().toLowerCase(Locale.ROOT);
-        if (u.startsWith("jdbc:h2:mem:")) {
-            return true;
-        }
-        Matcher m = JDBC_HOST.matcher(u);
+        Matcher m = JDBC_HOST.matcher(url.trim().toLowerCase(Locale.ROOT));
         if (!m.find()) {
             return false;
         }

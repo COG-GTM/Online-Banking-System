@@ -27,10 +27,12 @@ The application does not create or alter its own tables:
 `spring.jpa.hibernate.ddl-auto=validate` makes Hibernate only check the schema at
 startup, and `spring.jpa.show-sql=false` keeps SQL statements out of the logs.
 Before the first start, create the `OnlineBankingSystem` database and apply the
-baseline schema (which also seeds the `hibernate_sequence` row and `ROLE_USER`):
+baseline schema (which also seeds the `hibernate_sequence` row and `ROLE_USER`).
+The tables inherit the database character set; use `utf8` (or `latin1`), because
+the MyISAM unique index on `user.email` exceeds the 1000-byte key limit under `utf8mb4`:
 
 ```
-mysql -u <admin> -p -e "CREATE DATABASE IF NOT EXISTS OnlineBankingSystem"
+mysql -u <admin> -p -e "CREATE DATABASE IF NOT EXISTS OnlineBankingSystem CHARACTER SET utf8"
 mysql -u <admin> -p OnlineBankingSystem < src/main/resources/db/V1__baseline_schema.sql
 ```
 
@@ -40,6 +42,6 @@ script alongside the entity change.
 For a disposable local database only, the `dev` profile restores
 `ddl-auto=update` and SQL logging: run with `--spring.profiles.active=dev`
 (or `SPRING_PROFILES_ACTIVE=dev`). Never enable it in production; the app refuses to
-start with `dev` unless `spring.datasource.url` points at localhost, 127.0.0.1, ::1
-or an in-memory H2 database and no `spring.datasource.jndi-name` is set
-(`config.DevProfileGuard`).
+start with `dev` unless `spring.datasource.url` (and any pool-specific JDBC URL such
+as `spring.datasource.hikari.jdbc-url`) points at localhost, 127.0.0.1 or ::1 and no
+JNDI datasource or Hikari `data-source-class-name` is configured (`config.DevProfileGuard`).

@@ -36,6 +36,34 @@ public class DevProfileGuardTest {
         guard.postProcessEnvironment(env, new SpringApplication());
     }
 
+    @Test(expected = IllegalStateException.class)
+    public void devProfileWithRemoteHikariJdbcUrlIsRefused() {
+        MockEnvironment env = env("jdbc:mysql://localhost:3306/OnlineBankingSystem", "dev");
+        env.setProperty("spring.datasource.hikari.jdbc-url", "jdbc:mysql://prod-db.bank.internal:3306/OnlineBankingSystem");
+        guard.postProcessEnvironment(env, new SpringApplication());
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void devProfileWithRemoteHikariJdbcUrlInRelaxedFormIsRefused() {
+        MockEnvironment env = env("jdbc:mysql://localhost:3306/OnlineBankingSystem", "dev");
+        env.setProperty("spring.datasource.hikari.jdbcUrl", "jdbc:mysql://prod-db.bank.internal:3306/OnlineBankingSystem");
+        guard.postProcessEnvironment(env, new SpringApplication());
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void devProfileWithHikariDataSourceClassNameIsRefused() {
+        MockEnvironment env = env("jdbc:mysql://localhost:3306/OnlineBankingSystem", "dev");
+        env.setProperty("spring.datasource.hikari.data-source-class-name", "com.mysql.cj.jdbc.MysqlDataSource");
+        guard.postProcessEnvironment(env, new SpringApplication());
+    }
+
+    @Test
+    public void devProfileWithLocalHikariJdbcUrlStarts() {
+        MockEnvironment env = env("jdbc:mysql://localhost:3306/OnlineBankingSystem", "dev");
+        env.setProperty("spring.datasource.hikari.jdbc-url", "jdbc:mysql://127.0.0.1:3307/obs");
+        guard.postProcessEnvironment(env, new SpringApplication());
+    }
+
     @Test
     public void remoteDatabaseWithoutDevProfileIsNotChecked() {
         guard.postProcessEnvironment(env("jdbc:mysql://prod-db.bank.internal:3306/OnlineBankingSystem"), new SpringApplication());
@@ -45,7 +73,7 @@ public class DevProfileGuardTest {
     public void isLocalRecognisesOnlyLoopbackAndInMemoryUrls() {
         assertTrue(DevProfileGuard.isLocal("jdbc:mysql://localhost/db"));
         assertTrue(DevProfileGuard.isLocal("jdbc:mysql://[::1]:3306/db"));
-        assertTrue(DevProfileGuard.isLocal("jdbc:h2:mem:test"));
+        assertFalse(DevProfileGuard.isLocal("jdbc:h2:mem:test"));
         assertFalse(DevProfileGuard.isLocal("jdbc:mysql://localhost.evil.com/db"));
         assertFalse(DevProfileGuard.isLocal("jdbc:mysql://10.0.0.5:3306/db"));
         assertFalse(DevProfileGuard.isLocal("jdbc:mysql://db1,localhost/db"));
