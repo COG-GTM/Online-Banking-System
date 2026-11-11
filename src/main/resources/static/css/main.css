@@ -286,3 +286,98 @@ hr {
 	background: #333;
 	background-image: linear-gradient(to right, #ccc, #333, #ccc);
 }
+/* Transaction log */
+.transaction-log {
+	margin-top: 10px;
+}
+
+.transaction-log .panel-heading {
+	padding: 10px 15px;
+}
+
+.transaction-log-title {
+	display: inline-block;
+	line-height: 30px;
+	font-size: 18px;
+}
+
+.transaction-log-filters {
+	padding-bottom: 0;
+}
+
+.transaction-log-direction {
+	margin: 0 15px 10px 0;
+	vertical-align: middle;
+}
+
+.transaction-log-dates {
+	display: inline-block;
+	margin-bottom: 10px;
+	vertical-align: middle;
+}
+
+.transaction-log-dates label {
+	margin: 0 4px 0 8px;
+	font-weight: normal;
+}
+
+.transaction-log .dataTables_wrapper {
+	padding: 0 15px 10px;
+}
+
+.transaction-log .dataTables_filter input.form-control {
+	width: 240px;
+}
+
+.transaction-log-table td,
+.transaction-log-table th {
+	vertical-align: middle !important;
+}
+
+.transaction-log-table .transaction-amount,
+.transaction-log-table td.text-right {
+	font-variant-numeric: tabular-nums;
+}
+
+.transaction-amount-credit {
+	color: #2b6e2b;
+	font-weight: bold;
+}
+
+.transaction-amount-debit {
+	color: #a12622;
+	font-weight: bold;
+}
+
+.transaction-category {
+	font-size: 85%;
+}
+
+.transaction-category-deposit {
+	background-color: #2b6e2b;
+}
+
+.transaction-category-withdrawal {
+	background-color: #8a4b00;
+}
+
+.transaction-category-transfer-in {
+	background-color: #1f5f8b;
+}
+
+.transaction-category-transfer-out {
+	background-color: #4a4a8c;
+}
+
+.transaction-category-payment {
+	background-color: #a12622;
+}
+
+.transaction-category-other {
+	background-color: #555555;
+}
+
+.transaction-log .pagination > .disabled > a,
+.transaction-log .pagination > .disabled > a:hover {
+	color: #666666;
+}
