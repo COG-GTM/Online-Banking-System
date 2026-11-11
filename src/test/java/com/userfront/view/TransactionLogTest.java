@@ -74,6 +74,17 @@ public class TransactionLogTest {
     }
 
     @Test
+    public void negativeAmountsReverseTheCategoryDirection() {
+        TransactionLogEntry negativeDeposit = TransactionLog.fromPrimary(Collections.singletonList(
+                primary(1, at(11, 14, 5), "Deposit to Primary Account", -50, "950"))).get(0);
+
+        assertEquals(TransactionDirection.DEBIT, negativeDeposit.getDirection());
+        assertEquals("\u2212$50.00", negativeDeposit.getFormattedAmount());
+        assertEquals(new BigDecimal("-50.00"), negativeDeposit.getSignedAmount());
+        assertEquals("2026-11-11", negativeDeposit.getDay());
+    }
+
+    @Test
     public void ordersNewestFirstAndBreaksTiesById() {
         Date sameMoment = at(10, 12, 0);
         List<TransactionLogEntry> log = TransactionLog.fromSavings(Arrays.asList(

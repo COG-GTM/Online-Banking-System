@@ -19,6 +19,7 @@ public class TransactionLogEntry {
     private final BigDecimal amount;
     private final BigDecimal availableBalance;
     private final TransactionCategory category;
+    private final TransactionDirection direction;
 
     public TransactionLogEntry(Long id, Date date, String description, String type, String status,
                                double amount, BigDecimal availableBalance, String accountName) {
@@ -30,6 +31,18 @@ public class TransactionLogEntry {
         this.amount = BigDecimal.valueOf(amount).abs().setScale(2, RoundingMode.HALF_UP);
         this.availableBalance = availableBalance == null ? null : availableBalance.setScale(2, RoundingMode.HALF_UP);
         this.category = categorize(description, accountName);
+        this.direction = amount < 0 ? reverse(category.getDirection()) : category.getDirection();
+    }
+
+    private static TransactionDirection reverse(TransactionDirection direction) {
+        switch (direction) {
+            case CREDIT:
+                return TransactionDirection.DEBIT;
+            case DEBIT:
+                return TransactionDirection.CREDIT;
+            default:
+                return direction;
+        }
     }
 
     static TransactionCategory categorize(String description, String accountName) {
@@ -70,6 +83,10 @@ public class TransactionLogEntry {
         return date == null ? "" : new SimpleDateFormat(DISPLAY_DATE_PATTERN, Locale.US).format(date);
     }
 
+    public String getDay() {
+        return date == null ? "" : new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(date);
+    }
+
     public String getDescription() {
         return description;
     }
@@ -87,7 +104,7 @@ public class TransactionLogEntry {
     }
 
     public TransactionDirection getDirection() {
-        return category.getDirection();
+        return direction;
     }
 
     public BigDecimal getAmount() {
@@ -95,12 +112,12 @@ public class TransactionLogEntry {
     }
 
     public BigDecimal getSignedAmount() {
-        return getDirection() == TransactionDirection.DEBIT ? amount.negate() : amount;
+        return direction == TransactionDirection.DEBIT ? amount.negate() : amount;
     }
 
     public String getFormattedAmount() {
         String formatted = formatCurrency(amount);
-        switch (getDirection()) {
+        switch (direction) {
             case CREDIT:
                 return "+" + formatted;
             case DEBIT:
