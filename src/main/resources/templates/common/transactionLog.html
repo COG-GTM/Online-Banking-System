@@ -39,7 +39,7 @@
             </thead>
             <tbody>
             <tr th:each="entry : ${entries}"
-                th:attr="data-direction=${entry.direction.key},data-timestamp=${entry.timestamp}">
+                th:attr="data-direction=${entry.direction.key},data-day=${entry.day}">
                 <td class="text-nowrap" th:attr="data-order=${entry.timestamp}" th:text="${entry.formattedDate}">...</td>
                 <td th:text="${entry.description}">...</td>
                 <td th:attr="data-search=${entry.category.label}">
