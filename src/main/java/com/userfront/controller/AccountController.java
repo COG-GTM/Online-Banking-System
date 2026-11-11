@@ -4,6 +4,9 @@ import java.security.Principal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -18,6 +21,8 @@ import com.userfront.domain.User;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
+import com.userfront.view.TransactionLog;
+import com.userfront.view.TransactionLogEntry;
 
 @Controller
 @RequestMapping("/account")
@@ -41,6 +46,7 @@ public class AccountController {
 
         model.addAttribute("primaryAccount", primaryAccount);
         model.addAttribute("primaryTransactionList", primaryTransactionList);
+        model.addAttribute("transactionLog", TransactionLog.fromPrimary(primaryTransactionList));
 		
 		return "primaryAccount";
 	}
@@ -53,8 +59,28 @@ public class AccountController {
 
         model.addAttribute("savingsAccount", savingsAccount);
         model.addAttribute("savingsTransactionList", savingsTransactionList);
+        model.addAttribute("transactionLog", TransactionLog.fromSavings(savingsTransactionList));
 
         return "savingsAccount";
+    }
+
+    @RequestMapping(value = "/primaryAccount/transactions.csv", method = RequestMethod.GET)
+    public ResponseEntity<String> primaryTransactionsCsv(Principal principal) {
+        return csvResponse("primary-transactions.csv",
+                TransactionLog.fromPrimary(transactionService.findPrimaryTransactionList(principal.getName())));
+    }
+
+    @RequestMapping(value = "/savingsAccount/transactions.csv", method = RequestMethod.GET)
+    public ResponseEntity<String> savingsTransactionsCsv(Principal principal) {
+        return csvResponse("savings-transactions.csv",
+                TransactionLog.fromSavings(transactionService.findSavingsTransactionList(principal.getName())));
+    }
+
+    private ResponseEntity<String> csvResponse(String filename, List<TransactionLogEntry> entries) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(TransactionLog.toCsv(entries));
     }
 	
 	@RequestMapping(value = "/deposit", method = RequestMethod.GET)
