@@ -102,6 +102,7 @@
                 setDirection('');
                 filters.from = filters.to = null;
                 $log.find('.transaction-log-from, .transaction-log-to').val('');
+                $log.find('.dataTables_filter input').val('');
                 table.search('').draw();
             });
         });
