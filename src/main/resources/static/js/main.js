@@ -45,26 +45,19 @@
             var $table = $log.find('.transaction-log-table');
             var filters = {direction: '', from: null, to: null};
 
-            var parseDate = function (value, endOfDay) {
-                if (!value) {
-                    return null;
-                }
-                return new Date(value + (endOfDay ? 'T23:59:59.999' : 'T00:00:00')).getTime();
-            };
-
             $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
                 if (settings.nTable !== $table[0]) {
                     return true;
                 }
                 var row = settings.aoData[dataIndex].nTr;
-                var timestamp = Number(row.getAttribute('data-timestamp'));
+                var day = row.getAttribute('data-day');
                 if (filters.direction && row.getAttribute('data-direction') !== filters.direction) {
                     return false;
                 }
-                if (filters.from !== null && timestamp < filters.from) {
+                if (filters.from && day < filters.from) {
                     return false;
                 }
-                return !(filters.to !== null && timestamp > filters.to);
+                return !(filters.to && day > filters.to);
             });
 
             var table = $table.DataTable({
@@ -100,8 +93,8 @@
             });
 
             $log.find('.transaction-log-from, .transaction-log-to').on('change', function () {
-                filters.from = parseDate($log.find('.transaction-log-from').val(), false);
-                filters.to = parseDate($log.find('.transaction-log-to').val(), true);
+                filters.from = $log.find('.transaction-log-from').val() || null;
+                filters.to = $log.find('.transaction-log-to').val() || null;
                 table.draw();
             });
 
