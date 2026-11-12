@@ -3,6 +3,7 @@ package com.userfront;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -83,7 +84,7 @@ public class SmokeFlowTest extends AbstractIntegrationTest {
     public void signupWithTakenUsernameRedisplaysFormWithError() throws Exception {
         String username = signUp();
 
-        mockMvc.perform(post("/signup")
+        mockMvc.perform(post("/signup").with(csrf())
                 .param("firstName", "Other")
                 .param("lastName", "Person")
                 .param("phone", "555-000-0000")
@@ -125,7 +126,7 @@ public class SmokeFlowTest extends AbstractIntegrationTest {
     public void loginWithRememberMeSetsRememberMeCookie() throws Exception {
         String username = signUp();
 
-        mockMvc.perform(post("/index")
+        mockMvc.perform(post("/index").with(csrf())
                 .param("username", username)
                 .param("password", PASSWORD)
                 .param("remember-me", "on"))
@@ -167,7 +168,7 @@ public class SmokeFlowTest extends AbstractIntegrationTest {
         MockHttpSession session = login(username);
         deposit(session, "Primary", "100");
 
-        mockMvc.perform(post("/account/withdraw").session(session)
+        mockMvc.perform(post("/account/withdraw").with(csrf()).session(session)
                 .param("accountType", "Primary")
                 .param("amount", "30"))
                 .andExpect(redirectedUrl("/userFront"));
@@ -221,7 +222,7 @@ public class SmokeFlowTest extends AbstractIntegrationTest {
         String recipientName = "Recipient " + username;
         addRecipient(session, recipientName);
 
-        mockMvc.perform(post("/transfer/toSomeoneElse").session(session)
+        mockMvc.perform(post("/transfer/toSomeoneElse").with(csrf()).session(session)
                 .param("recipientName", recipientName)
                 .param("accountType", "Primary")
                 .param("amount", "5"))
@@ -238,7 +239,7 @@ public class SmokeFlowTest extends AbstractIntegrationTest {
         String username = signUp();
         MockHttpSession session = login(username);
 
-        mockMvc.perform(post("/appointment/create").session(session)
+        mockMvc.perform(post("/appointment/create").with(csrf()).session(session)
                 .param("dateString", "2030-01-15 09:30")
                 .param("location", "Chicago")
                 .param("description", "Open a new account"))
@@ -282,7 +283,7 @@ public class SmokeFlowTest extends AbstractIntegrationTest {
                 .andExpect(view().name("profile"))
                 .andExpect(content().string(containsString(username + "@example.com")));
 
-        mockMvc.perform(post("/user/profile").session(session)
+        mockMvc.perform(post("/user/profile").with(csrf()).session(session)
                 .param("username", username)
                 .param("firstName", "Janet")
                 .param("lastName", "Smith")
@@ -322,7 +323,7 @@ public class SmokeFlowTest extends AbstractIntegrationTest {
 
     private String signUp() throws Exception {
         String username = "user" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        mockMvc.perform(post("/signup")
+        mockMvc.perform(post("/signup").with(csrf())
                 .param("firstName", "Jane")
                 .param("lastName", "Doe")
                 .param("phone", "555-123-4567")
@@ -340,14 +341,14 @@ public class SmokeFlowTest extends AbstractIntegrationTest {
     }
 
     private void deposit(MockHttpSession session, String accountType, String amount) throws Exception {
-        mockMvc.perform(post("/account/deposit").session(session)
+        mockMvc.perform(post("/account/deposit").with(csrf()).session(session)
                 .param("accountType", accountType)
                 .param("amount", amount))
                 .andExpect(redirectedUrl("/userFront"));
     }
 
     private void transferBetweenAccounts(MockHttpSession session, String from, String to, String amount) throws Exception {
-        mockMvc.perform(post("/transfer/betweenAccounts").session(session)
+        mockMvc.perform(post("/transfer/betweenAccounts").with(csrf()).session(session)
                 .param("transferFrom", from)
                 .param("transferTo", to)
                 .param("amount", amount))
@@ -355,7 +356,7 @@ public class SmokeFlowTest extends AbstractIntegrationTest {
     }
 
     private void addRecipient(MockHttpSession session, String name) throws Exception {
-        mockMvc.perform(post("/transfer/recipient/save").session(session)
+        mockMvc.perform(post("/transfer/recipient/save").with(csrf()).session(session)
                 .param("name", name)
                 .param("email", "recipient@example.com")
                 .param("phone", "555-222-3333")
