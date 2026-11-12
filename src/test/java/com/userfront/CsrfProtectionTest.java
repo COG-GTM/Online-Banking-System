@@ -94,6 +94,12 @@ public class CsrfProtectionTest extends AbstractIntegrationTest {
         String recipientName = "Recipient " + username;
         addRecipient(session, recipientName);
 
+        String page = mockMvc.perform(get("/transfer/recipient").session(session))
+                .andReturn().getResponse().getContentAsString();
+        int deleteForm = page.indexOf("action=\"/transfer/recipient/delete\"");
+        assertThat(deleteForm).isPositive();
+        assertThat(page.substring(deleteForm, page.indexOf("</form>", deleteForm))).contains(CSRF_FIELD);
+
         mockMvc.perform(get("/transfer/recipient/delete").session(session).param("recipientName", recipientName))
                 .andExpect(status().isMethodNotAllowed());
         mockMvc.perform(post("/transfer/recipient/delete").session(session).param("recipientName", recipientName))
