@@ -21,7 +21,7 @@ import com.userfront.service.UserService;
 @Service
 public class AccountServiceImpl implements AccountService {
 	
-	private static int nextAccountNumber = 11223145;
+	private static final int ACCOUNT_NUMBER_FLOOR = 11223145;
 
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
@@ -102,8 +102,18 @@ public class AccountServiceImpl implements AccountService {
         }
     }
     
+    /** Primary and savings accounts share one number range, so the next number follows the highest in either table. */
     private int accountGen() {
-        return ++nextAccountNumber;
+        int highest = ACCOUNT_NUMBER_FLOOR;
+        Integer primaryMax = primaryAccountDao.findMaxAccountNumber();
+        if (primaryMax != null) {
+            highest = Math.max(highest, primaryMax);
+        }
+        Integer savingsMax = savingsAccountDao.findMaxAccountNumber();
+        if (savingsMax != null) {
+            highest = Math.max(highest, savingsMax);
+        }
+        return highest + 1;
     }
 
 	
