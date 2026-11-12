@@ -1,10 +1,12 @@
 package com.userfront;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -53,20 +55,24 @@ public class SecurityFilterChainTest extends AbstractIntegrationTest {
             "/some/unmapped/path"
     };
 
-    private static final String[] ADMIN_ENDPOINTS = {
+    private static final String[] ADMIN_READ_ENDPOINTS = {
             "/api/user/all",
             "/api/appointment/all",
             "/api/user/primary/transaction?username=nobody",
-            "/api/user/savings/transaction?username=nobody",
+            "/api/user/savings/transaction?username=nobody"
+    };
+
+    private static final String[] ADMIN_WRITE_ENDPOINTS = {
             "/api/user/nobody/enable",
-            "/api/user/nobody/disable"
+            "/api/user/nobody/disable",
+            "/api/appointment/-1/confirm"
     };
 
     @Autowired
     private FilterChainProxy springSecurityFilterChain;
 
     @Test
-    public void singleFilterChainHasFormLoginLogoutAndRememberMeButNoCsrfOrCors() {
+    public void singleFilterChainHasFormLoginLogoutRememberMeAndCsrfButNoCors() {
         List<SecurityFilterChain> chains = springSecurityFilterChain.getFilterChains();
         assertThat(chains).hasSize(1);
 
@@ -77,8 +83,9 @@ public class SecurityFilterChainTest extends AbstractIntegrationTest {
                 LogoutFilter.class,
                 UsernamePasswordAuthenticationFilter.class,
                 RememberMeAuthenticationFilter.class,
-                ExceptionTranslationFilter.class);
-        assertThat(filters).doesNotContain(CsrfFilter.class, CorsFilter.class);
+                ExceptionTranslationFilter.class,
+                CsrfFilter.class);
+        assertThat(filters).doesNotContain(CorsFilter.class);
     }
 
     @Test
@@ -108,8 +115,11 @@ public class SecurityFilterChainTest extends AbstractIntegrationTest {
     @Test
     @WithMockUser(roles = "USER")
     public void adminApiIsForbiddenForRoleUser() throws Exception {
-        for (String path : ADMIN_ENDPOINTS) {
+        for (String path : ADMIN_READ_ENDPOINTS) {
             mockMvc.perform(get(path)).andExpect(status().isForbidden());
+        }
+        for (String path : ADMIN_WRITE_ENDPOINTS) {
+            mockMvc.perform(post(path).with(csrf())).andExpect(status().isForbidden());
         }
     }
 
@@ -121,8 +131,15 @@ public class SecurityFilterChainTest extends AbstractIntegrationTest {
     }
 
     @Test
-    public void loginFormPostIsAcceptedWithoutCsrfToken() throws Exception {
+    public void loginFormPostWithoutCsrfTokenIsRejected() throws Exception {
         mockMvc.perform(post("/index").param("username", "nobody").param("password", "wrong"))
+                .andExpect(status().isForbidden())
+                .andExpect(unauthenticated());
+    }
+
+    @Test
+    public void loginFormPostWithCsrfTokenIsProcessed() throws Exception {
+        mockMvc.perform(post("/index").with(csrf()).param("username", "nobody").param("password", "wrong"))
                 .andExpect(redirectedUrl("/index?error"))
                 .andExpect(unauthenticated());
     }
@@ -144,6 +161,7 @@ public class SecurityFilterChainTest extends AbstractIntegrationTest {
 
         mockMvc.perform(options("/userFront"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Methods", "POST,GET,DELETE"));
+                .andExpect(header().string("Access-Control-Allow-Methods", "POST,GET,DELETE"))
+                .andExpect(header().string("Access-Control-Allow-Headers", containsString("x-xsrf-token")));
     }
 }

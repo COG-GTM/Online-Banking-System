@@ -2,6 +2,7 @@ package com.userfront;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
@@ -110,7 +111,7 @@ public class DataIntegrityTest extends AbstractIntegrationTest {
         String existing = signUp(uniqueName());
         String newUsername = uniqueName();
 
-        mockMvc.perform(post("/signup")
+        mockMvc.perform(post("/signup").with(csrf())
                 .param("firstName", "Other")
                 .param("lastName", "Person")
                 .param("phone", "555-000-0000")
@@ -141,7 +142,7 @@ public class DataIntegrityTest extends AbstractIntegrationTest {
     public void adminCanConfirmAppointment() throws Exception {
         Appointment appointment = saveAppointment();
 
-        mockMvc.perform(get("/api/appointment/" + appointment.getId() + "/confirm")).andExpect(status().isOk());
+        mockMvc.perform(post("/api/appointment/" + appointment.getId() + "/confirm").with(csrf())).andExpect(status().isOk());
 
         assertThat(appointmentDao.findById(appointment.getId()).get().isConfirmed()).isTrue();
     }
@@ -157,7 +158,7 @@ public class DataIntegrityTest extends AbstractIntegrationTest {
     }
 
     private String signUp(String username) throws Exception {
-        mockMvc.perform(post("/signup")
+        mockMvc.perform(post("/signup").with(csrf())
                 .param("firstName", "Test")
                 .param("lastName", "User")
                 .param("phone", "555-123-4567")
