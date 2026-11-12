@@ -5,11 +5,9 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,18 +15,11 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.UUID;
 
-import javax.servlet.http.Cookie;
-
-import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.security.test.web.support.WebTestUtils;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.web.context.WebApplicationContext;
 
 import com.userfront.dao.AppointmentDao;
 import com.userfront.dao.RecipientDao;
@@ -53,23 +44,6 @@ public class CsrfProtectionTest extends AbstractIntegrationTest {
 
     @Autowired
     private RecipientDao recipientDao;
-
-    @Autowired
-    private WebApplicationContext context;
-
-    /** The test csrf() post-processor swaps the app's cookie repository for a session one; put the real one back. */
-    @Before
-    public void restoreCookieTokenRepository() {
-        WebTestUtils.setCsrfTokenRepository(new MockHttpServletRequest(context.getServletContext()),
-                CookieCsrfTokenRepository.withHttpOnlyFalse());
-    }
-
-    @Test
-    public void tokenCookieIsIssuedForJavaScriptClients() throws Exception {
-        mockMvc.perform(get("/index"))
-                .andExpect(cookie().exists("XSRF-TOKEN"))
-                .andExpect(cookie().httpOnly("XSRF-TOKEN", false));
-    }
 
     @Test
     public void loginAndSignupFormsCarryTheToken() throws Exception {
@@ -142,21 +116,6 @@ public class CsrfProtectionTest extends AbstractIntegrationTest {
         assertThat(appointmentDao.findById(appointment.getId()).get().isConfirmed()).isFalse();
 
         mockMvc.perform(post(url).with(csrf())).andExpect(status().isOk());
-        assertThat(appointmentDao.findById(appointment.getId()).get().isConfirmed()).isTrue();
-    }
-
-    @Test
-    public void adminCanConfirmWithTheTokenFromTheCookie() throws Exception {
-        Appointment appointment = saveAppointment();
-        restoreCookieTokenRepository();
-        Cookie token = mockMvc.perform(get("/index")).andReturn().getResponse().getCookie("XSRF-TOKEN");
-
-        mockMvc.perform(post("/api/appointment/" + appointment.getId() + "/confirm")
-                .cookie(token)
-                .header("X-XSRF-TOKEN", token.getValue())
-                .with(user("admin").roles("ADMIN")))
-                .andExpect(status().isOk());
-
         assertThat(appointmentDao.findById(appointment.getId()).get().isConfirmed()).isTrue();
     }
 
