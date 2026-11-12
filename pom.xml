@@ -24,6 +24,13 @@
 		<java.version>1.8</java.version>
 		<tomcat.version>9.0.123</tomcat.version>
 		<thymeleaf.version>3.1.6.RELEASE</thymeleaf.version>
+		<spring-framework.version>5.3.39</spring-framework.version>
+		<spring-security.version>5.8.16</spring-security.version>
+		<jackson-bom.version>2.18.11</jackson-bom.version>
+		<logback.version>1.2.13</logback.version>
+		<snakeyaml.version>2.2</snakeyaml.version>
+		<mysql.version>8.4.0</mysql.version>
+		<assertj.version>3.27.7</assertj.version>
 	</properties>
 
 	<dependencies>
