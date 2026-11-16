@@ -2,8 +2,10 @@ package com.userfront.controller;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -16,6 +18,8 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
 import com.userfront.service.AccountService;
+import com.userfront.service.TransactionAmount;
+import com.userfront.service.TransactionDeclinedException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -31,6 +35,9 @@ public class AccountController {
 	
 	@Autowired
 	private TransactionService transactionService;
+
+	@Autowired
+	private MessageSource messageSource;
 	
 	@RequestMapping("/primaryAccount")
 	public String primaryAccount(Model model, Principal principal) {
@@ -66,8 +73,13 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
-    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.deposit(accountType, Double.parseDouble(amount), principal);
+    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model, Locale locale) {
+        try {
+            accountService.deposit(accountType, TransactionAmount.parse(amount), principal);
+        } catch (TransactionDeclinedException e) {
+            model.addAttribute("errorMessage", messageSource.getMessage(e.getMessageKey(), null, e.getMessage(), locale));
+            return "deposit";
+        }
 
         return "redirect:/userFront";
     }
@@ -81,8 +93,13 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
-    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal) {
-        accountService.withdraw(accountType, Double.parseDouble(amount), principal);
+    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model, Locale locale) {
+        try {
+            accountService.withdraw(accountType, TransactionAmount.parse(amount), principal);
+        } catch (TransactionDeclinedException e) {
+            model.addAttribute("errorMessage", messageSource.getMessage(e.getMessageKey(), null, e.getMessage(), locale));
+            return "withdraw";
+        }
 
         return "redirect:/userFront";
     }
