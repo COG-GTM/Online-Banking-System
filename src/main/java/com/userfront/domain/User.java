@@ -129,6 +129,7 @@ public class User implements UserDetails{
         this.recipientList = recipientList;
     }
 
+    @JsonIgnore
     public String getPassword() {
         return password;
     }
