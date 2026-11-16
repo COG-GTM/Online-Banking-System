@@ -114,12 +114,12 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName) {
-        return recipientDao.findByName(recipientName);
+    public Recipient findRecipientById(Long id, Principal principal) {
+        return recipientDao.findByIdAndUserUsername(id, principal.getName());
     }
 
-    public void deleteRecipientByName(String recipientName) {
-        recipientDao.deleteByName(recipientName);
+    public void deleteRecipientById(Long id, Principal principal) {
+        recipientDao.deleteByIdAndUserUsername(id, principal.getName());
     }
     
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
