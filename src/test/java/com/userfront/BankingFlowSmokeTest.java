@@ -3,6 +3,7 @@ package com.userfront;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
@@ -60,7 +61,7 @@ class BankingFlowSmokeTest {
 
     @Test
     void signUpDepositTransferAndHistory() throws Exception {
-        mockMvc.perform(post("/signup")
+        mockMvc.perform(post("/signup").with(csrf())
                         .param("firstName", "Sample")
                         .param("lastName", "User")
                         .param("phone", "555-0100")
@@ -86,15 +87,15 @@ class BankingFlowSmokeTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("userFront"));
 
-        mockMvc.perform(post("/account/deposit").session(session)
+        mockMvc.perform(post("/account/deposit").session(session).with(csrf())
                         .param("accountType", "Primary").param("amount", "500"))
                 .andExpect(redirectedUrl("/userFront"));
 
-        mockMvc.perform(post("/account/deposit").session(session)
+        mockMvc.perform(post("/account/deposit").session(session).with(csrf())
                         .param("accountType", "Savings").param("amount", "50"))
                 .andExpect(redirectedUrl("/userFront"));
 
-        mockMvc.perform(post("/transfer/betweenAccounts").session(session)
+        mockMvc.perform(post("/transfer/betweenAccounts").session(session).with(csrf())
                         .param("transferFrom", "Primary").param("transferTo", "Savings").param("amount", "200"))
                 .andExpect(redirectedUrl("/userFront"));
 
