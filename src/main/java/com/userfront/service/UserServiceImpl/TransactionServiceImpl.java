@@ -112,7 +112,9 @@ public class TransactionServiceImpl implements TransactionService {
         if (owner == null || owner.getUsername() == null) {
             throw new IllegalArgumentException("Recipient must have an owner");
         }
-        if (recipient.getId() == null
+        boolean editingOwnRecipient = recipient.getId() != null
+                && recipientDao.existsByIdAndUserUsername(recipient.getId(), owner.getUsername());
+        if (!editingOwnRecipient
                 && recipientDao.countByUserUsername(owner.getUsername()) >= MAX_RECIPIENTS_PER_USER) {
             throw new RecipientLimitExceededException(MAX_RECIPIENTS_PER_USER);
         }
