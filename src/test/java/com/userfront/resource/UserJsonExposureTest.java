@@ -90,7 +90,8 @@ public class UserJsonExposureTest {
 
         Set<String> accountFields = new HashSet<>();
         node.get("primaryAccount").fieldNames().forEachRemaining(accountFields::add);
-        assertEquals(new HashSet<>(java.util.Arrays.asList("accountNumber", "accountBalance")), accountFields);
+        assertEquals(new HashSet<>(java.util.Arrays.asList("id", "accountNumber", "accountBalance")), accountFields);
+        assertEquals(7L, node.get("primaryAccount").get("id").asLong());
         assertEquals("alice", node.get("username").asText());
         assertEquals(1500.00, node.get("primaryAccount").get("accountBalance").asDouble(), 0.0);
         assertEquals(250.00, node.get("savingsAccount").get("accountBalance").asDouble(), 0.0);

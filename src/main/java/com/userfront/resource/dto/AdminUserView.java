@@ -72,20 +72,26 @@ public class AdminUserView {
 
     public static class AccountSummary {
 
+        private final Long id;
         private final int accountNumber;
         private final BigDecimal accountBalance;
 
-        private AccountSummary(int accountNumber, BigDecimal accountBalance) {
+        private AccountSummary(Long id, int accountNumber, BigDecimal accountBalance) {
+            this.id = id;
             this.accountNumber = accountNumber;
             this.accountBalance = accountBalance;
         }
 
         static AccountSummary of(PrimaryAccount account) {
-            return account == null ? null : new AccountSummary(account.getAccountNumber(), account.getAccountBalance());
+            return account == null ? null : new AccountSummary(account.getId(), account.getAccountNumber(), account.getAccountBalance());
         }
 
         static AccountSummary of(SavingsAccount account) {
-            return account == null ? null : new AccountSummary(account.getAccountNumber(), account.getAccountBalance());
+            return account == null ? null : new AccountSummary(account.getId(), account.getAccountNumber(), account.getAccountBalance());
+        }
+
+        public Long getId() {
+            return id;
         }
 
         public int getAccountNumber() {
