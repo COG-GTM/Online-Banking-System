@@ -49,6 +49,10 @@ public class UserServiceImpl implements UserService{
     
     
     public User createUser(User user, Set<UserRole> userRoles) {
+        if (user.getUserId() != null) {
+            throw new IllegalArgumentException("New users must not have a userId");
+        }
+
         User localUser = userDao.findByUsername(user.getUsername());
 
         if (localUser != null) {
@@ -73,7 +77,7 @@ public class UserServiceImpl implements UserService{
     }
     
     public boolean checkUserExists(String username, String email){
-        if (checkUsernameExists(username) || checkEmailExists(username)) {
+        if (checkUsernameExists(username) || checkEmailExists(email)) {
             return true;
         } else {
             return false;
