@@ -27,6 +27,9 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
 
     static final String TYPE = "spring.datasource.type";
 
+    // A JNDI datasource is obtained from the container; url/username/password are not used.
+    static final String JNDI_NAME = "spring.datasource.jndi-name";
+
     // Spring Boot binds the selected pool's spring.datasource.<pool>.* properties after
     // spring.datasource.*, so they override the top-level values; only the effective
     // (merged) configuration is validated. Listed in Boot's auto-detection order.
@@ -37,6 +40,9 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+        if (!isBlank(resolve(environment, JNDI_NAME))) {
+            return;
+        }
         String url = resolve(environment, URL);
         String usernameKey = USERNAME;
         String username = resolve(environment, USERNAME);
