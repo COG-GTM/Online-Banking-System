@@ -5,13 +5,14 @@ import java.util.regex.Pattern;
 
 /**
  * Parses an amount typed into a money-movement form. Only plain positive decimals
- * with at most two fraction digits up to {@link #MAX} are accepted.
+ * with at most two fraction digits up to {@link #MAX} are accepted; the decimal
+ * separator may be a point or a comma (French notation).
  */
 public final class TransactionAmount {
 
     public static final BigDecimal MAX = new BigDecimal("1000000.00");
 
-    private static final Pattern FORMAT = Pattern.compile("\\d{1,7}(\\.\\d{1,2})?");
+    private static final Pattern FORMAT = Pattern.compile("\\d{1,7}([.,]\\d{1,2})?");
 
     private TransactionAmount() {
     }
@@ -24,7 +25,7 @@ public final class TransactionAmount {
         if (!FORMAT.matcher(text).matches()) {
             throw new TransactionDeclinedException("transaction.amount.format", "Enter an amount in dollars, for example 25 or 25.50, with no more than two decimal places.");
         }
-        return requireValid(new BigDecimal(text));
+        return requireValid(new BigDecimal(text.replace(',', '.')));
     }
 
     public static BigDecimal requireValid(BigDecimal amount) {

@@ -18,9 +18,15 @@ public class TransactionAmountTest {
     }
 
     @Test
+    public void acceptsCommaAsDecimalSeparator() {
+        assertEquals(new BigDecimal("25.50"), TransactionAmount.parse("25,50"));
+        assertEquals(new BigDecimal("0.50"), TransactionAmount.parse("0,5"));
+    }
+
+    @Test
     public void rejectsNegativeZeroMalformedAndOutOfRangeAmounts() {
         String[] rejected = {null, "", "  ", "-1000000", "-0.01", "0", "0.00", "+5", "1.001", "1e6", "1E-2",
-                "NaN", "Infinity", "1,000", "abc", "1000000.01", "99999999", "0x10", ".5", "5."};
+                "NaN", "Infinity", "1,000", "1,000.00", "1,5,0", "abc", "1000000.01", "99999999", "0x10", ".5", "5."};
         for (String raw : rejected) {
             try {
                 TransactionAmount.parse(raw);
