@@ -10,14 +10,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.userfront.config.SecurityConfig;
@@ -29,7 +27,6 @@ import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
-@RunWith(SpringRunner.class)
 @WebMvcTest(controllers = {UserResource.class, AppointmentResource.class, TransferController.class, AccountController.class})
 @Import(SecurityConfig.class)
 public class CsrfProtectionTest {
