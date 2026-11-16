@@ -74,6 +74,26 @@ public class HomeControllerSignupTest {
     }
 
     @Test
+    public void signupIgnoresUserIdParameterNamedAfterTheModelAttribute() throws Exception {
+        when(userService.checkUserExists(any(), any())).thenReturn(false);
+
+        mockMvc.perform(post("/signup")
+                .param("user", "1")
+                .param("username", "mallory")
+                .param("password", "S3cure!Passw0rd")
+                .param("email", "mallory@example.com"))
+                .andExpect(redirectedUrl("/"));
+
+        ArgumentCaptor<SignupForm> captor = ArgumentCaptor.forClass(SignupForm.class);
+        verify(userService).registerUser(captor.capture());
+        SignupForm form = captor.getValue();
+        assertEquals("mallory", form.getUsername());
+        assertEquals("mallory@example.com", form.getEmail());
+        assertNull(form.getFirstName());
+        verify(userService, never()).saveUser(any());
+    }
+
+    @Test
     public void duplicateSignupRedisplaysFormWithoutPasswordAndDoesNotRegister() throws Exception {
         when(userService.checkUserExists(any(), any())).thenReturn(true);
         when(userService.checkUsernameExists("alice")).thenReturn(true);
