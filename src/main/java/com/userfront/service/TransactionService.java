@@ -25,11 +25,11 @@ public interface TransactionService {
     
     List<Recipient> findRecipientList(Principal principal);
 
-    Recipient saveRecipient(Recipient recipient);
+    Recipient saveRecipient(Recipient recipient, String username);
 
-    Recipient findRecipientByName(String recipientName);
+    Recipient findRecipientByName(String recipientName, String username);
 
-    void deleteRecipientByName(String recipientName);
+    void deleteRecipientByName(String recipientName, String username);
     
     void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount);
 }

@@ -7,7 +7,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.PrimaryTransactionDao;
@@ -110,16 +113,49 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientList;
     }
 
-    public Recipient saveRecipient(Recipient recipient) {
+    public Recipient saveRecipient(Recipient recipientForm, String username) {
+        User user = userService.findByUsername(username);
+
+        Recipient recipient;
+        if (recipientForm.getId() == null) {
+            recipient = new Recipient();
+            recipient.setUser(user);
+        } else {
+            recipient = recipientDao.findByIdAndUser(recipientForm.getId(), user);
+            if (recipient == null) {
+                throw recipientNotFound();
+            }
+        }
+
+        recipient.setName(recipientForm.getName());
+        recipient.setEmail(recipientForm.getEmail());
+        recipient.setPhone(recipientForm.getPhone());
+        recipient.setAccountNumber(recipientForm.getAccountNumber());
+        recipient.setDescription(recipientForm.getDescription());
+
         return recipientDao.save(recipient);
     }
 
-    public Recipient findRecipientByName(String recipientName) {
-        return recipientDao.findByName(recipientName);
+    public Recipient findRecipientByName(String recipientName, String username) {
+        User user = userService.findByUsername(username);
+        Recipient recipient = recipientDao.findFirstByNameAndUser(recipientName, user);
+        if (recipient == null) {
+            throw recipientNotFound();
+        }
+        return recipient;
     }
 
-    public void deleteRecipientByName(String recipientName) {
-        recipientDao.deleteByName(recipientName);
+    @Transactional
+    public void deleteRecipientByName(String recipientName, String username) {
+        User user = userService.findByUsername(username);
+        Long deleted = recipientDao.deleteByNameAndUser(recipientName, user);
+        if (deleted == null || deleted == 0) {
+            throw recipientNotFound();
+        }
+    }
+
+    private ResponseStatusException recipientNotFound() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipient not found");
     }
     
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
