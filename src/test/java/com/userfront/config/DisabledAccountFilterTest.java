@@ -1,11 +1,11 @@
 package com.userfront.config;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,9 +13,9 @@ import static org.mockito.Mockito.when;
 
 import javax.servlet.http.Cookie;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -30,7 +30,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import com.userfront.domain.User;
 
-public class DisabledAccountFilterTest {
+class DisabledAccountFilterTest {
 
     private UserDetailsService userDetailsService;
     private DisabledAccountFilter filter;
@@ -39,8 +39,8 @@ public class DisabledAccountFilterTest {
     private MockFilterChain chain;
     private MockHttpSession session;
 
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         userDetailsService = mock(UserDetailsService.class);
         filter = new DisabledAccountFilter(userDetailsService);
         session = new MockHttpSession();
@@ -51,13 +51,13 @@ public class DisabledAccountFilterTest {
         chain = new MockFilterChain();
     }
 
-    @After
-    public void tearDown() {
+    @AfterEach
+    void tearDown() {
         SecurityContextHolder.clearContext();
     }
 
     @Test
-    public void enabledUserContinues() throws Exception {
+    void enabledUserContinues() throws Exception {
         signIn("alice");
         when(userDetailsService.loadUserByUsername("alice")).thenReturn(user("alice", true));
 
@@ -69,7 +69,7 @@ public class DisabledAccountFilterTest {
     }
 
     @Test
-    public void disabledUserSessionIsEndedAndRequestRejected() throws Exception {
+    void disabledUserSessionIsEndedAndRequestRejected() throws Exception {
         signIn("mallory");
         when(userDetailsService.loadUserByUsername("mallory")).thenReturn(user("mallory", false));
 
@@ -85,7 +85,7 @@ public class DisabledAccountFilterTest {
     }
 
     @Test
-    public void deletedUserSessionIsEnded() throws Exception {
+    void deletedUserSessionIsEnded() throws Exception {
         signIn("ghost");
         when(userDetailsService.loadUserByUsername("ghost")).thenThrow(new UsernameNotFoundException("ghost"));
 
@@ -97,7 +97,7 @@ public class DisabledAccountFilterTest {
     }
 
     @Test
-    public void disabledUserApiRequestGets401() throws Exception {
+    void disabledUserApiRequestGets401() throws Exception {
         request.setRequestURI("/api/user/all");
         signIn("mallory");
         when(userDetailsService.loadUserByUsername("mallory")).thenReturn(user("mallory", false));
@@ -111,7 +111,7 @@ public class DisabledAccountFilterTest {
     }
 
     @Test
-    public void unauthenticatedRequestsAreNotLookedUp() throws Exception {
+    void unauthenticatedRequestsAreNotLookedUp() throws Exception {
         filter.doFilter(request, response, chain);
         assertSame(request, chain.getRequest());
 
