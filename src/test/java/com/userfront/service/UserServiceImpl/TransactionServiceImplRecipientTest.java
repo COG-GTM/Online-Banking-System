@@ -87,9 +87,27 @@ public class TransactionServiceImplRecipientTest {
     }
 
     @Test
+    public void saveRecipientCountsUnknownIdAsNewRecipientAtLimit() {
+        Recipient recipient = recipientOwnedBy("alice");
+        recipient.setId(999L);
+        when(recipientDao.existsByIdAndUserUsername(999L, "alice")).thenReturn(false);
+        when(recipientDao.countByUserUsername("alice"))
+                .thenReturn((long) TransactionServiceImpl.MAX_RECIPIENTS_PER_USER);
+
+        try {
+            service.saveRecipient(recipient);
+            fail("expected RecipientLimitExceededException");
+        } catch (RecipientLimitExceededException expected) {
+            // expected
+        }
+        verify(recipientDao, never()).save(recipient);
+    }
+
+    @Test
     public void saveRecipientAllowsEditingExistingRecipientAtLimit() {
         Recipient recipient = recipientOwnedBy("alice");
         recipient.setId(5L);
+        when(recipientDao.existsByIdAndUserUsername(5L, "alice")).thenReturn(true);
         when(recipientDao.countByUserUsername("alice"))
                 .thenReturn((long) TransactionServiceImpl.MAX_RECIPIENTS_PER_USER);
         when(recipientDao.save(recipient)).thenReturn(recipient);

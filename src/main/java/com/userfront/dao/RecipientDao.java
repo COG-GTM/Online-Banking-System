@@ -13,6 +13,8 @@ public interface RecipientDao extends CrudRepository<Recipient, Long> {
 
     long countByUserUsername(String username);
 
+    boolean existsByIdAndUserUsername(Long id, String username);
+
     Recipient findByName(String recipientName);
 
     void deleteByName(String recipientName);
