@@ -58,7 +58,7 @@ public class AccountControllerTest {
         mockMvc.perform(post("/account/withdraw").principal(principal)
                         .param("accountType", "Primary").param("amount", "-1000000"))
                 .andExpect(view().name("withdraw"))
-                .andExpect(model().attributeExists("errorMessage"));
+                .andExpect(model().attributeExists("errorMessageKey"));
 
         verifyNoMoreInteractions(accountService);
     }
@@ -68,7 +68,7 @@ public class AccountControllerTest {
         mockMvc.perform(post("/account/deposit").principal(principal)
                         .param("accountType", "Savings").param("amount", "10.005"))
                 .andExpect(view().name("deposit"))
-                .andExpect(model().attributeExists("errorMessage"));
+                .andExpect(model().attributeExists("errorMessageKey"));
 
         verifyNoMoreInteractions(accountService);
     }
@@ -78,7 +78,7 @@ public class AccountControllerTest {
         mockMvc.perform(post("/account/withdraw").principal(principal)
                         .param("accountType", "Primary").param("amount", "NaN"))
                 .andExpect(view().name("withdraw"))
-                .andExpect(model().attributeExists("errorMessage"));
+                .andExpect(model().attributeExists("errorMessageKey"));
 
         verifyNoMoreInteractions(accountService);
     }
@@ -91,7 +91,7 @@ public class AccountControllerTest {
         mockMvc.perform(post("/account/withdraw").principal(principal)
                         .param("accountType", "Primary").param("amount", "1000000"))
                 .andExpect(view().name("withdraw"))
-                .andExpect(model().attribute("errorMessage", new InsufficientFundsException().getMessage()));
+                .andExpect(model().attribute("errorMessageKey", "transaction.error.insufficientFunds"));
     }
 
     @Test

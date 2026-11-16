@@ -19,23 +19,23 @@ public final class TransactionAmount {
     public static BigDecimal parse(String raw) {
         String text = raw == null ? "" : raw.trim();
         if (text.startsWith("-")) {
-            throw new TransactionDeclinedException("Amount must be greater than zero.");
+            throw new TransactionDeclinedException("transaction.error.amountPositive", "Amount must be greater than zero.");
         }
         if (!FORMAT.matcher(text).matches()) {
-            throw new TransactionDeclinedException("Enter an amount in dollars, for example 25 or 25.50, with no more than two decimal places.");
+            throw new TransactionDeclinedException("transaction.error.amountFormat", "Enter an amount in dollars, for example 25 or 25.50, with no more than two decimal places.");
         }
         return requireValid(new BigDecimal(text));
     }
 
     public static BigDecimal requireValid(BigDecimal amount) {
         if (amount == null || amount.signum() <= 0) {
-            throw new TransactionDeclinedException("Amount must be greater than zero.");
+            throw new TransactionDeclinedException("transaction.error.amountPositive", "Amount must be greater than zero.");
         }
         if (amount.stripTrailingZeros().scale() > 2) {
-            throw new TransactionDeclinedException("Amount cannot have more than two decimal places.");
+            throw new TransactionDeclinedException("transaction.error.amountScale", "Amount cannot have more than two decimal places.");
         }
         if (amount.compareTo(MAX) > 0) {
-            throw new TransactionDeclinedException("Amount cannot be more than $1,000,000.00.");
+            throw new TransactionDeclinedException("transaction.error.amountMax", "Amount cannot be more than $1,000,000.00.");
         }
         return amount.setScale(2);
     }

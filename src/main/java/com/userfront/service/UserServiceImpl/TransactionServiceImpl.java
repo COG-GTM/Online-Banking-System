@@ -108,7 +108,7 @@ public class TransactionServiceImpl implements TransactionService {
             SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", value.doubleValue(), source.getAccountBalance(), source);
             savingsTransactionDao.save(savingsTransaction);
         } else {
-            throw new TransactionDeclinedException("Select two different accounts to transfer between.");
+            throw new TransactionDeclinedException("transaction.error.selectAccounts", "Select two different accounts to transfer between.");
         }
     }
     
@@ -136,7 +136,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
         if (recipient == null) {
-            throw new TransactionDeclinedException("Select a recipient.");
+            throw new TransactionDeclinedException("transaction.error.selectRecipient", "Select a recipient.");
         }
         BigDecimal value = TransactionAmount.parse(amount);
 
@@ -161,7 +161,7 @@ public class TransactionServiceImpl implements TransactionService {
             SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", value.doubleValue(), source.getAccountBalance(), source);
             savingsTransactionDao.save(savingsTransaction);
         } else {
-            throw new TransactionDeclinedException("Select an account.");
+            throw new TransactionDeclinedException("transaction.error.selectAccount", "Select an account.");
         }
     }
 

@@ -2,7 +2,14 @@ package com.userfront.service;
 
 public class TransactionDeclinedException extends RuntimeException {
 
-    public TransactionDeclinedException(String message) {
-        super(message);
+    private final String messageKey;
+
+    public TransactionDeclinedException(String messageKey, String defaultMessage) {
+        super(defaultMessage);
+        this.messageKey = messageKey;
+    }
+
+    public String getMessageKey() {
+        return messageKey;
     }
 }

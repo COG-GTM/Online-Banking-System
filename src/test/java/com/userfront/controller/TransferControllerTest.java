@@ -65,7 +65,7 @@ public class TransferControllerTest {
         mockMvc.perform(post("/transfer/betweenAccounts").principal(principal)
                         .param("transferFrom", "Primary").param("transferTo", "Savings").param("amount", "500"))
                 .andExpect(view().name("betweenAccounts"))
-                .andExpect(model().attributeExists("errorMessage"));
+                .andExpect(model().attributeExists("errorMessageKey"));
     }
 
     @Test
@@ -79,7 +79,7 @@ public class TransferControllerTest {
         mockMvc.perform(post("/transfer/toSomeoneElse").principal(principal)
                         .param("recipientName", "bob").param("accountType", "Savings").param("amount", "500"))
                 .andExpect(view().name("toSomeoneElse"))
-                .andExpect(model().attributeExists("errorMessage", "recipientList"));
+                .andExpect(model().attributeExists("errorMessageKey", "recipientList"));
     }
 
     @Test

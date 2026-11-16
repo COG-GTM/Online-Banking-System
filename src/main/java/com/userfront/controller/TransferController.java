@@ -53,7 +53,7 @@ public class TransferController {
         try {
             transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
         } catch (TransactionDeclinedException e) {
-            model.addAttribute("errorMessage", e.getMessage());
+            model.addAttribute("errorMessageKey", e.getMessageKey());
             return "betweenAccounts";
         }
 
@@ -127,7 +127,7 @@ public class TransferController {
         try {
             transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
         } catch (TransactionDeclinedException e) {
-            model.addAttribute("errorMessage", e.getMessage());
+            model.addAttribute("errorMessageKey", e.getMessageKey());
             model.addAttribute("recipientList", transactionService.findRecipientList(principal));
             return "toSomeoneElse";
         }

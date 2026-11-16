@@ -72,7 +72,7 @@ public class AccountController {
         try {
             accountService.deposit(accountType, TransactionAmount.parse(amount), principal);
         } catch (TransactionDeclinedException e) {
-            model.addAttribute("errorMessage", e.getMessage());
+            model.addAttribute("errorMessageKey", e.getMessageKey());
             return "deposit";
         }
 
@@ -92,7 +92,7 @@ public class AccountController {
         try {
             accountService.withdraw(accountType, TransactionAmount.parse(amount), principal);
         } catch (TransactionDeclinedException e) {
-            model.addAttribute("errorMessage", e.getMessage());
+            model.addAttribute("errorMessageKey", e.getMessageKey());
             return "withdraw";
         }
 
