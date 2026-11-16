@@ -1,7 +1,8 @@
 package com.userfront.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -15,16 +16,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.After;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,12 +34,10 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.service.UserServiceImpl.AccountServiceImpl;
 
-@RunWith(SpringRunner.class)
 @DataJpaTest
-@TestPropertySource(properties = "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect")
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({AccountNumberGenerator.class, AccountServiceImpl.class})
-public class AccountNumberGeneratorTest {
+class AccountNumberGeneratorTest {
 
     @Autowired
     private AccountService accountService;
@@ -67,15 +63,15 @@ public class AccountNumberGeneratorTest {
     @MockBean
     private TransactionService transactionService;
 
-    @After
-    public void cleanUp() {
+    @AfterEach
+    void cleanUp() {
         primaryAccountDao.deleteAll();
         savingsAccountDao.deleteAll();
         sequenceDao.deleteAll();
     }
 
     @Test
-    public void createdAccountsAreSavedWithDistinctNumbers() {
+    void createdAccountsAreSavedWithDistinctNumbers() {
         PrimaryAccount primary = accountService.createPrimaryAccount();
         SavingsAccount savings = accountService.createSavingsAccount();
 
@@ -86,7 +82,7 @@ public class AccountNumberGeneratorTest {
     }
 
     @Test
-    public void numbersContinueAfterRestart() {
+    void numbersContinueAfterRestart() {
         int before = accountService.createPrimaryAccount().getAccountNumber();
         accountService.createSavingsAccount();
 
@@ -97,7 +93,7 @@ public class AccountNumberGeneratorTest {
     }
 
     @Test
-    public void existingDatabaseIsSeededAboveTheHighestNumberInUse() {
+    void existingDatabaseIsSeededAboveTheHighestNumberInUse() {
         primaryAccountDao.save(account(new PrimaryAccount(), 11223146));
         savingsAccountDao.save(account(new SavingsAccount(), 11223147));
         primaryAccountDao.save(account(new PrimaryAccount(), 11223150));
@@ -107,7 +103,7 @@ public class AccountNumberGeneratorTest {
     }
 
     @Test
-    public void numbersAlreadyTakenOutsideTheCounterAreSkipped() {
+    void numbersAlreadyTakenOutsideTheCounterAreSkipped() {
         int first = generator.nextAccountNumber();
         primaryAccountDao.save(account(new PrimaryAccount(), first + 1));
         savingsAccountDao.save(account(new SavingsAccount(), first + 2));
@@ -116,7 +112,7 @@ public class AccountNumberGeneratorTest {
     }
 
     @Test
-    public void concurrentSignupsNeverShareANumber() throws Exception {
+    void concurrentSignupsNeverShareANumber() throws Exception {
         int threads = 8;
         int perThread = 25;
         ExecutorService pool = Executors.newFixedThreadPool(threads);
@@ -147,10 +143,11 @@ public class AccountNumberGeneratorTest {
         assertEquals(threads * perThread, primaryAccountDao.count() + savingsAccountDao.count());
     }
 
-    @Test(expected = DataIntegrityViolationException.class)
-    public void databaseRejectsDuplicateAccountNumbers() {
+    @Test
+    void databaseRejectsDuplicateAccountNumbers() {
         primaryAccountDao.save(account(new PrimaryAccount(), 11223146));
-        primaryAccountDao.save(account(new PrimaryAccount(), 11223146));
+        assertThrows(DataIntegrityViolationException.class,
+                () -> primaryAccountDao.save(account(new PrimaryAccount(), 11223146)));
     }
 
     private static PrimaryAccount account(PrimaryAccount account, int number) {
