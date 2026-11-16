@@ -16,6 +16,7 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
+import com.userfront.form.SignupForm;
 import com.userfront.service.UserService;
 
 @Controller
@@ -39,15 +40,14 @@ public class HomeController {
 	
 	@RequestMapping(value = "/signup", method = RequestMethod.GET)
     public String signup(Model model) {
-        User user = new User();
-
-        model.addAttribute("user", user);
+        model.addAttribute("user", new SignupForm());
 
         return "signup";
     }
 	
 	@RequestMapping(value = "/signup", method = RequestMethod.POST)
-    public String signupPost(@ModelAttribute("user") User user,  Model model) {
+    public String signupPost(@ModelAttribute("user") SignupForm signupForm,  Model model) {
+        User user = signupForm.toNewUser();
 
         if(userService.checkUserExists(user.getUsername(), user.getEmail()))  {
 
