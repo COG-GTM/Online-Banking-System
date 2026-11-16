@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,11 +19,14 @@ import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.service.RecipientLimitExceededException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
+
+	public static final int MAX_RECIPIENTS_PER_USER = 100;
 	
 	@Autowired
 	private UserService userService;
@@ -102,15 +104,20 @@ public class TransactionServiceImpl implements TransactionService {
     }
     
     public List<Recipient> findRecipientList(Principal principal) {
-        String username = principal.getName();
-        List<Recipient> recipientList = recipientDao.findAll().stream() 			//convert list to stream
-                .filter(recipient -> username.equals(recipient.getUser().getUsername()))	//filters the line, equals to username
-                .collect(Collectors.toList());
-
-        return recipientList;
+        return recipientDao.findByUserUsername(principal.getName());
     }
 
     public Recipient saveRecipient(Recipient recipient) {
+        User owner = recipient.getUser();
+        if (owner == null || owner.getUsername() == null) {
+            throw new IllegalArgumentException("Recipient must have an owner");
+        }
+        boolean editingOwnRecipient = recipient.getId() != null
+                && recipientDao.existsByIdAndUserUsername(recipient.getId(), owner.getUsername());
+        if (!editingOwnRecipient
+                && recipientDao.countByUserUsername(owner.getUsername()) >= MAX_RECIPIENTS_PER_USER) {
+            throw new RecipientLimitExceededException(MAX_RECIPIENTS_PER_USER);
+        }
         return recipientDao.save(recipient);
     }
 
