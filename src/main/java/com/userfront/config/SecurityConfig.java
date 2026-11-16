@@ -1,7 +1,5 @@
 package com.userfront.config;
 
-import java.security.SecureRandom;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,12 +18,10 @@ import com.userfront.service.UserServiceImpl.UserSecurityService;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private static final String SALT = "salt"; // Salt should be protected carefully
-
     // static so services can inject the encoder without instantiating this config (avoids a bean cycle)
     @Bean
     public static BCryptPasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12, new SecureRandom(SALT.getBytes()));
+        return new BCryptPasswordEncoder(12);
     }
 
     private static final String[] PUBLIC_MATCHERS = {
