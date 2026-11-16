@@ -143,6 +143,16 @@ public class DatasourceCredentialsPolicyTest {
         postProcess(MYSQL_URL, "root", "", "spring.datasource.hikari.username", "obs_pool");
     }
 
+    @Test
+    public void jndiDatasourceIsNotChecked() {
+        postProcess(MYSQL_URL, "", "", "spring.datasource.jndi-name", "java:comp/env/jdbc/OnlineBankingSystem");
+    }
+
+    @Test(expected = InsecureDatasourceCredentialsException.class)
+    public void blankJndiNameIsStillChecked() {
+        postProcess(MYSQL_URL, "root", "", "spring.datasource.jndi-name", " ");
+    }
+
     private void postProcess(String url, String username, String password, String... extra) {
         Map<String, Object> values = new HashMap<>();
         put(values, DatasourceCredentialsPolicy.URL, url);
