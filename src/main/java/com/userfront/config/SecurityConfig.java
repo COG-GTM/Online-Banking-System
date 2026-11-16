@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.SecurityContextPersistenceFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import com.userfront.service.UserServiceImpl.UserSecurityService;
@@ -34,6 +35,7 @@ public class SecurityConfig {
             "/js/**",
             "/images/**",
             "/",
+            "/index",
             "/about/**",
             "/contact/**",
             "/error/**/*",
@@ -42,7 +44,7 @@ public class SecurityConfig {
     };
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, UserSecurityService userSecurityService) throws Exception {
         http
                 .authorizeRequests()
                 .antMatchers(PUBLIC_MATCHERS).permitAll()
@@ -55,6 +57,8 @@ public class SecurityConfig {
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
                 .rememberMe();
+
+        http.addFilterAfter(new DisabledAccountFilter(userSecurityService), SecurityContextPersistenceFilter.class);
 
         return http.build();
     }
