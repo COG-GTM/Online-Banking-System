@@ -69,8 +69,9 @@ public class AccountNumberGenerator {
                 return null;
             });
         } catch (DataAccessException | TransactionException e) {
-            // Another signup created the row at the same moment; use theirs.
-            if (sequenceDao.countByName(SEQUENCE_NAME) == 0) {
+            // Another signup created the row at the same moment; use theirs. Check in a fresh
+            // transaction because the caller's snapshot may predate that row.
+            if (newTransaction.execute(status -> sequenceDao.countByName(SEQUENCE_NAME)) == 0) {
                 throw e;
             }
         }
