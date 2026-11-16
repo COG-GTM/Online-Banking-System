@@ -17,6 +17,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
@@ -92,6 +93,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                                                 HttpServletResponse response,
                                                 AuthenticationException exception)
                     throws IOException, ServletException {
+                if (exception instanceof LockedException) {
+                    getRedirectStrategy().sendRedirect(request, response, LoginThrottlingFilter.LOCKED_URL);
+                    return;
+                }
                 loginAttemptService.loginFailed(request.getParameter(USERNAME_PARAMETER), request.getRemoteAddr());
                 super.onAuthenticationFailure(request, response, exception);
             }

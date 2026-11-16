@@ -71,6 +71,28 @@ public class LoginThrottlingTest {
         alice.setPassword(passwordEncoder.encode(PASSWORD));
         doThrow(new UsernameNotFoundException("not found")).when(userSecurityService).loadUserByUsername(anyString());
         doReturn(alice).when(userSecurityService).loadUserByUsername("alice");
+
+        User carol = new User();
+        carol.setUsername("carol");
+        carol.setPassword(passwordEncoder.encode(PASSWORD));
+        carol.setAccountLocked(true);
+        doReturn(carol).when(userSecurityService).loadUserByUsername("carol");
+    }
+
+    @Test
+    public void lockedAccountRefusesCorrectPasswordWithoutCountingAFailure() throws Exception {
+        mockMvc.perform(login("carol", PASSWORD, "10.0.0.3")).andExpect(redirectedUrl("/index?locked"));
+        mockMvc.perform(login("carol", PASSWORD, "10.0.0.3")).andExpect(redirectedUrl("/index?locked"));
+        mockMvc.perform(login("alice", PASSWORD, "10.0.0.3")).andExpect(redirectedUrl("/userFront"));
+    }
+
+    @Test
+    public void tenWrongPasswordsThenCorrectOneIsRefused() throws Exception {
+        for (int i = 0; i < 10; i++) {
+            mockMvc.perform(login("alice", "wrong-" + i, "10.0.0." + (20 + i)));
+        }
+
+        mockMvc.perform(login("alice", PASSWORD, "10.0.0.99")).andExpect(redirectedUrl("/index?locked"));
     }
 
     @Test

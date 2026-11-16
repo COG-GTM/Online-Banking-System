@@ -70,6 +70,11 @@ public class LoginAttemptService {
                 || isBlocked(addressAttempts, address, maxAddressFailures, now);
     }
 
+    /** True while the username itself is locked, regardless of which address the request comes from. */
+    public boolean isUsernameLocked(String username) {
+        return isBlocked(userAttempts, normalize(username), maxUserFailures, clock.instant());
+    }
+
     public void loginFailed(String username, String address) {
         Instant now = clock.instant();
         record(userAttempts, normalize(username), maxUserFailures, now);

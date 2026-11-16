@@ -112,6 +112,34 @@ public class HomeControllerSignupTest {
     }
 
     @Test
+    public void shortPasswordIsRejectedBeforeAnyLookup() throws Exception {
+        MvcResult result = mockMvc.perform(post("/signup")
+                .param("email", "new@example.com")
+                .param("username", "newuser")
+                .param("password", "1234567"))
+                .andReturn();
+
+        assertEquals("signup", result.getModelAndView().getViewName());
+        Map<String, Object> m = result.getModelAndView().getModel();
+        assertEquals(Boolean.TRUE, m.get("passwordTooShort"));
+        assertEquals(8, m.get("minPasswordLength"));
+        assertNull(m.get("signupFailed"));
+        assertNull(((User) m.get("user")).getPassword());
+        verify(userService, never()).checkUserExists(anyString(), anyString());
+        verify(userService, never()).createUser(any(User.class), any());
+    }
+
+    @Test
+    public void missingPasswordIsRejected() throws Exception {
+        mockMvc.perform(post("/signup")
+                .param("email", "new@example.com")
+                .param("username", "newuser"))
+                .andExpect(view().name("signup"))
+                .andExpect(model().attribute("passwordTooShort", true));
+        verify(userService, never()).createUser(any(User.class), any());
+    }
+
+    @Test
     public void newAccountIsCreatedAndRedirected() throws Exception {
         when(userService.checkUserExists(anyString(), anyString())).thenReturn(false);
 

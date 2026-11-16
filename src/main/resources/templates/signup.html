@@ -16,6 +16,7 @@
         <div class="main-login main-center">
             <form class="form-horizontal" method="post" th:action="@{/signup}">
                 <div class="bg-danger" id="signupFailed" th:if="${signupFailed}" th:text="#{signup.failed}">signup failed</div>
+                <div class="bg-danger" id="passwordTooShort" role="alert" th:if="${passwordTooShort}" th:text="#{signup.passwordTooShort(${minPasswordLength})}">password too short</div>
 
                 <div class="form-group">
                     <label for="firstName" class="cols-sm-2 control-label">First Name</label>
@@ -72,7 +73,7 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-lock fa-lg" aria-hidden="true"></i></span>
-                            <input type="password" class="form-control" th:value="${user.password}" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required"/>
+                            <input type="password" class="form-control" th:value="${user.password}" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required" minlength="8"/>
                         </div>
                         <div class="checkbox">
                             <label>

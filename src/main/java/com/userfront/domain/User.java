@@ -14,6 +14,7 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
+import javax.persistence.Transient;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -39,6 +40,10 @@ public class User implements UserDetails{
     private String phone;
 
     private boolean enabled=true;
+
+    @Transient
+    @JsonIgnore
+    private boolean accountLocked;
 
     @OneToOne
     private PrimaryAccount primaryAccount;
@@ -188,8 +193,11 @@ public class User implements UserDetails{
 
     @Override
     public boolean isAccountNonLocked() {
-        // TODO Auto-generated method stub
-        return true;
+        return !accountLocked;
+    }
+
+    public void setAccountLocked(boolean accountLocked) {
+        this.accountLocked = accountLocked;
     }
 
     @Override

@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -26,6 +27,9 @@ public class HomeController {
 	
 	@Autowired
     private RoleDao roleDao;
+
+	@Value("${security.password.min-length:8}")
+	private int minPasswordLength = 8;
 	
 	@RequestMapping("/")
 	public String home() {
@@ -48,6 +52,14 @@ public class HomeController {
 	
 	@RequestMapping(value = "/signup", method = RequestMethod.POST)
     public String signupPost(@ModelAttribute("user") User user,  Model model) {
+
+        if (user.getPassword() == null || user.getPassword().length() < minPasswordLength) {
+            user.setPassword(null);
+            model.addAttribute("passwordTooShort", true);
+            model.addAttribute("minPasswordLength", minPasswordLength);
+
+            return "signup";
+        }
 
         if(userService.checkUserExists(user.getUsername(), user.getEmail()))  {
             user.setPassword(null);

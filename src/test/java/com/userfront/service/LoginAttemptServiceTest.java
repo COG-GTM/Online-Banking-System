@@ -35,6 +35,16 @@ public class LoginAttemptServiceTest {
     }
 
     @Test
+    public void usernameLockIgnoresAddressAndExpires() {
+        fail("alice", "10.0.0.1", 3);
+        assertTrue(service.isUsernameLocked("Alice"));
+        assertFalse(service.isUsernameLocked("bob"));
+
+        clock.advance(Duration.ofMinutes(15));
+        assertFalse(service.isUsernameLocked("alice"));
+    }
+
+    @Test
     public void usernameMatchingIgnoresCaseAndSurroundingWhitespace() {
         service.loginFailed("Alice", "10.0.0.1");
         service.loginFailed(" alice ", "10.0.0.2");

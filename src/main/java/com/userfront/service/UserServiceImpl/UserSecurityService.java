@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.userfront.dao.UserDao;
 import com.userfront.domain.User;
+import com.userfront.service.LoginAttemptService;
 
 @Service
 public class UserSecurityService implements UserDetailsService {
@@ -20,6 +21,9 @@ public class UserSecurityService implements UserDetailsService {
     @Autowired
     private UserDao userDao;
 
+    @Autowired
+    private LoginAttemptService loginAttemptService;
+
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userDao.findByUsername(username);
@@ -27,6 +31,7 @@ public class UserSecurityService implements UserDetailsService {
             LOG.warn("Username {} not found", username);
             throw new UsernameNotFoundException("Username " + username + " not found");
         }
+        user.setAccountLocked(loginAttemptService.isUsernameLocked(username));
         return user;
     }
 }
