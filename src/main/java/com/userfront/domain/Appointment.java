@@ -79,7 +79,7 @@ public class Appointment {
                 ", date=" + date +
                 ", location='" + location + '\'' +
                 ", description='" + description + '\'' +
-                ", user=" + user +
+                ", user=" + (user == null ? null : user.getUsername()) +
                 '}';
     }
 }
