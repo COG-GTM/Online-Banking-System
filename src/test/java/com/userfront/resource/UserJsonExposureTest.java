@@ -106,7 +106,7 @@ public class UserJsonExposureTest {
         assertFalse(node.has("recipientList"));
         assertFalse(node.has("userRoles"));
         assertFalse(node.has("appointmentList"));
-        assertFalse(node.has("authorities"));
+        assertEquals("ROLE_USER", node.get("authorities").get(0).get("authority").asText());
         assertFalse(node.toString().contains(HASH));
     }
 
@@ -124,7 +124,7 @@ public class UserJsonExposureTest {
         assertEquals(11223101, userNode.get("primaryAccount").get("accountNumber").asInt());
         assertEquals(11223102, userNode.get("savingsAccount").get("accountNumber").asInt());
         assertFalse(userNode.has("recipientList"));
-        assertFalse(userNode.has("authorities"));
+        assertTrue(userNode.has("authorities"));
     }
 
     @Test
