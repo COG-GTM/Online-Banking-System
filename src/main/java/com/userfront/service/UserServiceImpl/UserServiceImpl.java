@@ -16,6 +16,7 @@ import com.userfront.domain.User;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.AccountService;
 import com.userfront.service.UserService;
+import com.userfront.utility.LogSanitizer;
 
 @Service
 @Transactional
@@ -52,7 +53,7 @@ public class UserServiceImpl implements UserService{
         User localUser = userDao.findByUsername(user.getUsername());
 
         if (localUser != null) {
-            LOG.info("User with username {} already exist. Nothing will be done. ", user.getUsername());
+            LOG.info("User with username {} already exist. Nothing will be done. ", LogSanitizer.sanitize(user.getUsername()));
         } else {
             String encryptedPassword = passwordEncoder.encode(user.getPassword());
             user.setPassword(encryptedPassword);

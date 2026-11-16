@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.userfront.dao.UserDao;
 import com.userfront.domain.User;
+import com.userfront.utility.LogSanitizer;
 
 @Service
 public class UserSecurityService implements UserDetailsService {
@@ -24,8 +25,9 @@ public class UserSecurityService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userDao.findByUsername(username);
         if (null == user) {
-            LOG.warn("Username {} not found", username);
-            throw new UsernameNotFoundException("Username " + username + " not found");
+            String safeUsername = LogSanitizer.sanitize(username);
+            LOG.warn("Username {} not found", safeUsername);
+            throw new UsernameNotFoundException("Username " + safeUsername + " not found");
         }
         return user;
     }
