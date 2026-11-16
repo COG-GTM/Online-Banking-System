@@ -16,6 +16,7 @@ import com.userfront.domain.PrimaryAccount;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.User;
+import com.userfront.service.RecipientLimitExceededException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -70,7 +71,11 @@ public class TransferController {
 
         User user = userService.findByUsername(principal.getName());
         recipient.setUser(user);
-        transactionService.saveRecipient(recipient);
+        try {
+            transactionService.saveRecipient(recipient);
+        } catch (RecipientLimitExceededException e) {
+            return "redirect:/transfer/recipient?limitReached";
+        }
 
         return "redirect:/transfer/recipient";
     }
