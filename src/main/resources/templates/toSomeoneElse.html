@@ -32,7 +32,7 @@
                     <label for="amount">3. Please specify the amount you would like to transfer: </label>
                     <p id="amountHint" class="help-block" th:text="#{transaction.amount.hint}">Enter a positive dollar amount with up to two decimal places, for example 25 or 25.50.</p>
                     <span class="input-group-addon">Amount $</span>
-                    <input th:value="${amount}" type="text" inputmode="decimal" name="amount" id="amount" class="form-control" required="required" th:attr="aria-invalid=${errorMessageKey != null ? 'true' : null},aria-describedby=${errorMessageKey != null ? 'amountHint amountError' : 'amountHint'}"/>
+                    <input th:value="${amount}" type="text" inputmode="decimal" name="amount" id="amount" class="form-control" required="required" th:attr="autofocus=${errorMessageKey != null ? 'autofocus' : null},aria-invalid=${errorMessageKey != null ? 'true' : null},aria-describedby=${errorMessageKey != null ? 'amountHint amountError' : 'amountHint'}"/>
                 </div>
 
                 <input type="hidden"
