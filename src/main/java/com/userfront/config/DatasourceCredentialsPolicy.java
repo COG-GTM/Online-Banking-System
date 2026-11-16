@@ -43,32 +43,25 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
         if (!isBlank(resolve(environment, JNDI_NAME))) {
             return;
         }
-        String url = resolve(environment, URL);
-        String usernameKey = USERNAME;
-        String username = resolve(environment, USERNAME);
-        String passwordKey = PASSWORD;
-        String password = resolve(environment, PASSWORD);
         Pool pool = activePool(resolve(environment, TYPE), application.getClassLoader());
-        if (pool != null) {
-            String poolUrl = pool.url(environment);
-            String poolUsername = resolve(environment, pool.prefix + "username");
-            String poolPassword = resolve(environment, pool.prefix + "password");
-            if (poolUrl != null) {
-                url = poolUrl;
-            }
-            if (poolUsername != null) {
-                usernameKey = pool.prefix + "username";
-                username = poolUsername;
-            }
-            if (poolPassword != null) {
-                passwordKey = pool.prefix + "password";
-                password = poolPassword;
-            }
+        String url = pool != null ? pool.url(environment) : null;
+        if (url == null) {
+            url = resolve(environment, URL);
         }
         if (url == null || isInMemory(url)) {
             return;
         }
-        validate(usernameKey, username, passwordKey, password);
+        String usernameKey = effectiveKey(environment, pool, "username", USERNAME);
+        String passwordKey = effectiveKey(environment, pool, "password", PASSWORD);
+        validate(usernameKey, resolve(environment, usernameKey), passwordKey, resolve(environment, passwordKey));
+    }
+
+    // The pool-specific value wins when present, so the overridden top-level value is never resolved.
+    private static String effectiveKey(ConfigurableEnvironment environment, Pool pool, String poolProperty, String topLevelKey) {
+        if (pool != null && environment.containsProperty(pool.prefix + poolProperty)) {
+            return pool.prefix + poolProperty;
+        }
+        return topLevelKey;
     }
 
     static Pool activePool(String type, ClassLoader classLoader) {

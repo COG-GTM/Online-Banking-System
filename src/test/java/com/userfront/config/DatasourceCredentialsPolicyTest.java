@@ -153,6 +153,16 @@ public class DatasourceCredentialsPolicyTest {
         postProcess(MYSQL_URL, "root", "", "spring.datasource.jndi-name", " ");
     }
 
+    @Test
+    public void unresolvableTopLevelUsernameOverriddenByHikariIsAccepted() {
+        postProcess(MYSQL_URL, "${DB_USERNAME_NOT_SET}", "s3cr3t-Passw0rd", "spring.datasource.hikari.username", "obs_pool");
+    }
+
+    @Test(expected = InsecureDatasourceCredentialsException.class)
+    public void unresolvableHikariUsernameIsRejected() {
+        postProcess(MYSQL_URL, "obs_app", "s3cr3t-Passw0rd", "spring.datasource.hikari.username", "${DB_POOL_USERNAME_NOT_SET}");
+    }
+
     private void postProcess(String url, String username, String password, String... extra) {
         Map<String, Object> values = new HashMap<>();
         put(values, DatasourceCredentialsPolicy.URL, url);
