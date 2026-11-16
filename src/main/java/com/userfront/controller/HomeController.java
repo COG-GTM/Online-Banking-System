@@ -46,6 +46,7 @@ public class HomeController {
         User user = new User();
 
         model.addAttribute("user", user);
+        model.addAttribute("minPasswordLength", minPasswordLength);
 
         return "signup";
     }
@@ -64,6 +65,7 @@ public class HomeController {
         if(userService.checkUserExists(user.getUsername(), user.getEmail()))  {
             user.setPassword(null);
             model.addAttribute("signupFailed", true);
+            model.addAttribute("minPasswordLength", minPasswordLength);
 
             return "signup";
         } else {

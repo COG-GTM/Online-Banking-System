@@ -144,6 +144,13 @@ public class LoginThrottlingTest {
     }
 
     @Test
+    public void loginPageShowsLockoutMessageInFrench() throws Exception {
+        mockMvc.perform(get("/index").param("locked", "").header("Accept-Language", "fr-CA"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Trop de tentatives de connexion infructueuses")));
+    }
+
+    @Test
     public void loginPageStillShowsInvalidCredentialsMessage() throws Exception {
         mockMvc.perform(get("/index").param("error", ""))
                 .andExpect(status().isOk())
