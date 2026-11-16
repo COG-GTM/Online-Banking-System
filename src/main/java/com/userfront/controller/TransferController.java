@@ -68,10 +68,16 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/recipient/save", method = RequestMethod.POST)
-    public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Principal principal) {
+    public String recipientPost(@ModelAttribute("recipient") Recipient recipient, Model model, Principal principal) {
 
         if (recipient.getId() != null) {
             requireOwned(transactionService.findRecipientById(recipient.getId(), principal));
+        }
+
+        if (transactionService.isRecipientNameTaken(recipient.getName(), recipient.getId(), principal)) {
+            model.addAttribute("recipientList", transactionService.findRecipientList(principal));
+            model.addAttribute("duplicateName", true);
+            return "recipient";
         }
 
         User user = userService.findByUsername(principal.getName());

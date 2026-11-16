@@ -130,6 +130,19 @@ public class TransferControllerRecipientOwnershipTest {
     }
 
     @Test
+    public void saveWithNameAlreadyUsedByPrincipalReRendersWithoutSaving() throws Exception {
+        when(transactionService.isRecipientNameTaken(eq("Landlord"), eq(null), any(Principal.class))).thenReturn(true);
+
+        mockMvc.perform(post("/transfer/recipient/save").param("name", "Landlord").principal(ALICE))
+                .andExpect(status().isOk())
+                .andExpect(view().name("recipient"))
+                .andExpect(model().attribute("duplicateName", true));
+
+        verify(transactionService).isRecipientNameTaken(eq("Landlord"), eq(null), eq(ALICE));
+        verify(transactionService, never()).saveRecipient(any(Recipient.class));
+    }
+
+    @Test
     public void transferToRecipientNotInPrincipalsListIsNotFoundAndMovesNoMoney() throws Exception {
         when(transactionService.findRecipientById(any(Long.class), any(Principal.class))).thenReturn(null);
 
