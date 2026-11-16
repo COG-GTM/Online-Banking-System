@@ -54,26 +54,30 @@ public class UserServiceImpl implements UserService{
         if (localUser != null) {
             LOG.info("User with username {} already exist. Nothing will be done. ", user.getUsername());
         } else {
-            String encryptedPassword = passwordEncoder.encode(user.getPassword());
-            user.setPassword(encryptedPassword);
+            User newUser = new User();
+            newUser.setFirstName(user.getFirstName());
+            newUser.setLastName(user.getLastName());
+            newUser.setPhone(user.getPhone());
+            newUser.setEmail(user.getEmail());
+            newUser.setUsername(user.getUsername());
+            newUser.setPassword(passwordEncoder.encode(user.getPassword()));
 
             for (UserRole ur : userRoles) {
                 roleDao.save(ur.getRole());
+                newUser.getUserRoles().add(new UserRole(newUser, ur.getRole()));
             }
 
-            user.getUserRoles().addAll(userRoles);
+            newUser.setPrimaryAccount(accountService.createPrimaryAccount());
+            newUser.setSavingsAccount(accountService.createSavingsAccount());
 
-            user.setPrimaryAccount(accountService.createPrimaryAccount());
-            user.setSavingsAccount(accountService.createSavingsAccount());
-
-            localUser = userDao.save(user);
+            localUser = userDao.save(newUser);
         }
 
         return localUser;
     }
     
     public boolean checkUserExists(String username, String email){
-        if (checkUsernameExists(username) || checkEmailExists(username)) {
+        if (checkUsernameExists(username) || checkEmailExists(email)) {
             return true;
         } else {
             return false;
