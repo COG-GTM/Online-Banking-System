@@ -1,12 +1,12 @@
 package com.userfront;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.io.InputStream;
 import java.util.Properties;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TransactionMessagesTest {
 
@@ -20,8 +20,8 @@ public class TransactionMessagesTest {
                 continue;
             }
             String translation = french.getProperty(key);
-            assertNotEquals(key, null, translation);
-            assertNotEquals(key, english.getProperty(key), translation);
+            assertNotEquals(null, translation, key);
+            assertNotEquals(english.getProperty(key), translation, key);
             checked++;
         }
         assertEquals(french.size(), checked);

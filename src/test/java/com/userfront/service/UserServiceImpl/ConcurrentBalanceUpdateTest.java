@@ -1,6 +1,6 @@
 package com.userfront.service.UserServiceImpl;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -14,15 +14,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +33,6 @@ import com.userfront.domain.User;
 import com.userfront.service.InsufficientFundsException;
 import com.userfront.service.UserService;
 
-@RunWith(SpringRunner.class)
 @DataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({AccountServiceImpl.class, TransactionServiceImpl.class})
@@ -68,7 +65,7 @@ public class ConcurrentBalanceUpdateTest {
     private PrimaryAccount primary;
     private SavingsAccount savings;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         primary = new PrimaryAccount();
         primary.setAccountBalance(new BigDecimal("100.00"));
@@ -177,6 +174,6 @@ public class ConcurrentBalanceUpdateTest {
     }
 
     private static void assertBalance(String expected, BigDecimal actual) {
-        assertEquals(expected + " vs " + actual, 0, new BigDecimal(expected).compareTo(actual));
+        assertEquals(0, new BigDecimal(expected).compareTo(actual), expected + " vs " + actual);
     }
 }

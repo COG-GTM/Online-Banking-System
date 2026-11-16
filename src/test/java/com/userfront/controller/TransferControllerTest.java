@@ -12,12 +12,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.security.Principal;
 import java.util.Collections;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
@@ -30,7 +32,8 @@ import com.userfront.service.InsufficientFundsException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
-@RunWith(MockitoJUnitRunner.Silent.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class TransferControllerTest {
 
     @Mock
@@ -46,7 +49,7 @@ public class TransferControllerTest {
 
     private final Principal principal = () -> "mallory";
 
-    @Before
+    @BeforeEach
     public void setUp() {
         User user = new User();
         user.setPrimaryAccount(new PrimaryAccount());
