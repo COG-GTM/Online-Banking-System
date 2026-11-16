@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.Date;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,9 @@ import com.userfront.service.UserService;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
+
+    // Digits with up to two decimals: no sign, exponent or more than 12 integer digits.
+    private static final Pattern PLAIN_AMOUNT = Pattern.compile("\\d{1,12}(\\.\\d{1,2})?");
 	
 	@Autowired
 	private UserService userService;
@@ -173,13 +177,12 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private static BigDecimal parseAmount(String amount) {
-        BigDecimal value;
-        try {
-            value = new BigDecimal(amount == null ? "" : amount.trim());
-        } catch (NumberFormatException e) {
-            throw new TransferRejectedException("Please enter a valid amount.");
+        String trimmed = amount == null ? "" : amount.trim();
+        if (!PLAIN_AMOUNT.matcher(trimmed).matches()) {
+            throw new TransferRejectedException("Please enter a positive amount with at most two decimal places.");
         }
-        if (value.signum() <= 0 || value.scale() > 2) {
+        BigDecimal value = new BigDecimal(trimmed);
+        if (value.signum() <= 0) {
             throw new TransferRejectedException("Please enter a positive amount with at most two decimal places.");
         }
         return value;

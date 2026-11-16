@@ -121,7 +121,7 @@ public class TransferAtomicityTest {
 
     @Test
     public void nonPositiveOrMalformedAmountsAreRejectedBeforeLocking() throws Exception {
-        for (String amount : Arrays.asList("0", "-10", "abc", "", "1.005")) {
+        for (String amount : Arrays.asList("0", "0.00", "-10", "-1000000", "+10", "1e3", "1E-2", "1e100000000", "1234567890123", ".5", "10.", "abc", "", "1.005")) {
             try {
                 transactionService.betweenAccountsTransfer("Savings", "Primary", amount, stalePrimary, staleSavings);
                 fail("expected rejection for " + amount);
@@ -159,6 +159,43 @@ public class TransferAtomicityTest {
         } catch (TransferRejectedException expected) {
             assertEquals("Insufficient funds for this transfer.", expected.getMessage());
         }
+        assertBalance("30", lockedPrimary);
+        verifyNothingSaved();
+    }
+
+    @Test
+    public void negativeTransfersLeaveEveryBalanceUnchanged() throws Exception {
+        for (String accountType : Arrays.asList("Primary", "Savings")) {
+            try {
+                transactionService.toSomeoneElseTransfer(recipient, accountType, "-1000000", stalePrimary, staleSavings);
+                fail("expected TransferRejectedException");
+            } catch (TransferRejectedException expected) {
+                // expected
+            }
+        }
+        try {
+            transactionService.betweenAccountsTransfer("Primary", "Savings", "-100", stalePrimary, staleSavings);
+            fail("expected TransferRejectedException");
+        } catch (TransferRejectedException expected) {
+            // expected
+        }
+        assertBalance("100", stalePrimary);
+        assertBalance("100", staleSavings);
+        assertBalance("30", lockedPrimary);
+        assertBalance("150", lockedSavings);
+        verifyNothingSaved();
+    }
+
+    @Test
+    public void unknownRecipientIsRejectedBeforeAnyBalanceChange() {
+        try {
+            transactionService.toSomeoneElseTransfer(null, "Primary", "10", stalePrimary, staleSavings);
+            fail("expected TransferRejectedException");
+        } catch (TransferRejectedException expected) {
+            assertEquals("Please choose a recipient.", expected.getMessage());
+        }
+        verify(accountLocks, never()).lockPrimary(anyLong());
+        assertBalance("100", stalePrimary);
         assertBalance("30", lockedPrimary);
         verifyNothingSaved();
     }
