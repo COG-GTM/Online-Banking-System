@@ -193,6 +193,7 @@ public class TransferAtomicityTest {
             fail("expected TransferRejectedException");
         } catch (TransferRejectedException expected) {
             assertEquals("Please choose a recipient.", expected.getMessage());
+            assertEquals("transfer.error.recipientRequired", expected.getMessageKey());
         }
         verify(accountLocks, never()).lockPrimary(anyLong());
         assertBalance("100", stalePrimary);

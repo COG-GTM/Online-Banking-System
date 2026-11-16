@@ -2,8 +2,10 @@ package com.userfront.controller;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -30,6 +32,9 @@ public class TransferController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private MessageSource messageSource;
+
     @RequestMapping(value = "/betweenAccounts", method = RequestMethod.GET)
     public String betweenAccounts(Model model) {
         model.addAttribute("transferFrom", "");
@@ -45,7 +50,8 @@ public class TransferController {
             @ModelAttribute("transferTo") String transferTo,
             @ModelAttribute("amount") String amount,
             Principal principal,
-            Model model
+            Model model,
+            Locale locale
     ) throws Exception {
         User user = userService.findByUsername(principal.getName());
         PrimaryAccount primaryAccount = user.getPrimaryAccount();
@@ -53,7 +59,7 @@ public class TransferController {
         try {
             transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
         } catch (TransferRejectedException e) {
-            model.addAttribute("errorMessage", e.getMessage());
+            model.addAttribute("errorMessage", localize(e, locale));
             return "betweenAccounts";
         }
 
@@ -121,17 +127,21 @@ public class TransferController {
     }
 
     @RequestMapping(value = "/toSomeoneElse",method = RequestMethod.POST)
-    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal, Model model) {
+    public String toSomeoneElsePost(@ModelAttribute("recipientName") String recipientName, @ModelAttribute("accountType") String accountType, @ModelAttribute("amount") String amount, Principal principal, Model model, Locale locale) {
         User user = userService.findByUsername(principal.getName());
         Recipient recipient = transactionService.findRecipientByName(recipientName);
         try {
             transactionService.toSomeoneElseTransfer(recipient, accountType, amount, user.getPrimaryAccount(), user.getSavingsAccount());
         } catch (TransferRejectedException e) {
             model.addAttribute("recipientList", transactionService.findRecipientList(principal));
-            model.addAttribute("errorMessage", e.getMessage());
+            model.addAttribute("errorMessage", localize(e, locale));
             return "toSomeoneElse";
         }
 
         return "redirect:/userFront";
+    }
+
+    private String localize(TransferRejectedException e, Locale locale) {
+        return messageSource.getMessage(e.getMessageKey(), null, e.getMessage(), locale);
     }
 }

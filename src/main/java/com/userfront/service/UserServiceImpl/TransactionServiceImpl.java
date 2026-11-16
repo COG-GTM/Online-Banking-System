@@ -145,11 +145,11 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
         if (recipient == null) {
-            throw new TransferRejectedException("Please choose a recipient.");
+            throw new TransferRejectedException("transfer.error.recipientRequired", "Please choose a recipient.");
         }
         boolean fromPrimary = accountType.equalsIgnoreCase("Primary");
         if (!fromPrimary && !accountType.equalsIgnoreCase("Savings")) {
-            throw new TransferRejectedException("Please select the account to transfer from.");
+            throw new TransferRejectedException("transfer.error.accountRequired", "Please select the account to transfer from.");
         }
         BigDecimal value = parseAmount(amount);
 
@@ -179,18 +179,18 @@ public class TransactionServiceImpl implements TransactionService {
     private static BigDecimal parseAmount(String amount) {
         String trimmed = amount == null ? "" : amount.trim();
         if (!PLAIN_AMOUNT.matcher(trimmed).matches()) {
-            throw new TransferRejectedException("Please enter a positive amount with at most two decimal places.");
+            throw new TransferRejectedException("transfer.error.invalidAmount", "Please enter a positive amount with at most two decimal places.");
         }
         BigDecimal value = new BigDecimal(trimmed);
         if (value.signum() <= 0) {
-            throw new TransferRejectedException("Please enter a positive amount with at most two decimal places.");
+            throw new TransferRejectedException("transfer.error.invalidAmount", "Please enter a positive amount with at most two decimal places.");
         }
         return value;
     }
 
     private static void requireFunds(BigDecimal balance, BigDecimal amount) {
         if (balance.compareTo(amount) < 0) {
-            throw new TransferRejectedException("Insufficient funds for this transfer.");
+            throw new TransferRejectedException("transfer.error.insufficientFunds", "Insufficient funds for this transfer.");
         }
     }
 }
