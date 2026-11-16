@@ -136,7 +136,7 @@ public class TransferController {
 
     private static Recipient requireOwned(Recipient recipient) {
         if (recipient == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipient not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
         return recipient;
     }
