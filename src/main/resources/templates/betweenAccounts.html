@@ -6,6 +6,8 @@
 <div class="container main">
     <div class="row">
         <div class="col-md-6">
+            <div th:if="${errorMessage}" id="amountError" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+
             <form th:action="@{/transfer/betweenAccounts}" method="post">
                 <div class="form-group" >
                     <label for="transferFrom">1. Please select the account you would like to transfer From:</label>
@@ -28,9 +30,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label>3. Please specify the amount you would like to transfer: </label>
+                    <label for="amount">3. Please specify the amount you would like to transfer: </label>
+                    <p id="amountHint" class="help-block">Enter a positive dollar amount with up to two decimal places, for example 25 or 25.50.</p>
                     <span class="input-group-addon">Amount $</span>
-                    <input th:value="${amount}" type="text" name="amount" id="amount" class="form-control" aria-label="Amount (to the nearest dollar)"  />
+                    <input th:value="${amount}" type="text" inputmode="decimal" name="amount" id="amount" class="form-control" required="required" th:attr="aria-invalid=${errorMessage != null ? 'true' : null},aria-describedby=${errorMessage != null ? 'amountHint amountError' : 'amountHint'}"/>
                 </div>
 
                 <input type="hidden"
