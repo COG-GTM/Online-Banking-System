@@ -14,6 +14,7 @@ import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.service.AccountNumberGenerator;
 import com.userfront.service.AccountService;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
@@ -21,8 +22,6 @@ import com.userfront.service.UserService;
 @Service
 public class AccountServiceImpl implements AccountService {
 	
-	private static int nextAccountNumber = 11223145;
-
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
 
@@ -35,24 +34,23 @@ public class AccountServiceImpl implements AccountService {
     @Autowired
     private TransactionService transactionService;
 
+    @Autowired
+    private AccountNumberGenerator accountNumberGenerator;
+
     public PrimaryAccount createPrimaryAccount() {
         PrimaryAccount primaryAccount = new PrimaryAccount();
         primaryAccount.setAccountBalance(new BigDecimal(0.0));
-        primaryAccount.setAccountNumber(accountGen());
+        primaryAccount.setAccountNumber(accountNumberGenerator.nextAccountNumber());
 
-        primaryAccountDao.save(primaryAccount);
-
-        return primaryAccountDao.findByAccountNumber(primaryAccount.getAccountNumber());
+        return primaryAccountDao.save(primaryAccount);
     }
 
     public SavingsAccount createSavingsAccount() {
         SavingsAccount savingsAccount = new SavingsAccount();
         savingsAccount.setAccountBalance(new BigDecimal(0.0));
-        savingsAccount.setAccountNumber(accountGen());
+        savingsAccount.setAccountNumber(accountNumberGenerator.nextAccountNumber());
 
-        savingsAccountDao.save(savingsAccount);
-
-        return savingsAccountDao.findByAccountNumber(savingsAccount.getAccountNumber());
+        return savingsAccountDao.save(savingsAccount);
     }
     
     public void deposit(String accountType, double amount, Principal principal) {
@@ -102,10 +100,4 @@ public class AccountServiceImpl implements AccountService {
         }
     }
     
-    private int accountGen() {
-        return ++nextAccountNumber;
-    }
-
-	
-
 }
