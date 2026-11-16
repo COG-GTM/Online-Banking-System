@@ -1,21 +1,21 @@
 package com.userfront;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.HashSet;
 import java.util.Set;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.userfront.dao.RoleDao;
@@ -25,10 +25,9 @@ import com.userfront.domain.security.Role;
 import com.userfront.domain.security.UserRole;
 import com.userfront.service.UserService;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest
-@AutoConfigureMockMvc
-public class SignupMassAssignmentTest {
+@AutoConfigureMockMvc(print = MockMvcPrint.NONE)
+class SignupMassAssignmentTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -44,8 +43,8 @@ public class SignupMassAssignmentTest {
 
     private Role userRole;
 
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         userRole = roleDao.findByName("ROLE_USER");
         if (userRole == null) {
             userRole = new Role();
@@ -56,7 +55,7 @@ public class SignupMassAssignmentTest {
     }
 
     @Test
-    public void signupWithExistingUserIdDoesNotOverwriteThatUser() throws Exception {
+    void signupWithExistingUserIdDoesNotOverwriteThatUser() throws Exception {
         User victim = createUser("victim", "victim@example.com", "victimPassword");
         Long victimId = victim.getUserId();
         String victimPasswordHash = victim.getPassword();
@@ -84,8 +83,8 @@ public class SignupMassAssignmentTest {
         assertNotEquals(victimId, attacker.getUserId());
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void createUserRejectsUserWithPresetId() {
+    @Test
+    void createUserRejectsUserWithPresetId() {
         User existing = createUser("existing", "existing@example.com", "existingPassword");
 
         User forged = new User();
@@ -94,7 +93,7 @@ public class SignupMassAssignmentTest {
         forged.setEmail("forged@example.com");
         forged.setPassword("forgedPassword");
 
-        userService.createUser(forged, rolesFor(forged));
+        assertThrows(IllegalArgumentException.class, () -> userService.createUser(forged, rolesFor(forged)));
     }
 
     private User createUser(String username, String email, String password) {
