@@ -1,7 +1,7 @@
 package com.userfront.controller;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -14,12 +14,14 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.Field;
 import java.security.Principal;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.ui.ExtendedModelMap;
 
 import com.userfront.dao.RecipientDao;
@@ -32,7 +34,8 @@ import com.userfront.service.UserService;
 import com.userfront.service.UserServiceImpl.TransactionServiceImpl;
 import com.userfront.service.UserServiceImpl.TransferRejectedException;
 
-@RunWith(MockitoJUnitRunner.Silent.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class TransferRecipientOwnershipTest {
 
     @Mock private TransactionService transactionService;
@@ -43,7 +46,7 @@ public class TransferRecipientOwnershipTest {
     private final Principal alice = () -> "alice";
     private User user;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         user = new User();
         user.setUsername("alice");

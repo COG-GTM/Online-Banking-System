@@ -1,9 +1,9 @@
 package com.userfront.service.UserServiceImpl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.inOrder;
@@ -15,13 +15,15 @@ import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.Arrays;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -34,7 +36,8 @@ import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 
-@RunWith(MockitoJUnitRunner.Silent.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class TransferAtomicityTest {
 
     @Mock private PrimaryAccountDao primaryAccountDao;
@@ -51,7 +54,7 @@ public class TransferAtomicityTest {
     private SavingsAccount lockedSavings;
     private Recipient recipient;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         // The caller's copies are stale; the locked rows carry the latest committed balances.
         stalePrimary = primary(1L, "100");
@@ -209,7 +212,7 @@ public class TransferAtomicityTest {
 
     private static Transactional transactional(Method method) {
         Transactional tx = method.getAnnotation(Transactional.class);
-        assertNotNull(method.getName() + " must be @Transactional", tx);
+        assertNotNull(tx, method.getName() + " must be @Transactional");
         return tx;
     }
 
