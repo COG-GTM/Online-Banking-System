@@ -30,7 +30,10 @@ public class User implements UserDetails{
     @Column(name = "userId", nullable = false, updatable = false)
     private Long userId;
     private String username;
+
+    @JsonIgnore
     private String password;
+
     private String firstName;
     private String lastName;
 
@@ -51,6 +54,7 @@ public class User implements UserDetails{
     private List<Appointment> appointmentList;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Recipient> recipientList;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
@@ -129,6 +133,7 @@ public class User implements UserDetails{
         this.recipientList = recipientList;
     }
 
+    @JsonIgnore
     public String getPassword() {
         return password;
     }
@@ -162,7 +167,6 @@ public class User implements UserDetails{
         return "User{" +
                 "userId=" + userId +
                 ", username='" + username + '\'' +
-                ", password='" + password + '\'' +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", email='" + email + '\'' +
