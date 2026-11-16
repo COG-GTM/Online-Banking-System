@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.util.Locale;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -18,6 +19,8 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
@@ -48,6 +51,11 @@ public class AccountControllerTest {
 
     @Before
     public void setUp() {
+        ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        messageSource.setFallbackToSystemLocale(false);
+        ReflectionTestUtils.setField(accountController, "messageSource", messageSource);
         mockMvc = MockMvcBuilders.standaloneSetup(accountController)
                 .setViewResolvers(new InternalResourceViewResolver("/templates/", ".html"))
                 .build();
@@ -101,5 +109,15 @@ public class AccountControllerTest {
                 .andExpect(view().name("redirect:/userFront"));
 
         verify(accountService).withdraw(eq("Savings"), eq(new BigDecimal("12.30")), any());
+    }
+
+    @Test
+    public void declinedWithdrawMessageIsLocalizedForFrenchUsers() throws Exception {
+        mockMvc.perform(post("/account/withdraw").principal(principal).locale(Locale.CANADA_FRENCH)
+                        .param("accountType", "Primary").param("amount", "-5"))
+                .andExpect(view().name("withdraw"))
+                .andExpect(model().attribute("errorMessage", "Le montant doit être supérieur à zéro."));
+
+        verifyNoMoreInteractions(accountService);
     }
 }

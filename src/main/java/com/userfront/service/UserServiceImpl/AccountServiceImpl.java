@@ -83,7 +83,7 @@ public class AccountServiceImpl implements AccountService {
             SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Deposit to savings Account", "Account", "Finished", value.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
             transactionService.saveSavingsDepositTransaction(savingsTransaction);
         } else {
-            throw new TransactionDeclinedException("Select an account.");
+            throw new TransactionDeclinedException("transaction.account.required", "Select an account.");
         }
     }
     
@@ -114,7 +114,7 @@ public class AccountServiceImpl implements AccountService {
             SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Withdraw from savings Account", "Account", "Finished", value.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
             transactionService.saveSavingsWithdrawTransaction(savingsTransaction);
         } else {
-            throw new TransactionDeclinedException("Select an account.");
+            throw new TransactionDeclinedException("transaction.account.required", "Select an account.");
         }
     }
 

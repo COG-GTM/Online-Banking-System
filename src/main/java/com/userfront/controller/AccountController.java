@@ -2,8 +2,10 @@ package com.userfront.controller;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -33,6 +35,9 @@ public class AccountController {
 	
 	@Autowired
 	private TransactionService transactionService;
+
+	@Autowired
+	private MessageSource messageSource;
 	
 	@RequestMapping("/primaryAccount")
 	public String primaryAccount(Model model, Principal principal) {
@@ -68,11 +73,11 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/deposit", method = RequestMethod.POST)
-    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
+    public String depositPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model, Locale locale) {
         try {
             accountService.deposit(accountType, TransactionAmount.parse(amount), principal);
         } catch (TransactionDeclinedException e) {
-            model.addAttribute("errorMessage", e.getMessage());
+            model.addAttribute("errorMessage", messageSource.getMessage(e.getMessageKey(), null, e.getMessage(), locale));
             return "deposit";
         }
 
@@ -88,11 +93,11 @@ public class AccountController {
     }
 
     @RequestMapping(value = "/withdraw", method = RequestMethod.POST)
-    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model) {
+    public String withdrawPOST(@ModelAttribute("amount") String amount, @ModelAttribute("accountType") String accountType, Principal principal, Model model, Locale locale) {
         try {
             accountService.withdraw(accountType, TransactionAmount.parse(amount), principal);
         } catch (TransactionDeclinedException e) {
-            model.addAttribute("errorMessage", e.getMessage());
+            model.addAttribute("errorMessage", messageSource.getMessage(e.getMessageKey(), null, e.getMessage(), locale));
             return "withdraw";
         }
 

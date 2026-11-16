@@ -21,7 +21,7 @@
 
                 <div class="form-group">
                     <label for="amount">2. Please specify the amount you would like to withdraw: </label>
-                    <p id="amountHint" class="help-block">Enter a positive dollar amount with up to two decimal places, for example 25 or 25.50.</p>
+                    <p id="amountHint" class="help-block" th:text="#{transaction.amount.hint}">Enter a positive dollar amount with up to two decimal places, for example 25 or 25.50.</p>
                     <span class="input-group-addon">Amount $</span>
                     <input th:value="${amount}" type="text" inputmode="decimal" name="amount" id="amount" class="form-control" required="required" th:attr="aria-invalid=${errorMessage != null ? 'true' : null},aria-describedby=${errorMessage != null ? 'amountHint amountError' : 'amountHint'}"/>
                 </div>
