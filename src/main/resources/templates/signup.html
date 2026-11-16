@@ -15,6 +15,8 @@
         </div>
         <div class="main-login main-center">
             <form class="form-horizontal" method="post" th:action="@{/signup}">
+                <div class="bg-danger" id="signupFailed" th:if="${signupFailed}" th:text="#{signup.failed}">signup failed</div>
+                <div class="bg-danger" id="passwordTooShort" role="alert" th:if="${passwordTooShort}" th:text="#{signup.passwordTooShort(${minPasswordLength})}">password too short</div>
 
                 <div class="form-group">
                     <label for="firstName" class="cols-sm-2 control-label">First Name</label>
@@ -47,7 +49,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="email" class="cols-sm-2 control-label">Your Email</label><span class="bg-danger pull-right" th:if="${emailExists}">Email already exists</span>
+                    <label for="email" class="cols-sm-2 control-label">Your Email</label>
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-envelope fa" aria-hidden="true"></i></span>
@@ -57,7 +59,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="username" class="cols-sm-2 control-label">Username</label><span class="bg-danger pull-right" th:if="${usernameExists}">Username already exists</span>
+                    <label for="username" class="cols-sm-2 control-label">Username</label>
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-users fa" aria-hidden="true"></i></span>
@@ -71,7 +73,7 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-lock fa-lg" aria-hidden="true"></i></span>
-                            <input type="password" class="form-control" th:value="${user.password}" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required"/>
+                            <input type="password" class="form-control" th:value="${user.password}" id="password" name="password" roleId="password"  placeholder="Enter your Password" required="required" minlength="8" th:attr="minlength=${minPasswordLength}"/>
                         </div>
                         <div class="checkbox">
                             <label>
