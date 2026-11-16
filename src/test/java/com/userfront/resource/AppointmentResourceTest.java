@@ -1,8 +1,9 @@
 package com.userfront.resource;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -13,9 +14,9 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
-import org.junit.After;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +26,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.userfront.domain.Appointment;
@@ -34,7 +35,7 @@ import com.userfront.domain.User;
 import com.userfront.resource.dto.AppointmentSummary;
 import com.userfront.service.AppointmentService;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @ContextConfiguration(classes = AppointmentResourceTest.Config.class)
 public class AppointmentResourceTest {
 
@@ -60,21 +61,18 @@ public class AppointmentResourceTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @After
+    @AfterEach
     public void tearDown() {
         SecurityContextHolder.clearContext();
         reset(appointmentService);
     }
 
-    @Test(expected = AccessDeniedException.class)
+    @Test
     public void regularUserCannotListAppointments() {
         authenticate("ROLE_USER");
-        try {
-            appointmentResource.findAppointmentList();
-        } finally {
-            verify(appointmentService, never()).findAllSummaries();
-            verify(appointmentService, never()).findAll();
-        }
+        assertThrows(AccessDeniedException.class, () -> appointmentResource.findAppointmentList());
+        verify(appointmentService, never()).findAllSummaries();
+        verify(appointmentService, never()).findAll();
     }
 
     @Test

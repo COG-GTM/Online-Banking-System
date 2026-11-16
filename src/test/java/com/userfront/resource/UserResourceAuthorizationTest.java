@@ -18,16 +18,16 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -44,7 +44,7 @@ import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @WebAppConfiguration
 @ContextConfiguration(classes = UserResourceAuthorizationTest.TestConfig.class)
 public class UserResourceAuthorizationTest {
@@ -83,7 +83,7 @@ public class UserResourceAuthorizationTest {
 
     private MockMvc mockMvc;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         reset(userService);
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
@@ -141,8 +141,8 @@ public class UserResourceAuthorizationTest {
     @Test
     public void userToStringOmitsPasswordHash() {
         String rendered = sampleUser().toString();
-        org.junit.Assert.assertFalse(rendered.contains("$2a$12$"));
-        org.junit.Assert.assertFalse(rendered.contains("99887766"));
+        org.junit.jupiter.api.Assertions.assertFalse(rendered.contains("$2a$12$"));
+        org.junit.jupiter.api.Assertions.assertFalse(rendered.contains("99887766"));
     }
 
     private static User sampleUser() {
