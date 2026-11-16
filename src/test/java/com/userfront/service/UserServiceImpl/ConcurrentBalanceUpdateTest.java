@@ -114,6 +114,21 @@ public class ConcurrentBalanceUpdateTest {
     }
 
     @Test
+    public void parallelOppositeTransfersAllCompleteWithoutDeadlock() throws Exception {
+        List<Callable<Void>> tasks = new ArrayList<>();
+        for (int i = 0; i < REQUESTS; i++) {
+            if (i % 2 == 0) {
+                tasks.add(() -> { transactionService.betweenAccountsTransfer("Primary", "Savings", "10", primary, savings); return null; });
+            } else {
+                tasks.add(() -> { transactionService.betweenAccountsTransfer("Savings", "Primary", "10", primary, savings); return null; });
+            }
+        }
+        assertEquals(REQUESTS, runAll(tasks));
+        assertBalance("100.00", primaryAccountDao.findById(primary.getId()).get().getAccountBalance());
+        assertBalance("100.00", savingsAccountDao.findById(savings.getId()).get().getAccountBalance());
+    }
+
+    @Test
     public void parallelTransfersToSomeoneElseNeverOverdraw() throws Exception {
         Recipient recipient = new Recipient();
         recipient.setName("bob");

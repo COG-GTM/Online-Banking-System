@@ -95,6 +95,8 @@ public class TransactionServiceImpl implements TransactionService {
             PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", value.doubleValue(), source.getAccountBalance(), source);
             primaryTransactionDao.save(primaryTransaction);
         } else if ("Savings".equalsIgnoreCase(transferFrom) && "Primary".equalsIgnoreCase(transferTo)) {
+            // Lock primary before savings in both directions so opposite transfers cannot deadlock.
+            primaryAccountDao.lockById(primaryAccount.getId());
             if (savingsAccountDao.debitIfSufficient(savingsAccount.getId(), value) != 1) {
                 throw new InsufficientFundsException();
             }
