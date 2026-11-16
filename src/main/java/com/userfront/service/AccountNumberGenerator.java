@@ -48,10 +48,11 @@ public class AccountNumberGenerator {
         return transaction.execute(status -> {
             AccountNumberSequence sequence = sequenceDao.findByNameForUpdate(SEQUENCE_NAME);
             int value = sequence.getNextValue();
-            if (value == Integer.MAX_VALUE) {
-                throw new IllegalStateException("Account number space exhausted");
+            // Skip numbers left behind outside the counter, e.g. by a failed signup on a non-transactional table.
+            while (isInUse(value)) {
+                value = increment(value);
             }
-            sequence.setNextValue(value + 1);
+            sequence.setNextValue(increment(value));
             sequenceDao.save(sequence);
             return value;
         });
@@ -75,6 +76,18 @@ public class AccountNumberGenerator {
                 throw e;
             }
         }
+    }
+
+    private boolean isInUse(int accountNumber) {
+        return primaryAccountDao.countByAccountNumber(accountNumber) > 0
+                || savingsAccountDao.countByAccountNumber(accountNumber) > 0;
+    }
+
+    private static int increment(int value) {
+        if (value == Integer.MAX_VALUE) {
+            throw new IllegalStateException("Account number space exhausted");
+        }
+        return value + 1;
     }
 
     private int firstFreeAccountNumber() {

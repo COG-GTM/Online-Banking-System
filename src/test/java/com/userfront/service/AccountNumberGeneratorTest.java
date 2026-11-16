@@ -107,6 +107,15 @@ public class AccountNumberGeneratorTest {
     }
 
     @Test
+    public void numbersAlreadyTakenOutsideTheCounterAreSkipped() {
+        int first = generator.nextAccountNumber();
+        primaryAccountDao.save(account(new PrimaryAccount(), first + 1));
+        savingsAccountDao.save(account(new SavingsAccount(), first + 2));
+
+        assertEquals(first + 3, accountService.createPrimaryAccount().getAccountNumber());
+    }
+
+    @Test
     public void concurrentSignupsNeverShareANumber() throws Exception {
         int threads = 8;
         int perThread = 25;
