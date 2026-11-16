@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.PrimaryTransactionDao;
@@ -20,6 +21,9 @@ import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.service.InsufficientFundsException;
+import com.userfront.service.TransactionAmount;
+import com.userfront.service.TransactionDeclinedException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
@@ -75,29 +79,36 @@ public class TransactionServiceImpl implements TransactionService {
         savingsTransactionDao.save(savingsTransaction);
     }
     
+    @Transactional
     public void betweenAccountsTransfer(String transferFrom, String transferTo, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception {
-        if (transferFrom.equalsIgnoreCase("Primary") && transferTo.equalsIgnoreCase("Savings")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(new BigDecimal(amount)));
-            primaryAccountDao.save(primaryAccount);
-            savingsAccountDao.save(savingsAccount);
+        BigDecimal value = TransactionAmount.parse(amount);
+
+        if ("Primary".equalsIgnoreCase(transferFrom) && "Savings".equalsIgnoreCase(transferTo)) {
+            if (primaryAccountDao.debitIfSufficient(primaryAccount.getId(), value) != 1) {
+                throw new InsufficientFundsException();
+            }
+            requireUpdated(savingsAccountDao.credit(savingsAccount.getId(), value));
+            PrimaryAccount source = primaryAccountDao.findById(primaryAccount.getId()).get();
 
             Date date = new Date();
 
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", value.doubleValue(), source.getAccountBalance(), source);
             primaryTransactionDao.save(primaryTransaction);
-        } else if (transferFrom.equalsIgnoreCase("Savings") && transferTo.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            primaryAccountDao.save(primaryAccount);
-            savingsAccountDao.save(savingsAccount);
+        } else if ("Savings".equalsIgnoreCase(transferFrom) && "Primary".equalsIgnoreCase(transferTo)) {
+            // Lock primary before savings in both directions so opposite transfers cannot deadlock.
+            primaryAccountDao.lockById(primaryAccount.getId());
+            if (savingsAccountDao.debitIfSufficient(savingsAccount.getId(), value) != 1) {
+                throw new InsufficientFundsException();
+            }
+            requireUpdated(primaryAccountDao.credit(primaryAccount.getId(), value));
+            SavingsAccount source = savingsAccountDao.findById(savingsAccount.getId()).get();
 
             Date date = new Date();
 
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", value.doubleValue(), source.getAccountBalance(), source);
             savingsTransactionDao.save(savingsTransaction);
         } else {
-            throw new Exception("Invalid Transfer");
+            throw new TransactionDeclinedException("transaction.error.selectAccounts", "Select two different accounts to transfer between.");
         }
     }
     
@@ -122,23 +133,41 @@ public class TransactionServiceImpl implements TransactionService {
         recipientDao.deleteByName(recipientName);
     }
     
+    @Transactional
     public void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
-        if (accountType.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            primaryAccountDao.save(primaryAccount);
+        if (recipient == null) {
+            throw new TransactionDeclinedException("transaction.error.selectRecipient", "Select a recipient.");
+        }
+        BigDecimal value = TransactionAmount.parse(amount);
+
+        if ("Primary".equalsIgnoreCase(accountType)) {
+            if (primaryAccountDao.debitIfSufficient(primaryAccount.getId(), value) != 1) {
+                throw new InsufficientFundsException();
+            }
+            PrimaryAccount source = primaryAccountDao.findById(primaryAccount.getId()).get();
 
             Date date = new Date();
 
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", value.doubleValue(), source.getAccountBalance(), source);
             primaryTransactionDao.save(primaryTransaction);
-        } else if (accountType.equalsIgnoreCase("Savings")) {
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            savingsAccountDao.save(savingsAccount);
+        } else if ("Savings".equalsIgnoreCase(accountType)) {
+            if (savingsAccountDao.debitIfSufficient(savingsAccount.getId(), value) != 1) {
+                throw new InsufficientFundsException();
+            }
+            SavingsAccount source = savingsAccountDao.findById(savingsAccount.getId()).get();
 
             Date date = new Date();
 
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Transfer to recipient "+recipient.getName(), "Transfer", "Finished", value.doubleValue(), source.getAccountBalance(), source);
             savingsTransactionDao.save(savingsTransaction);
+        } else {
+            throw new TransactionDeclinedException("transaction.error.selectAccount", "Select an account.");
+        }
+    }
+
+    private static void requireUpdated(int rows) {
+        if (rows != 1) {
+            throw new IllegalStateException("Account not found");
         }
     }
 }
