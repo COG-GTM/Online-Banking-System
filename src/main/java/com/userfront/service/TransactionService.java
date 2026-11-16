@@ -8,6 +8,8 @@ import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
+import com.userfront.domain.User;
+import com.userfront.dto.RecipientForm;
 
 public interface TransactionService {
 	List<PrimaryTransaction> findPrimaryTransactionList(String username);
@@ -25,11 +27,11 @@ public interface TransactionService {
     
     List<Recipient> findRecipientList(Principal principal);
 
-    Recipient saveRecipient(Recipient recipient);
+    Recipient saveRecipient(RecipientForm form, User user);
 
-    Recipient findRecipientByName(String recipientName);
+    Recipient findRecipient(Long recipientId, Principal principal);
 
-    void deleteRecipientByName(String recipientName);
+    void deleteRecipient(Long recipientId, Principal principal);
     
     void toSomeoneElseTransfer(Recipient recipient, String accountType, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount);
 }
