@@ -57,7 +57,7 @@ public class TransferController {
             transactionService.betweenAccountsTransfer(transferFrom, transferTo, amount, primaryAccount, savingsAccount);
         } catch (InvalidTransferAmountException e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            model.addAttribute("transferError", e.getMessage());
+            model.addAttribute("transferError", true);
             return "betweenAccounts";
         }
 
@@ -133,7 +133,7 @@ public class TransferController {
         } catch (InvalidTransferAmountException e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             model.addAttribute("recipientList", transactionService.findRecipientList(principal));
-            model.addAttribute("transferError", e.getMessage());
+            model.addAttribute("transferError", true);
             return "toSomeoneElse";
         }
 
