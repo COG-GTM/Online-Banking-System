@@ -1,6 +1,7 @@
 package com.userfront.config;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -34,9 +35,12 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
     // spring.datasource.*, so they override the top-level values; only the effective
     // (merged) configuration is validated. Listed in Boot's auto-detection order.
     static final List<Pool> POOLS = Arrays.asList(
-            new Pool("com.zaxxer.hikari.HikariDataSource", "spring.datasource.hikari.", "jdbc-url", "jdbcUrl"),
-            new Pool("org.apache.tomcat.jdbc.pool.DataSource", "spring.datasource.tomcat.", "url"),
-            new Pool("org.apache.commons.dbcp2.BasicDataSource", "spring.datasource.dbcp2.", "url"));
+            new Pool("com.zaxxer.hikari.HikariDataSource", "spring.datasource.hikari.",
+                    Arrays.asList("jdbc-url", "jdbcUrl"), Arrays.asList("data-source-class-name", "dataSourceClassName")),
+            new Pool("org.apache.tomcat.jdbc.pool.DataSource", "spring.datasource.tomcat.",
+                    Arrays.asList("url"), Collections.<String>emptyList()),
+            new Pool("org.apache.commons.dbcp2.BasicDataSource", "spring.datasource.dbcp2.",
+                    Arrays.asList("url"), Collections.<String>emptyList()));
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
@@ -48,7 +52,7 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
         if (url == null) {
             url = resolve(environment, URL);
         }
-        if (url == null || isInMemory(url)) {
+        if (url == null || (isInMemory(url) && !usesDataSourceClass(environment, pool))) {
             return;
         }
         String usernameKey = effectiveKey(environment, pool, "username", USERNAME);
@@ -62,6 +66,19 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
             return pool.prefix + poolProperty;
         }
         return topLevelKey;
+    }
+
+    // Hikari ignores jdbc-url when a dataSourceClassName is configured, so the URL can't prove an in-memory database.
+    private static boolean usesDataSourceClass(ConfigurableEnvironment environment, Pool pool) {
+        if (pool == null || pool.dataSourceClassKeys.isEmpty()) {
+            return false;
+        }
+        for (String key : pool.dataSourceClassKeys) {
+            if (!isBlank(resolve(environment, pool.prefix + key))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static Pool activePool(String type, ClassLoader classLoader) {
@@ -115,11 +132,13 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
         final String className;
         final String prefix;
         private final List<String> urlKeys;
+        private final List<String> dataSourceClassKeys;
 
-        Pool(String className, String prefix, String... urlKeys) {
+        Pool(String className, String prefix, List<String> urlKeys, List<String> dataSourceClassKeys) {
             this.className = className;
             this.prefix = prefix;
-            this.urlKeys = Arrays.asList(urlKeys);
+            this.urlKeys = urlKeys;
+            this.dataSourceClassKeys = dataSourceClassKeys;
         }
 
         String url(ConfigurableEnvironment environment) {

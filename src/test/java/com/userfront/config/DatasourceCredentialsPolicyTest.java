@@ -139,6 +139,18 @@ public class DatasourceCredentialsPolicyTest {
     }
 
     @Test(expected = InsecureDatasourceCredentialsException.class)
+    public void hikariDataSourceClassNameDisablesInMemoryExemption() {
+        postProcess(MYSQL_URL, "root", "", "spring.datasource.hikari.jdbc-url", "jdbc:h2:mem:testdb",
+                "spring.datasource.hikari.data-source-class-name", "com.mysql.cj.jdbc.MysqlDataSource");
+    }
+
+    @Test(expected = InsecureDatasourceCredentialsException.class)
+    public void hikariDataSourceClassNameWithInMemoryTopLevelUrlIsChecked() {
+        postProcess("jdbc:h2:mem:testdb", "root", "",
+                "spring.datasource.hikari.data-source-class-name", "com.mysql.cj.jdbc.MysqlDataSource");
+    }
+
+    @Test(expected = InsecureDatasourceCredentialsException.class)
     public void hikariUsernameOverrideStillNeedsEffectivePassword() {
         postProcess(MYSQL_URL, "root", "", "spring.datasource.hikari.username", "obs_pool");
     }
