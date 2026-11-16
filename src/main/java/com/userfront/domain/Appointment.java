@@ -9,8 +9,6 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 @Entity
 public class Appointment {
 
@@ -24,7 +22,6 @@ public class Appointment {
 
     @ManyToOne
     @JoinColumn(name = "user_id")
-    @JsonIgnoreProperties({"primaryAccount", "savingsAccount"})
     private User user;
 
     public Long getId() {

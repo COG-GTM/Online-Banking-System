@@ -111,7 +111,7 @@ public class UserJsonExposureTest {
     }
 
     @Test
-    public void appointmentUserOmitsCredentialsAndAccounts() throws Exception {
+    public void appointmentUserOmitsCredentialsAndPayees() throws Exception {
         Appointment appointment = new Appointment();
         appointment.setId(3L);
         appointment.setLocation("Branch");
@@ -121,8 +121,8 @@ public class UserJsonExposureTest {
 
         assertEquals("alice", userNode.get("username").asText());
         assertFalse(userNode.has("password"));
-        assertFalse(userNode.has("primaryAccount"));
-        assertFalse(userNode.has("savingsAccount"));
+        assertEquals(11223101, userNode.get("primaryAccount").get("accountNumber").asInt());
+        assertEquals(11223102, userNode.get("savingsAccount").get("accountNumber").asInt());
         assertFalse(userNode.has("recipientList"));
         assertFalse(userNode.has("authorities"));
     }
