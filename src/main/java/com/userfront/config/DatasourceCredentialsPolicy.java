@@ -36,11 +36,12 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
     // (merged) configuration is validated. Listed in Boot's auto-detection order.
     static final List<Pool> POOLS = Arrays.asList(
             new Pool("com.zaxxer.hikari.HikariDataSource", "spring.datasource.hikari.",
-                    Arrays.asList("jdbc-url", "jdbcUrl"), Arrays.asList("data-source-class-name", "dataSourceClassName")),
+                    Arrays.asList("jdbc-url", "jdbcUrl"), Arrays.asList("data-source-class-name", "dataSourceClassName"),
+                    Arrays.asList("data-source-properties.url", "data-source-properties.URL")),
             new Pool("org.apache.tomcat.jdbc.pool.DataSource", "spring.datasource.tomcat.",
-                    Arrays.asList("url"), Collections.<String>emptyList()),
+                    Arrays.asList("url"), Collections.<String>emptyList(), Collections.<String>emptyList()),
             new Pool("org.apache.commons.dbcp2.BasicDataSource", "spring.datasource.dbcp2.",
-                    Arrays.asList("url"), Collections.<String>emptyList()));
+                    Arrays.asList("url"), Collections.<String>emptyList(), Collections.<String>emptyList()));
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
@@ -48,12 +49,19 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
             return;
         }
         Pool pool = activePool(resolve(environment, TYPE), application.getClassLoader());
-        String url = pool != null ? pool.url(environment) : null;
-        if (url == null) {
-            url = resolve(environment, URL);
-        }
-        if (url == null || (isInMemory(url) && !usesDataSourceClass(environment, pool))) {
-            return;
+        if (usesDataSourceClass(environment, pool)) {
+            String url = pool.dataSourceUrl(environment);
+            if (url != null && isInMemory(url)) {
+                return;
+            }
+        } else {
+            String url = pool != null ? pool.url(environment) : null;
+            if (url == null) {
+                url = resolve(environment, URL);
+            }
+            if (url == null || isInMemory(url)) {
+                return;
+            }
         }
         String usernameKey = effectiveKey(environment, pool, "username", USERNAME);
         String passwordKey = effectiveKey(environment, pool, "password", PASSWORD);
@@ -68,7 +76,7 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
         return topLevelKey;
     }
 
-    // Hikari ignores jdbc-url when a dataSourceClassName is configured, so the URL can't prove an in-memory database.
+    // Hikari ignores jdbc-url when a dataSourceClassName is configured; the DataSource gets its URL from data-source-properties.
     private static boolean usesDataSourceClass(ConfigurableEnvironment environment, Pool pool) {
         if (pool == null || pool.dataSourceClassKeys.isEmpty()) {
             return false;
@@ -133,16 +141,26 @@ public class DatasourceCredentialsPolicy implements EnvironmentPostProcessor, Or
         final String prefix;
         private final List<String> urlKeys;
         private final List<String> dataSourceClassKeys;
+        private final List<String> dataSourceUrlKeys;
 
-        Pool(String className, String prefix, List<String> urlKeys, List<String> dataSourceClassKeys) {
+        Pool(String className, String prefix, List<String> urlKeys, List<String> dataSourceClassKeys, List<String> dataSourceUrlKeys) {
             this.className = className;
             this.prefix = prefix;
             this.urlKeys = urlKeys;
             this.dataSourceClassKeys = dataSourceClassKeys;
+            this.dataSourceUrlKeys = dataSourceUrlKeys;
         }
 
         String url(ConfigurableEnvironment environment) {
-            for (String key : urlKeys) {
+            return firstValue(environment, urlKeys);
+        }
+
+        String dataSourceUrl(ConfigurableEnvironment environment) {
+            return firstValue(environment, dataSourceUrlKeys);
+        }
+
+        private String firstValue(ConfigurableEnvironment environment, List<String> keys) {
+            for (String key : keys) {
                 String value = resolve(environment, prefix + key);
                 if (value != null) {
                     return value;
