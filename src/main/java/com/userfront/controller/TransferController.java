@@ -93,7 +93,7 @@ public class TransferController {
         return "recipient";
     }
 
-    @RequestMapping(value = "/recipient/delete", method = RequestMethod.GET)
+    @RequestMapping(value = "/recipient/delete", method = RequestMethod.POST)
     @Transactional
     public String recipientDelete(@RequestParam(value = "recipientId") Long recipientId, Model model, Principal principal){
 

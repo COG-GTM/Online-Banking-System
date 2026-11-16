@@ -86,10 +86,18 @@ public class TransferControllerRecipientOwnershipTest {
 
     @Test
     public void deleteIsScopedToPrincipal() throws Exception {
-        mockMvc.perform(get("/transfer/recipient/delete").param("recipientId", "7").principal(ALICE))
+        mockMvc.perform(post("/transfer/recipient/delete").param("recipientId", "7").principal(ALICE))
                 .andExpect(status().isOk());
 
         verify(transactionService).deleteRecipientById(eq(7L), eq(ALICE));
+    }
+
+    @Test
+    public void deleteViaGetIsRejected() throws Exception {
+        mockMvc.perform(get("/transfer/recipient/delete").param("recipientId", "7").principal(ALICE))
+                .andExpect(status().isMethodNotAllowed());
+
+        verify(transactionService, never()).deleteRecipientById(any(Long.class), any(Principal.class));
     }
 
     @Test
