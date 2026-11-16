@@ -1,11 +1,12 @@
 package com.userfront.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigDecimal;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TransactionAmountTest {
 
@@ -36,18 +37,18 @@ public class TransactionAmountTest {
         }
     }
 
-    @Test(expected = TransactionDeclinedException.class)
+    @Test
     public void requireValidRejectsNegativeBigDecimal() {
-        TransactionAmount.requireValid(new BigDecimal("-5"));
+        assertThrows(TransactionDeclinedException.class, () -> TransactionAmount.requireValid(new BigDecimal("-5")));
     }
 
-    @Test(expected = TransactionDeclinedException.class)
+    @Test
     public void requireValidRejectsThreeDecimals() {
-        TransactionAmount.requireValid(new BigDecimal("5.125"));
+        assertThrows(TransactionDeclinedException.class, () -> TransactionAmount.requireValid(new BigDecimal("5.125")));
     }
 
-    @Test(expected = TransactionDeclinedException.class)
+    @Test
     public void requireValidRejectsNull() {
-        TransactionAmount.requireValid(null);
+        assertThrows(TransactionDeclinedException.class, () -> TransactionAmount.requireValid(null));
     }
 }

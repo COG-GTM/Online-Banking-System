@@ -1,6 +1,8 @@
 package com.userfront.service.UserServiceImpl;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
@@ -12,13 +14,15 @@ import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.Optional;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.SavingsAccountDao;
@@ -32,7 +36,8 @@ import com.userfront.service.TransactionDeclinedException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
-@RunWith(MockitoJUnitRunner.Silent.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class AccountServiceImplTest {
 
     @Mock
@@ -55,7 +60,7 @@ public class AccountServiceImplTest {
     private PrimaryAccount primaryAccount;
     private SavingsAccount savingsAccount;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         primaryAccount = new PrimaryAccount();
         primaryAccount.setId(1L);
@@ -75,7 +80,7 @@ public class AccountServiceImplTest {
 
         try {
             accountService.withdraw("Primary", new BigDecimal("1000000"), principal);
-            org.junit.Assert.fail("expected InsufficientFundsException");
+            fail("expected InsufficientFundsException");
         } catch (InsufficientFundsException expected) {
         }
 
@@ -88,7 +93,7 @@ public class AccountServiceImplTest {
 
         try {
             accountService.withdraw("Savings", new BigDecimal("100.01"), principal);
-            org.junit.Assert.fail("expected InsufficientFundsException");
+            fail("expected InsufficientFundsException");
         } catch (InsufficientFundsException expected) {
         }
 
@@ -99,7 +104,7 @@ public class AccountServiceImplTest {
     public void negativeWithdrawIsRejectedBeforeTouchingTheAccount() {
         try {
             accountService.withdraw("Primary", new BigDecimal("-1000000"), principal);
-            org.junit.Assert.fail("expected TransactionDeclinedException");
+            fail("expected TransactionDeclinedException");
         } catch (TransactionDeclinedException expected) {
         }
 
@@ -110,16 +115,16 @@ public class AccountServiceImplTest {
     public void negativeDepositIsRejectedBeforeTouchingTheAccount() {
         try {
             accountService.deposit("Savings", new BigDecimal("-5"), principal);
-            org.junit.Assert.fail("expected TransactionDeclinedException");
+            fail("expected TransactionDeclinedException");
         } catch (TransactionDeclinedException expected) {
         }
 
         verifyNoMoreInteractions(primaryAccountDao, savingsAccountDao, transactionService);
     }
 
-    @Test(expected = TransactionDeclinedException.class)
+    @Test
     public void unknownAccountTypeIsRejected() {
-        accountService.withdraw("Checking", new BigDecimal("1"), principal);
+        assertThrows(TransactionDeclinedException.class, () -> accountService.withdraw("Checking", new BigDecimal("1"), principal));
     }
 
     @Test
