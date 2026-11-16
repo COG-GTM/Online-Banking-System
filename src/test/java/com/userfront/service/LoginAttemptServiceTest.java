@@ -1,8 +1,9 @@
 package com.userfront.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -10,15 +11,15 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class LoginAttemptServiceTest {
 
     private MutableClock clock;
     private LoginAttemptService service;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         clock = new MutableClock(Instant.parse("2026-11-03T00:00:00Z"));
         service = new LoginAttemptService(3, 5, Duration.ofMinutes(15), clock);
@@ -74,7 +75,7 @@ public class LoginAttemptServiceTest {
         assertFalse(service.isBlocked("alice", "10.0.0.1"));
 
         service.loginFailed("alice", "10.0.0.1");
-        assertFalse("counter restarts after expiry", service.isBlocked("alice", "10.0.0.1"));
+        assertFalse(service.isBlocked("alice", "10.0.0.1"), "counter restarts after expiry");
     }
 
     @Test
@@ -85,7 +86,7 @@ public class LoginAttemptServiceTest {
         assertFalse(service.isBlocked("alice", "10.0.0.2"));
 
         service.loginFailed("alice", "10.0.0.1");
-        assertTrue("address counter was not reset by the successful login", service.isBlocked("other", "10.0.0.1"));
+        assertTrue(service.isBlocked("other", "10.0.0.1"), "address counter was not reset by the successful login");
     }
 
     @Test
@@ -125,9 +126,9 @@ public class LoginAttemptServiceTest {
         }
 
         assertEquals(3, bounded.trackedUsernames());
-        assertTrue("oldest entry is locked, so unlocked ones are evicted instead", bounded.isBlocked("alice", "10.0.0.9"));
+        assertTrue(bounded.isBlocked("alice", "10.0.0.9"), "oldest entry is locked, so unlocked ones are evicted instead");
         bounded.loginFailed("bob", "10.0.0.1");
-        assertFalse("unlocked bob was evicted, so his count restarted", bounded.isBlocked("bob", "10.0.0.9"));
+        assertFalse(bounded.isBlocked("bob", "10.0.0.9"), "unlocked bob was evicted, so his count restarted");
     }
 
     @Test
@@ -145,9 +146,10 @@ public class LoginAttemptServiceTest {
         assertTrue(bounded.isBlocked("carol", "10.0.0.9"));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void rejectsNonPositiveLimits() {
-        new LoginAttemptService(0, 5, Duration.ofMinutes(15), clock);
+        assertThrows(IllegalArgumentException.class,
+                () -> new LoginAttemptService(0, 5, Duration.ofMinutes(15), clock));
     }
 
     private void fail(String username, String address, int times) {

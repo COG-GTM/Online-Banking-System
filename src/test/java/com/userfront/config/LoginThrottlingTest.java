@@ -13,9 +13,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -25,7 +24,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
@@ -36,7 +34,6 @@ import com.userfront.service.LoginAttemptService;
 import com.userfront.service.UserService;
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
-@RunWith(SpringRunner.class)
 @WebMvcTest(controllers = HomeController.class)
 @Import({SecurityConfig.class, LoginAttemptService.class})
 @TestPropertySource(properties = {
@@ -64,7 +61,7 @@ public class LoginThrottlingTest {
     @MockBean
     private RoleDao roleDao;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         User alice = new User();
         alice.setUsername("alice");

@@ -10,16 +10,15 @@ import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -30,22 +29,17 @@ import com.userfront.service.UserServiceImpl.UserSecurityService;
 
 @Configuration
 @EnableWebSecurity
-@EnableGlobalMethodSecurity(prePostEnabled=true)
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
-
-    @Autowired
-    private Environment env;
-
-    @Autowired
-    private UserSecurityService userSecurityService;
+@EnableMethodSecurity
+public class SecurityConfig {
 
     @Autowired
     private LoginAttemptService loginAttemptService;
 
     private static final String SALT = "salt"; // Salt should be protected carefully
 
+    // static so services can inject the encoder without instantiating this config (avoids a bean cycle)
     @Bean
-    public BCryptPasswordEncoder passwordEncoder() {
+    public static BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12, new SecureRandom(SALT.getBytes()));
     }
 
@@ -66,13 +60,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private static final String LOGIN_URL = "/index";
     private static final String USERNAME_PARAMETER = "username";
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http, UserSecurityService userSecurityService) throws Exception {
         http
-                .authorizeRequests().
-//                antMatchers("/**").
-                antMatchers(PUBLIC_MATCHERS).
-                permitAll().anyRequest().authenticated();
+                .authorizeRequests()
+                .antMatchers(PUBLIC_MATCHERS).permitAll()
+                .anyRequest().authenticated();
 
         http
                 .csrf().disable().cors().disable()
@@ -83,7 +76,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .and()
                 .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
                 .and()
-                .rememberMe();
+                .rememberMe().userDetailsService(userSecurityService);
+
+        return http.build();
     }
 
     private SimpleUrlAuthenticationFailureHandler loginFailureHandler() {
@@ -119,10 +114,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     @Autowired
-    public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
-//    	 auth.inMemoryAuthentication().withUser("user").password("password").roles("USER"); //This is in-memory authentication
+    public void configureGlobal(AuthenticationManagerBuilder auth, UserSecurityService userSecurityService) throws Exception {
         auth.userDetailsService(userSecurityService).passwordEncoder(passwordEncoder());
     }
-
 
 }
