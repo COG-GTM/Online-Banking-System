@@ -38,7 +38,7 @@ CREATE DATABASE OnlineBankingSystem;
 To start a matching MySQL with Docker instead:
 
 ```bash
-docker run -d --name obs-mysql -p 3306:3306 \
+docker run -d --name obs-mysql -p 127.0.0.1:3306:3306 \
   -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -e MYSQL_DATABASE=OnlineBankingSystem mysql:8.0
 ```
 
