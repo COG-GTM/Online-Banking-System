@@ -1,0 +1,10 @@
+{
+ "body": "",
+ "content_type": null,
+ "location": "/index?error",
+ "method": "POST",
+ "name": "login_alice_disabled",
+ "path": "/index",
+ "status": 302,
+ "step": 46
+}

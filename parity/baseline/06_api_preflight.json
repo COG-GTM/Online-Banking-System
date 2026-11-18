@@ -1,0 +1,10 @@
+{
+ "body": "",
+ "content_type": null,
+ "location": null,
+ "method": "OPTIONS",
+ "name": "api_preflight",
+ "path": "/api/user/all",
+ "status": 200,
+ "step": 6
+}

@@ -1,0 +1,10 @@
+{
+ "body": "[\n {\n  \"amount\": 50.0,\n  \"availableBalance\": 50.0,\n  \"date\": \"<MASKED>\",\n  \"description\": \"Deposit to savings Account\",\n  \"id\": \"<MASKED>\",\n  \"savingsAccount\": {\n   \"accountBalance\": 250.0,\n   \"accountNumber\": \"<MASKED>\",\n   \"id\": \"<MASKED>\"\n  },\n  \"status\": \"Finished\",\n  \"type\": \"Account\"\n }\n]",
+ "content_type": "application/json",
+ "location": null,
+ "method": "GET",
+ "name": "api_savings_tx",
+ "path": "/api/user/savings/transaction",
+ "status": 200,
+ "step": 41
+}

@@ -1,0 +1,10 @@
+{
+ "body": "",
+ "content_type": null,
+ "location": null,
+ "method": "GET",
+ "name": "api_user_disable",
+ "path": "/api/user/alice/disable",
+ "status": 200,
+ "step": 45
+}

@@ -1,0 +1,10 @@
+{
+ "body": "",
+ "content_type": null,
+ "location": "/index",
+ "method": "GET",
+ "name": "userfront_after_logout",
+ "path": "/userFront",
+ "status": 302,
+ "step": 37
+}

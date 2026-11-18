@@ -1,0 +1,10 @@
+{
+ "body": "",
+ "content_type": null,
+ "location": "/transfer/recipient",
+ "method": "POST",
+ "name": "recipient_save",
+ "path": "/transfer/recipient/save",
+ "status": 302,
+ "step": 25
+}

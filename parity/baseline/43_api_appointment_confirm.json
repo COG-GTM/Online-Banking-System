@@ -1,0 +1,10 @@
+{
+ "body": "",
+ "content_type": null,
+ "location": null,
+ "method": "GET",
+ "name": "api_appointment_confirm",
+ "path": "/api/appointment/{id}/confirm",
+ "status": 200,
+ "step": 43
+}

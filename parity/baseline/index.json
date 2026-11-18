@@ -1,0 +1,386 @@
+[
+ {
+  "step": 1,
+  "name": "root",
+  "method": "GET",
+  "path": "/",
+  "status": 302,
+  "location": "/index"
+ },
+ {
+  "step": 2,
+  "name": "index",
+  "method": "GET",
+  "path": "/index",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 3,
+  "name": "signup_form",
+  "method": "GET",
+  "path": "/signup",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 4,
+  "name": "userfront_anonymous",
+  "method": "GET",
+  "path": "/userFront",
+  "status": 302,
+  "location": "/index"
+ },
+ {
+  "step": 5,
+  "name": "api_user_all_anonymous",
+  "method": "GET",
+  "path": "/api/user/all",
+  "status": 302,
+  "location": "/index"
+ },
+ {
+  "step": 6,
+  "name": "api_preflight",
+  "method": "OPTIONS",
+  "path": "/api/user/all",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 7,
+  "name": "static_css",
+  "method": "GET",
+  "path": "/css/main.css",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 8,
+  "name": "public_unmapped_contact",
+  "method": "GET",
+  "path": "/contact",
+  "status": 404,
+  "location": null
+ },
+ {
+  "step": 9,
+  "name": "signup_alice",
+  "method": "POST",
+  "path": "/signup",
+  "status": 302,
+  "location": "/"
+ },
+ {
+  "step": 10,
+  "name": "signup_alice_duplicate",
+  "method": "POST",
+  "path": "/signup",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 11,
+  "name": "signup_bob",
+  "method": "POST",
+  "path": "/signup",
+  "status": 302,
+  "location": "/"
+ },
+ {
+  "step": 12,
+  "name": "login_alice_bad_password",
+  "method": "POST",
+  "path": "/index",
+  "status": 302,
+  "location": "/index?error"
+ },
+ {
+  "step": 13,
+  "name": "login_alice",
+  "method": "POST",
+  "path": "/index",
+  "status": 302,
+  "location": "/userFront"
+ },
+ {
+  "step": 14,
+  "name": "userfront",
+  "method": "GET",
+  "path": "/userFront",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 15,
+  "name": "deposit_form",
+  "method": "GET",
+  "path": "/account/deposit",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 16,
+  "name": "deposit_primary",
+  "method": "POST",
+  "path": "/account/deposit",
+  "status": 302,
+  "location": "/userFront"
+ },
+ {
+  "step": 17,
+  "name": "deposit_savings",
+  "method": "POST",
+  "path": "/account/deposit",
+  "status": 302,
+  "location": "/userFront"
+ },
+ {
+  "step": 18,
+  "name": "withdraw_form",
+  "method": "GET",
+  "path": "/account/withdraw",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 19,
+  "name": "withdraw_primary",
+  "method": "POST",
+  "path": "/account/withdraw",
+  "status": 302,
+  "location": "/userFront"
+ },
+ {
+  "step": 20,
+  "name": "between_form",
+  "method": "GET",
+  "path": "/transfer/betweenAccounts",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 21,
+  "name": "between_post",
+  "method": "POST",
+  "path": "/transfer/betweenAccounts",
+  "status": 302,
+  "location": "/userFront"
+ },
+ {
+  "step": 22,
+  "name": "primary_account",
+  "method": "GET",
+  "path": "/account/primaryAccount",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 23,
+  "name": "savings_account",
+  "method": "GET",
+  "path": "/account/savingsAccount",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 24,
+  "name": "recipient_list",
+  "method": "GET",
+  "path": "/transfer/recipient",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 25,
+  "name": "recipient_save",
+  "method": "POST",
+  "path": "/transfer/recipient/save",
+  "status": 302,
+  "location": "/transfer/recipient"
+ },
+ {
+  "step": 26,
+  "name": "recipient_edit",
+  "method": "GET",
+  "path": "/transfer/recipient/edit",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 27,
+  "name": "to_someone_form",
+  "method": "GET",
+  "path": "/transfer/toSomeoneElse",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 28,
+  "name": "to_someone_post",
+  "method": "POST",
+  "path": "/transfer/toSomeoneElse",
+  "status": 302,
+  "location": "/userFront"
+ },
+ {
+  "step": 29,
+  "name": "recipient_delete",
+  "method": "GET",
+  "path": "/transfer/recipient/delete",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 30,
+  "name": "appointment_form",
+  "method": "GET",
+  "path": "/appointment/create",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 31,
+  "name": "appointment_post",
+  "method": "POST",
+  "path": "/appointment/create",
+  "status": 302,
+  "location": "/userFront"
+ },
+ {
+  "step": 32,
+  "name": "profile",
+  "method": "GET",
+  "path": "/user/profile",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 33,
+  "name": "profile_post",
+  "method": "POST",
+  "path": "/user/profile",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 34,
+  "name": "api_user_all_as_user",
+  "method": "GET",
+  "path": "/api/user/all",
+  "status": 403,
+  "location": null
+ },
+ {
+  "step": 35,
+  "name": "userfront_after",
+  "method": "GET",
+  "path": "/userFront",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 36,
+  "name": "logout",
+  "method": "GET",
+  "path": "/logout",
+  "status": 302,
+  "location": "/index?logout"
+ },
+ {
+  "step": 37,
+  "name": "userfront_after_logout",
+  "method": "GET",
+  "path": "/userFront",
+  "status": 302,
+  "location": "/index"
+ },
+ {
+  "step": 38,
+  "name": "login_admin",
+  "method": "POST",
+  "path": "/index",
+  "status": 302,
+  "location": "/userFront"
+ },
+ {
+  "step": 39,
+  "name": "api_user_all",
+  "method": "GET",
+  "path": "/api/user/all",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 40,
+  "name": "api_primary_tx",
+  "method": "GET",
+  "path": "/api/user/primary/transaction",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 41,
+  "name": "api_savings_tx",
+  "method": "GET",
+  "path": "/api/user/savings/transaction",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 42,
+  "name": "api_appointment_all",
+  "method": "GET",
+  "path": "/api/appointment/all",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 43,
+  "name": "api_appointment_confirm",
+  "method": "GET",
+  "path": "/api/appointment/{id}/confirm",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 44,
+  "name": "api_appointment_all_confirmed",
+  "method": "GET",
+  "path": "/api/appointment/all",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 45,
+  "name": "api_user_disable",
+  "method": "GET",
+  "path": "/api/user/alice/disable",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 46,
+  "name": "login_alice_disabled",
+  "method": "POST",
+  "path": "/index",
+  "status": 302,
+  "location": "/index?error"
+ },
+ {
+  "step": 47,
+  "name": "api_user_enable",
+  "method": "GET",
+  "path": "/api/user/alice/enable",
+  "status": 200,
+  "location": null
+ },
+ {
+  "step": 48,
+  "name": "login_alice_reenabled",
+  "method": "POST",
+  "path": "/index",
+  "status": 302,
+  "location": "/userFront"
+ }
+]

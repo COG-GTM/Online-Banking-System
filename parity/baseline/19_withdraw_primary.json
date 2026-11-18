@@ -1,0 +1,10 @@
+{
+ "body": "",
+ "content_type": null,
+ "location": "/userFront",
+ "method": "POST",
+ "name": "withdraw_primary",
+ "path": "/account/withdraw",
+ "status": 302,
+ "step": 19
+}

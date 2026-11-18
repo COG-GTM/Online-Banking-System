@@ -1,0 +1,10 @@
+{
+ "body": "[\n {\n  \"amount\": 500.0,\n  \"availableBalance\": 500.0,\n  \"date\": \"<MASKED>\",\n  \"description\": \"Deposit to Primary Account\",\n  \"id\": \"<MASKED>\",\n  \"primaryAccount\": {\n   \"accountBalance\": 265.0,\n   \"accountNumber\": \"<MASKED>\",\n   \"id\": \"<MASKED>\"\n  },\n  \"status\": \"Finished\",\n  \"type\": \"Account\"\n },\n {\n  \"amount\": 25.0,\n  \"availableBalance\": 475.0,\n  \"date\": \"<MASKED>\",\n  \"description\": \"Withdraw from Primary Account\",\n  \"id\": \"<MASKED>\",\n  \"primaryAccount\": {\n   \"accountBalance\": 265.0,\n   \"accountNumber\": \"<MASKED>\",\n   \"id\": \"<MASKED>\"\n  },\n  \"status\": \"Finished\",\n  \"type\": \"Account\"\n },\n {\n  \"amount\": 200.0,\n  \"availableBalance\": 275.0,\n  \"date\": \"<MASKED>\",\n  \"description\": \"Between account transfer from Primary to Savings\",\n  \"id\": \"<MASKED>\",\n  \"primaryAccount\": {\n   \"accountBalance\": 265.0,\n   \"accountNumber\": \"<MASKED>\",\n   \"id\": \"<MASKED>\"\n  },\n  \"status\": \"Finished\",\n  \"type\": \"Account\"\n },\n {\n  \"amount\": 10.0,\n  \"availableBalance\": 265.0,\n  \"date\": \"<MASKED>\",\n  \"description\": \"Transfer to recipient carol\",\n  \"id\": \"<MASKED>\",\n  \"primaryAccount\": {\n   \"accountBalance\": 265.0,\n   \"accountNumber\": \"<MASKED>\",\n   \"id\": \"<MASKED>\"\n  },\n  \"status\": \"Finished\",\n  \"type\": \"Transfer\"\n }\n]",
+ "content_type": "application/json",
+ "location": null,
+ "method": "GET",
+ "name": "api_primary_tx",
+ "path": "/api/user/primary/transaction",
+ "status": 200,
+ "step": 40
+}

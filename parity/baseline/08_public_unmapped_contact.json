@@ -1,0 +1,10 @@
+{
+ "body": "{\n \"error\": \"Not Found\",\n \"path\": \"/contact\",\n \"status\": 404,\n \"timestamp\": \"<DATE>\"\n}",
+ "content_type": "application/json",
+ "location": null,
+ "method": "GET",
+ "name": "public_unmapped_contact",
+ "path": "/contact",
+ "status": 404,
+ "step": 8
+}

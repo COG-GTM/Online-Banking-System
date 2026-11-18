@@ -1,0 +1,10 @@
+{
+ "body": "",
+ "content_type": null,
+ "location": "/index?logout",
+ "method": "GET",
+ "name": "logout",
+ "path": "/logout",
+ "status": 302,
+ "step": 36
+}

@@ -1,0 +1,10 @@
+{
+ "body": "",
+ "content_type": null,
+ "location": "/",
+ "method": "POST",
+ "name": "signup_alice",
+ "path": "/signup",
+ "status": 302,
+ "step": 9
+}
