@@ -11,6 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,10 +23,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.userfront.dao.RecipientDao;
 import com.userfront.dao.RoleDao;
 import com.userfront.dao.UserDao;
+import com.userfront.domain.Recipient;
 import com.userfront.domain.User;
 import com.userfront.domain.security.Role;
+import com.userfront.service.TransactionService;
 
 // User.toString() touches a lazy collection, so MockMvc result printing is off
 @SpringBootTest
@@ -39,6 +44,12 @@ class BankingFlowSmokeTest {
 
     @Autowired
     private UserDao userDao;
+
+    @Autowired
+    private RecipientDao recipientDao;
+
+    @Autowired
+    private TransactionService transactionService;
 
     @BeforeEach
     void seedUserRole() {
@@ -112,5 +123,36 @@ class BankingFlowSmokeTest {
 
         mockMvc.perform(get("/logout").session(session))
                 .andExpect(redirectedUrl("/index?logout"));
+    }
+
+    @Test
+    void recipientListContainsOnlyTheSignedInUsersRecipientsInIdOrder() throws Exception {
+        User alice = signUp("alice");
+        User bob = signUp("bob");
+        Recipient a1 = saveRecipient("alice-first", alice);
+        saveRecipient("bob-only", bob);
+        Recipient a2 = saveRecipient("alice-second", alice);
+
+        List<Recipient> recipients = transactionService.findRecipientList(() -> "alice");
+
+        assertThat(recipients.stream().map(Recipient::getId).collect(Collectors.toList()))
+                .containsExactly(a1.getId(), a2.getId());
+        assertThat(transactionService.findRecipientList(() -> "nobody")).isEmpty();
+    }
+
+    private User signUp(String username) throws Exception {
+        mockMvc.perform(post("/signup")
+                        .param("firstName", username).param("lastName", "User").param("phone", "555-0101")
+                        .param("email", username + "@example.com").param("username", username)
+                        .param("password", "pass-" + username))
+                .andExpect(redirectedUrl("/"));
+        return userDao.findByUsername(username);
+    }
+
+    private Recipient saveRecipient(String name, User owner) {
+        Recipient recipient = new Recipient();
+        recipient.setName(name);
+        recipient.setUser(owner);
+        return recipientDao.save(recipient);
     }
 }
