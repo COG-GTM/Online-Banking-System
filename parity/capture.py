@@ -4,6 +4,7 @@ save status, content type, Location and a normalized body per request."""
 import json
 import os
 import re
+import secrets
 import subprocess
 import sys
 
@@ -11,6 +12,13 @@ import requests
 
 BASE = os.environ.get("BASE_URL", "http://localhost:8080")
 MYSQL = os.environ.get("MYSQL_CMD", "docker exec -i obs-mysql mysql -uroot OnlineBankingSystem")
+
+# Test passwords are generated per run (or taken from PARITY_PASSWORD_<USER>) and
+# masked in captured bodies, so none is committed with the harness or baseline.
+PASSWORDS = {u: os.environ.get("PARITY_PASSWORD_" + u.upper()) or "fake-" + secrets.token_hex(8)
+             for u in ("alice", "bob")}
+
+CORS_HEADER_PREFIX = "access-control-"
 
 VOLATILE_JSON_KEYS = {"id", "userId", "date", "password", "accountNumber", "userRoleId"}
 
@@ -26,6 +34,8 @@ def sql(stmt):
 
 
 def mask_text(text):
+    for user, password in PASSWORDS.items():
+        text = text.replace(password, "<PASSWORD:%s>" % user)
     for p in DATE_PATTERNS:
         text = p.sub("<DATE>", text)
     text = re.sub(r";jsessionid=[0-9A-Fa-f]+", "", text)
@@ -88,6 +98,8 @@ class Recorder:
             "status": resp.status_code,
             "content_type": resp.headers.get("Content-Type"),
             "location": location(resp),
+            "cors_headers": {k.lower(): v for k, v in sorted(resp.headers.items())
+                             if k.lower().startswith(CORS_HEADER_PREFIX)},
             "body": normalize(resp),
         }
         fname = "%02d_%s.json" % (self.n, name)
@@ -102,7 +114,7 @@ class Recorder:
 def signup(r, s, name, username, email):
     return r.call(s, name, "POST", "/signup", data={
         "firstName": username.title(), "lastName": "Parity", "phone": "555-0100",
-        "email": email, "username": username, "password": username + "-pass"})
+        "email": email, "username": username, "password": PASSWORDS[username]})
 
 
 def login(r, s, name, username, password):
@@ -131,7 +143,7 @@ def main(out):
 
     alice = requests.Session()
     login(r, alice, "login_alice_bad_password", "alice", "wrong")
-    login(r, alice, "login_alice", "alice", "alice-pass")
+    login(r, alice, "login_alice", "alice", PASSWORDS["alice"])
     r.call(alice, "userfront", "GET", "/userFront")
     r.call(alice, "deposit_form", "GET", "/account/deposit")
     r.call(alice, "deposit_primary", "POST", "/account/deposit", data={"accountType": "Primary", "amount": "500"})
@@ -165,7 +177,7 @@ def main(out):
     r.call(alice, "userfront_after_logout", "GET", "/userFront")
 
     bob = requests.Session()
-    login(r, bob, "login_admin", "bob", "bob-pass")
+    login(r, bob, "login_admin", "bob", PASSWORDS["bob"])
     r.call(bob, "api_user_all", "GET", "/api/user/all")
     r.call(bob, "api_primary_tx", "GET", "/api/user/primary/transaction?username=alice")
     r.call(bob, "api_savings_tx", "GET", "/api/user/savings/transaction?username=alice")
@@ -174,9 +186,9 @@ def main(out):
     r.call(bob, "api_appointment_confirm", "GET", "/api/appointment/%d/confirm" % appt_id)
     r.call(bob, "api_appointment_all_confirmed", "GET", "/api/appointment/all")
     r.call(bob, "api_user_disable", "GET", "/api/user/alice/disable")
-    login(r, requests.Session(), "login_alice_disabled", "alice", "alice-pass")
+    login(r, requests.Session(), "login_alice_disabled", "alice", PASSWORDS["alice"])
     r.call(bob, "api_user_enable", "GET", "/api/user/alice/enable")
-    login(r, requests.Session(), "login_alice_reenabled", "alice", "alice-pass")
+    login(r, requests.Session(), "login_alice_reenabled", "alice", PASSWORDS["alice"])
 
     with open(os.path.join(out, "index.json"), "w") as f:
         json.dump(r.index, f, indent=1)

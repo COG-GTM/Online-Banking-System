@@ -5,7 +5,7 @@ import json
 import os
 import sys
 
-FIELDS = ("method", "path", "status", "content_type", "location", "body")
+FIELDS = ("method", "path", "status", "content_type", "location", "cors_headers", "body")
 
 
 def load(d):

@@ -4,8 +4,11 @@ Replays a fixed 48-request script (35 distinct endpoints: public pages, signup,
 form login, deposits, withdrawals, transfers, recipients, appointments, profile,
 the admin `/api/**` REST resources, enable/disable, logout) against a running
 app on a freshly reset MySQL database, and saves status, content type,
-`Location` and a normalized body (sorted JSON keys; ids, dates, passwords,
-account numbers and sessions masked) per request.
+`Location`, the `Access-Control-*` response headers and a normalized body
+(sorted JSON keys; ids, dates, passwords, account numbers and sessions masked)
+per request. The test users' passwords are generated per run (override with
+`PARITY_PASSWORD_ALICE` / `PARITY_PASSWORD_BOB`) and masked as `<PASSWORD:user>`,
+so none is stored in the harness or the baseline.
 
 `baseline/` was captured from `master` (Spring Boot 2.7.18) built and run on JDK 8.
 
@@ -22,4 +25,5 @@ parity/compare.py parity/baseline /tmp/parity-migrated
 
 `run.sh` drops and recreates the `OnlineBankingSystem` database, starts the jar,
 seeds `ROLE_USER`/`ROLE_ADMIN` and replays `capture.py`. Set `MYSQL_ROOT` to point
-it at a different MySQL client command.
+it at a different MySQL client command; the role seeding uses the same client
+(`MYSQL_CMD`, default `$MYSQL_ROOT OnlineBankingSystem`).

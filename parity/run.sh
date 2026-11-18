@@ -7,6 +7,7 @@ JAR=$1 JHOME=$2 OUT=$3
 HERE=$(cd "$(dirname "$0")" && pwd)
 MYSQL_ROOT=${MYSQL_ROOT:-"docker exec -i obs-mysql mysql -uroot"}
 PORT=${PORT:-8080}
+export MYSQL_CMD=${MYSQL_CMD:-"$MYSQL_ROOT OnlineBankingSystem"}
 
 echo "DROP DATABASE IF EXISTS OnlineBankingSystem; CREATE DATABASE OnlineBankingSystem;" | $MYSQL_ROOT
 rm -rf "$OUT"; mkdir -p "$OUT"
