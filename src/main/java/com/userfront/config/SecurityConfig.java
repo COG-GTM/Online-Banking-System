@@ -2,18 +2,15 @@ package com.userfront.config;
 
 import java.security.SecureRandom;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-
-import com.userfront.service.UserServiceImpl.UserSecurityService;
 
 @Configuration
 @EnableWebSecurity
@@ -36,7 +33,7 @@ public class SecurityConfig {
             "/",
             "/about/**",
             "/contact/**",
-            "/error/**/*",
+            "/error/**",
             "/console/**",
             "/signup"
     };
@@ -44,24 +41,24 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .authorizeRequests()
-                .antMatchers(PUBLIC_MATCHERS).permitAll()
-                .anyRequest().authenticated();
-
-        http
-                .csrf().disable().cors().disable()
-                .formLogin().failureUrl("/index?error").defaultSuccessUrl("/userFront").loginPage("/index").permitAll()
-                .and()
-                .logout().logoutRequestMatcher(new AntPathRequestMatcher("/logout")).logoutSuccessUrl("/index?logout").deleteCookies("remember-me").permitAll()
-                .and()
-                .rememberMe();
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(PUBLIC_MATCHERS).permitAll()
+                        .anyRequest().authenticated())
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.disable())
+                .formLogin(form -> form
+                        .failureUrl("/index?error")
+                        .defaultSuccessUrl("/userFront")
+                        .loginPage("/index")
+                        .permitAll())
+                .logout(logout -> logout
+                        .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
+                        .logoutSuccessUrl("/index?logout")
+                        .deleteCookies("remember-me")
+                        .permitAll())
+                .rememberMe(Customizer.withDefaults());
 
         return http.build();
-    }
-
-    @Autowired
-    public void configureGlobal(AuthenticationManagerBuilder auth, UserSecurityService userSecurityService) throws Exception {
-        auth.userDetailsService(userSecurityService).passwordEncoder(passwordEncoder());
     }
 
 }
