@@ -1,0 +1,17 @@
+{
+ "body": "",
+ "content_type": null,
+ "cors_headers": {
+  "access-control-allow-credentials": "true",
+  "access-control-allow-headers": "authorization, content-type,access-control-request-headers,access-control-request-method,accept,origin,authorization,x-requested-with",
+  "access-control-allow-methods": "POST,GET,DELETE",
+  "access-control-allow-origin": "http://localhost:4200",
+  "access-control-max-age": "3600"
+ },
+ "location": null,
+ "method": "OPTIONS",
+ "name": "api_preflight",
+ "path": "/api/user/all",
+ "status": 200,
+ "step": 6
+}

@@ -1,0 +1,17 @@
+{
+ "body": "[\n {\n  \"confirmed\": false,\n  \"date\": \"<MASKED>\",\n  \"description\": \"loan\",\n  \"id\": \"<MASKED>\",\n  \"location\": \"Main branch\",\n  \"user\": {\n   \"accountNonExpired\": true,\n   \"accountNonLocked\": true,\n   \"authorities\": [\n    {\n     \"authority\": \"ROLE_USER\"\n    }\n   ],\n   \"credentialsNonExpired\": true,\n   \"email\": \"alice@example.com\",\n   \"enabled\": true,\n   \"firstName\": \"Alice\",\n   \"lastName\": \"Parity\",\n   \"password\": \"<MASKED>\",\n   \"phone\": \"555-0111\",\n   \"primaryAccount\": {\n    \"accountBalance\": 265.0,\n    \"accountNumber\": \"<MASKED>\",\n    \"id\": \"<MASKED>\"\n   },\n   \"recipientList\": [],\n   \"savingsAccount\": {\n    \"accountBalance\": 250.0,\n    \"accountNumber\": \"<MASKED>\",\n    \"id\": \"<MASKED>\"\n   },\n   \"userId\": \"<MASKED>\",\n   \"username\": \"alice\"\n  }\n }\n]",
+ "content_type": "application/json",
+ "cors_headers": {
+  "access-control-allow-credentials": "true",
+  "access-control-allow-headers": "x-requested-with",
+  "access-control-allow-methods": "POST, PUT, GET, OPTIONS, DELETE",
+  "access-control-allow-origin": "http://localhost:4200",
+  "access-control-max-age": "3600"
+ },
+ "location": null,
+ "method": "GET",
+ "name": "api_appointment_all_confirmed",
+ "path": "/api/appointment/all",
+ "status": 200,
+ "step": 44
+}
