@@ -1,9 +1,6 @@
 package com.userfront.controller;
 
 import java.security.Principal;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -11,7 +8,9 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 
+import com.userfront.controller.AppointmentDateParser.InvalidAppointmentDateException;
 import com.userfront.domain.Appointment;
 import com.userfront.domain.User;
 import com.userfront.service.AppointmentService;
@@ -27,6 +26,9 @@ public class AppointmentController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private AppointmentDateParser appointmentDateParser;
+
     @RequestMapping(value = "/create",method = RequestMethod.GET)
     public String createAppointment(Model model) {
         Appointment appointment = new Appointment();
@@ -37,11 +39,15 @@ public class AppointmentController {
     }
 
     @RequestMapping(value = "/create",method = RequestMethod.POST)
-    public String createAppointmentPost(@ModelAttribute("appointment") Appointment appointment, @ModelAttribute("dateString") String date, Model model, Principal principal) throws ParseException {
+    public String createAppointmentPost(@ModelAttribute("appointment") Appointment appointment, @RequestParam(value = "dateString", required = false) String date, Model model, Principal principal) {
 
-        SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd hh:mm");
-        Date d1 = format1.parse( date );
-        appointment.setDate(d1);
+        try {
+            appointment.setDate(appointmentDateParser.parse(date));
+        } catch (InvalidAppointmentDateException e) {
+            model.addAttribute("dateString", date == null ? "" : date);
+            model.addAttribute("dateError", e.getMessage());
+            return "appointment";
+        }
 
         User user = userService.findByUsername(principal.getName());
         appointment.setUser(user);
