@@ -41,38 +41,10 @@
 
     <!-- /.row -->
 
-    <div class="table-responsive">
-        <table id="example" class="table table-bordered table-hover table-striped">
-            <thead>
-            <tr>
-                <th>Post Date</th>
-                <th>Description</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Amount</th>
-                <th>Available Balance</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr data-th-each="primaryTransaction : ${primaryTransactionList}">
-                <td data-th-text="${primaryTransaction.date}">...</td>
-                <td data-th-text="${primaryTransaction.description}">...</td>
-                <td data-th-text="${primaryTransaction.type}">...</td>
-                <td data-th-text="${primaryTransaction.status}">...</td>
-                <td data-th-text="${primaryTransaction.amount}">...</td>
-                <td data-th-text="${primaryTransaction.availableBalance}">...</td>
-            </tr>
-            </tbody>
-        </table>
-    </div>
+    <div th:replace="common/transactionLog :: table(${transactionLog}, 'Primary', @{/account/primaryAccount/transactions.csv})"></div>
 </div>
 
 
 <div th:replace="common/header :: body-bottom-scripts"/>
-<script>
-    $(document).ready(function() {
-        $('#example').DataTable();
-    } );
-</script>
 </body>
 </html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<body>
+<div th:fragment="table(entries, accountName, csvUrl)" class="panel panel-default transaction-log"
+     th:attr="data-account=${accountName}">
+    <div class="panel-heading clearfix">
+        <h3 class="panel-title transaction-log-title" th:text="${accountName} + ' transactions'">Transactions</h3>
+        <a class="btn btn-default btn-sm pull-right transaction-log-export" th:href="${csvUrl}">
+            <i class="fa fa-download" aria-hidden="true"></i> Download CSV
+        </a>
+    </div>
+    <div class="panel-body transaction-log-filters">
+        <div class="btn-group transaction-log-direction" role="group" aria-label="Filter by money in or out">
+            <button type="button" class="btn btn-default active" data-direction="" aria-pressed="true">All</button>
+            <button type="button" class="btn btn-default" data-direction="credit" aria-pressed="false">Money in</button>
+            <button type="button" class="btn btn-default" data-direction="debit" aria-pressed="false">Money out</button>
+        </div>
+        <div class="form-inline transaction-log-dates">
+            <label th:for="${accountName} + '-from'">From</label>
+            <input type="date" class="form-control input-sm transaction-log-from" th:id="${accountName} + '-from'"/>
+            <label th:for="${accountName} + '-to'">To</label>
+            <input type="date" class="form-control input-sm transaction-log-to" th:id="${accountName} + '-to'"/>
+            <button type="button" class="btn btn-link btn-sm transaction-log-clear">Clear filters</button>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover table-striped transaction-log-table"
+               th:id="${#strings.toLowerCase(accountName)} + 'TransactionTable'"
+               th:attr="aria-label=${accountName} + ' account transactions'">
+            <thead>
+            <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Description</th>
+                <th scope="col">Category</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="text-right">Amount</th>
+                <th scope="col" class="text-right">Balance</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="entry : ${entries}"
+                th:attr="data-direction=${entry.direction.key},data-day=${entry.day}">
+                <td class="text-nowrap" th:attr="data-order=${entry.timestamp}" th:text="${entry.formattedDate}">...</td>
+                <td th:text="${entry.description}">...</td>
+                <td th:attr="data-search=${entry.category.label}">
+                    <span th:class="'label transaction-category transaction-category-' + ${entry.category.style}" th:text="${entry.category.label}">...</span>
+                </td>
+                <td th:text="${entry.status}">...</td>
+                <td th:class="'text-right text-nowrap transaction-amount transaction-amount-' + ${entry.direction.key}"
+                    th:attr="data-order=${entry.signedAmount}" th:text="${entry.formattedAmount}">...</td>
+                <td class="text-right text-nowrap" th:attr="data-order=${entry.availableBalance}"
+                    th:text="${entry.formattedAvailableBalance}">...</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>
