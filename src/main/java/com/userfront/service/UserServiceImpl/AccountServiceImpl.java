@@ -21,7 +21,7 @@ import com.userfront.service.UserService;
 @Service
 public class AccountServiceImpl implements AccountService {
 	
-	private static int nextAccountNumber = 11223145;
+	private int nextAccountNumber = 11223145;
 
     @Autowired
     private PrimaryAccountDao primaryAccountDao;
@@ -102,8 +102,15 @@ public class AccountServiceImpl implements AccountService {
         }
     }
     
-    private int accountGen() {
+    private synchronized int accountGen() {
+        nextAccountNumber = Math.max(nextAccountNumber, maxStoredAccountNumber());
         return ++nextAccountNumber;
+    }
+
+    private int maxStoredAccountNumber() {
+        Integer maxPrimary = primaryAccountDao.findMaxAccountNumber();
+        Integer maxSavings = savingsAccountDao.findMaxAccountNumber();
+        return Math.max(maxPrimary == null ? 0 : maxPrimary, maxSavings == null ? 0 : maxSavings);
     }
 
 	
