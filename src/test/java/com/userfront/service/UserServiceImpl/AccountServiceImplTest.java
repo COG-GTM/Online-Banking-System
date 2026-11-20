@@ -1,17 +1,15 @@
 package com.userfront.service.UserServiceImpl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.math.BigDecimal;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import com.userfront.dao.PrimaryAccountDao;
 import com.userfront.dao.SavingsAccountDao;
@@ -20,10 +18,9 @@ import com.userfront.domain.SavingsAccount;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
-@RunWith(SpringRunner.class)
 @DataJpaTest
 @Import(AccountServiceImpl.class)
-public class AccountServiceImplTest {
+class AccountServiceImplTest {
 
     @Autowired
     private AccountServiceImpl accountService;
@@ -41,7 +38,7 @@ public class AccountServiceImplTest {
     private TransactionService transactionService;
 
     @Test
-    public void createsUniqueAccountNumbersWhenAccountsAlreadyExistFromBeforeRestart() {
+    void createsUniqueAccountNumbersWhenAccountsAlreadyExistFromBeforeRestart() {
         PrimaryAccount existingPrimary = new PrimaryAccount();
         existingPrimary.setAccountBalance(BigDecimal.ZERO);
         existingPrimary.setAccountNumber(11223146);
