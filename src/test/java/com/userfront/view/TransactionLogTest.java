@@ -1,7 +1,7 @@
 package com.userfront.view;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -10,7 +10,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsTransaction;
@@ -124,6 +124,6 @@ public class TransactionLogTest {
 
         String row = TransactionLog.toCsv(log).split("\r\n")[1];
 
-        assertTrue(row, row.contains(",'=cmd|' /C calc'!A0,"));
+        assertTrue(row.contains(",'=cmd|' /C calc'!A0,"), row);
     }
 }

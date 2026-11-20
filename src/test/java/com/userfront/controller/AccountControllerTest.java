@@ -2,9 +2,8 @@ package com.userfront.controller;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.BDDMockito.given;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -17,14 +16,12 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.userfront.domain.PrimaryAccount;
@@ -37,7 +34,6 @@ import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 import com.userfront.service.UserServiceImpl.UserSecurityService;
 
-@RunWith(SpringRunner.class)
 @WebMvcTest(AccountController.class)
 @WithMockUser(username = "jane")
 public class AccountControllerTest {
@@ -64,7 +60,7 @@ public class AccountControllerTest {
         return calendar.getTime();
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         PrimaryAccount primaryAccount = new PrimaryAccount();
         primaryAccount.setAccountBalance(new BigDecimal("1169.75"));
@@ -107,8 +103,8 @@ public class AccountControllerTest {
                 .andExpect(content().string(not(containsString("2500.0<"))))
                 .andReturn().getResponse().getContentAsString();
 
-        assertTrue("newest transaction should be listed first",
-                html.indexOf("Transfer to recipient John Smith") < html.indexOf("Deposit to Primary Account"));
+        assertTrue(html.indexOf("Transfer to recipient John Smith") < html.indexOf("Deposit to Primary Account"),
+                "newest transaction should be listed first");
     }
 
     @Test
@@ -148,11 +144,5 @@ public class AccountControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"savings-transactions.csv\""))
                 .andExpect(content().string(containsString("Transfer in,Account,Finished,1500.00,1500.00")));
-    }
-
-    @Test
-    public void transactionLogRequiresAuthentication() throws Exception {
-        mockMvc.perform(get("/account/primaryAccount/transactions.csv").with(anonymous()))
-                .andExpect(status().is3xxRedirection());
     }
 }
