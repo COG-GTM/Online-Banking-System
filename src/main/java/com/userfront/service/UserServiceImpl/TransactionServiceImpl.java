@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import com.userfront.dao.PrimaryAccountDao;
@@ -110,7 +111,21 @@ public class TransactionServiceImpl implements TransactionService {
         return recipientList;
     }
 
-    public Recipient saveRecipient(Recipient recipient) {
+    public Recipient saveRecipient(Recipient recipient, Principal principal) {
+        User owner = principal == null ? null : userService.findByUsername(principal.getName());
+        if (owner == null) {
+            throw new AccessDeniedException("Recipient owner could not be resolved");
+        }
+
+        if (recipient.getId() != null) {
+            Recipient existing = recipientDao.findById(recipient.getId()).orElse(null);
+            if (existing == null || existing.getUser() == null
+                    || !owner.getUsername().equals(existing.getUser().getUsername())) {
+                throw new AccessDeniedException("Recipient does not belong to the current user");
+            }
+        }
+
+        recipient.setUser(owner);
         return recipientDao.save(recipient);
     }
 
