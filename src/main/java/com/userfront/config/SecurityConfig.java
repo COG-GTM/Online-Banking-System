@@ -29,15 +29,11 @@ public class SecurityConfig {
     }
 
     private static final String[] PUBLIC_MATCHERS = {
-            "/webjars/**",
             "/css/**",
             "/js/**",
             "/images/**",
             "/",
-            "/about/**",
-            "/contact/**",
-            "/error/**/*",
-            "/console/**",
+            "/error",
             "/signup"
     };
 
