@@ -1,9 +1,9 @@
 package com.userfront.controller;
 
 import java.security.Principal;
-import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -11,12 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.userfront.domain.PrimaryAccount;
-import com.userfront.domain.PrimaryTransaction;
 import com.userfront.domain.SavingsAccount;
-import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
 import com.userfront.service.AccountService;
-import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
 @Controller
@@ -29,33 +26,36 @@ public class AccountController {
 	@Autowired
 	private AccountService accountService;
 	
-	@Autowired
-	private TransactionService transactionService;
-	
-	@RequestMapping("/primaryAccount")
+	@RequestMapping(value = "/primaryAccount", method = RequestMethod.GET)
 	public String primaryAccount(Model model, Principal principal) {
-		List<PrimaryTransaction> primaryTransactionList = transactionService.findPrimaryTransactionList(principal.getName());
-		
-		User user = userService.findByUsername(principal.getName());
-        PrimaryAccount primaryAccount = user.getPrimaryAccount();
+		PrimaryAccount primaryAccount = currentUser(principal).getPrimaryAccount();
 
-        model.addAttribute("primaryAccount", primaryAccount);
-        model.addAttribute("primaryTransactionList", primaryTransactionList);
-		
+		model.addAttribute("primaryAccount", primaryAccount);
+		model.addAttribute("primaryTransactionList", primaryAccount.getPrimaryTransactionList());
+
 		return "primaryAccount";
 	}
 
-	@RequestMapping("/savingsAccount")
-    public String savingsAccount(Model model, Principal principal) {
-		List<SavingsTransaction> savingsTransactionList = transactionService.findSavingsTransactionList(principal.getName());
-        User user = userService.findByUsername(principal.getName());
-        SavingsAccount savingsAccount = user.getSavingsAccount();
+	@RequestMapping(value = "/savingsAccount", method = RequestMethod.GET)
+	public String savingsAccount(Model model, Principal principal) {
+		SavingsAccount savingsAccount = currentUser(principal).getSavingsAccount();
 
-        model.addAttribute("savingsAccount", savingsAccount);
-        model.addAttribute("savingsTransactionList", savingsTransactionList);
+		model.addAttribute("savingsAccount", savingsAccount);
+		model.addAttribute("savingsTransactionList", savingsAccount.getSavingsTransactionList());
 
-        return "savingsAccount";
-    }
+		return "savingsAccount";
+	}
+
+	private User currentUser(Principal principal) {
+		if (principal == null) {
+			throw new AccessDeniedException("Authentication required");
+		}
+		User user = userService.findByUsername(principal.getName());
+		if (user == null) {
+			throw new AccessDeniedException("Unknown principal");
+		}
+		return user;
+	}
 	
 	@RequestMapping(value = "/deposit", method = RequestMethod.GET)
     public String deposit(Model model) {
