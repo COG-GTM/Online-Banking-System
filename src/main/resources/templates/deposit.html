@@ -6,6 +6,7 @@
 <div class="container main">
     <div class="row">
         <div class="col-md-6">
+            <div class="alert alert-danger" role="alert" th:if="${errorMessage}" th:text="${errorMessage}"></div>
             <form th:action="@{/account/deposit}" method="post">
                 <div class="form-group" >
                     <label for="accountType">1. Please select the account you would like to deposit:</label>
@@ -20,7 +21,7 @@
                 <div class="form-group">
                     <label>2. Please specify the amount you would like to deposit: </label>
                     <span class="input-group-addon">Amount $</span>
-                    <input th:value="${amount}" type="text" name="amount" id="amount" class="form-control" aria-label="Amount (to the nearest dollar)"/>
+                    <input th:value="${amount}" type="number" min="0.01" step="0.01" name="amount" id="amount" class="form-control" aria-label="Amount in dollars and cents" required="required" />
                 </div>
 
                 <input type="hidden"
