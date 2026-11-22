@@ -16,7 +16,9 @@ public class AppointmentServiceImpl implements AppointmentService {
     private AppointmentDao appointmentDao;
 
     public Appointment createAppointment(Appointment appointment) {
-       return appointmentDao.save(appointment);
+        appointment.setId(null);
+        appointment.setConfirmed(false);
+        return appointmentDao.save(appointment);
     }
 
     public List<Appointment> findAll() {
