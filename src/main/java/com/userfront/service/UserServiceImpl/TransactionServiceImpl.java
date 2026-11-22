@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.Date;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,12 +21,15 @@ import com.userfront.domain.Recipient;
 import com.userfront.domain.SavingsAccount;
 import com.userfront.domain.SavingsTransaction;
 import com.userfront.domain.User;
+import com.userfront.service.InvalidTransferException;
 import com.userfront.service.TransactionService;
 import com.userfront.service.UserService;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
 	
+	private static final Pattern TRANSFER_AMOUNT_PATTERN = Pattern.compile("\\d{1,15}(\\.\\d{1,2})?");
+
 	@Autowired
 	private UserService userService;
 	
@@ -75,29 +79,57 @@ public class TransactionServiceImpl implements TransactionService {
         savingsTransactionDao.save(savingsTransaction);
     }
     
-    public void betweenAccountsTransfer(String transferFrom, String transferTo, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) throws Exception {
-        if (transferFrom.equalsIgnoreCase("Primary") && transferTo.equalsIgnoreCase("Savings")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(new BigDecimal(amount)));
+    public void betweenAccountsTransfer(String transferFrom, String transferTo, String amount, PrimaryAccount primaryAccount, SavingsAccount savingsAccount) {
+        BigDecimal transferAmount = parseTransferAmount(amount);
+        String from = transferFrom == null ? "" : transferFrom.trim();
+        String to = transferTo == null ? "" : transferTo.trim();
+
+        if (!from.isEmpty() && from.equalsIgnoreCase(to)) {
+            throw new InvalidTransferException("Please choose two different accounts to transfer between.");
+        }
+
+        if (from.equalsIgnoreCase("Primary") && to.equalsIgnoreCase("Savings")) {
+            requireSufficientFunds(primaryAccount.getAccountBalance(), transferAmount);
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().subtract(transferAmount));
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().add(transferAmount));
             primaryAccountDao.save(primaryAccount);
             savingsAccountDao.save(savingsAccount);
 
             Date date = new Date();
 
-            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Account", "Finished", Double.parseDouble(amount), primaryAccount.getAccountBalance(), primaryAccount);
+            PrimaryTransaction primaryTransaction = new PrimaryTransaction(date, "Between account transfer from Primary to Savings", "Account", "Finished", transferAmount.doubleValue(), primaryAccount.getAccountBalance(), primaryAccount);
             primaryTransactionDao.save(primaryTransaction);
-        } else if (transferFrom.equalsIgnoreCase("Savings") && transferTo.equalsIgnoreCase("Primary")) {
-            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(new BigDecimal(amount)));
-            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(new BigDecimal(amount)));
+        } else if (from.equalsIgnoreCase("Savings") && to.equalsIgnoreCase("Primary")) {
+            requireSufficientFunds(savingsAccount.getAccountBalance(), transferAmount);
+            primaryAccount.setAccountBalance(primaryAccount.getAccountBalance().add(transferAmount));
+            savingsAccount.setAccountBalance(savingsAccount.getAccountBalance().subtract(transferAmount));
             primaryAccountDao.save(primaryAccount);
             savingsAccountDao.save(savingsAccount);
 
             Date date = new Date();
 
-            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from "+transferFrom+" to "+transferTo, "Transfer", "Finished", Double.parseDouble(amount), savingsAccount.getAccountBalance(), savingsAccount);
+            SavingsTransaction savingsTransaction = new SavingsTransaction(date, "Between account transfer from Savings to Primary", "Transfer", "Finished", transferAmount.doubleValue(), savingsAccount.getAccountBalance(), savingsAccount);
             savingsTransactionDao.save(savingsTransaction);
         } else {
-            throw new Exception("Invalid Transfer");
+            throw new InvalidTransferException("Please choose a valid account to transfer from and to.");
+        }
+    }
+
+    private static BigDecimal parseTransferAmount(String amount) {
+        String value = amount == null ? "" : amount.trim();
+        if (!TRANSFER_AMOUNT_PATTERN.matcher(value).matches()) {
+            throw new InvalidTransferException("Please enter a valid amount (up to 2 decimal places).");
+        }
+        BigDecimal transferAmount = new BigDecimal(value);
+        if (transferAmount.signum() <= 0) {
+            throw new InvalidTransferException("The transfer amount must be greater than zero.");
+        }
+        return transferAmount;
+    }
+
+    private static void requireSufficientFunds(BigDecimal balance, BigDecimal transferAmount) {
+        if (balance == null || balance.compareTo(transferAmount) < 0) {
+            throw new InvalidTransferException("Insufficient funds in the source account for this transfer.");
         }
     }
     
