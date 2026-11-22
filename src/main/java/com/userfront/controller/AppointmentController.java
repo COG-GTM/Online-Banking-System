@@ -1,8 +1,11 @@
 package com.userfront.controller;
 
 import java.security.Principal;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +24,9 @@ import com.userfront.service.UserService;
 @RequestMapping("/appointment")
 public class AppointmentController {
 
+    private static final DateTimeFormatter APPOINTMENT_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm").withResolverStyle(ResolverStyle.STRICT);
+
     @Autowired
     private AppointmentService appointmentService;
 
@@ -37,11 +43,22 @@ public class AppointmentController {
     }
 
     @RequestMapping(value = "/create",method = RequestMethod.POST)
-    public String createAppointmentPost(@ModelAttribute("appointment") Appointment appointment, @ModelAttribute("dateString") String date, Model model, Principal principal) throws ParseException {
+    public String createAppointmentPost(@ModelAttribute("appointment") Appointment appointment, @ModelAttribute("dateString") String date, Model model, Principal principal) {
 
-        SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd hh:mm");
-        Date d1 = format1.parse( date );
-        appointment.setDate(d1);
+        LocalDateTime appointmentDate;
+        try {
+            appointmentDate = LocalDateTime.parse(date.trim(), APPOINTMENT_DATE_FORMAT);
+        } catch (DateTimeParseException e) {
+            model.addAttribute("dateError", "Please pick a valid date and time (yyyy-MM-dd HH:mm).");
+            return "appointment";
+        }
+
+        if (!appointmentDate.isAfter(LocalDateTime.now())) {
+            model.addAttribute("dateError", "Please pick a date and time in the future.");
+            return "appointment";
+        }
+
+        appointment.setDate(Date.from(appointmentDate.atZone(ZoneId.systemDefault()).toInstant()));
 
         User user = userService.findByUsername(principal.getName());
         appointment.setUser(user);
