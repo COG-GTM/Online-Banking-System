@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.userfront.domain.User;
+import com.userfront.dto.ProfileForm;
 import com.userfront.service.UserService;
 
 @Controller
@@ -29,19 +30,34 @@ public class UserController {
     }
 
     @RequestMapping(value = "/profile", method = RequestMethod.POST)
-    public String profilePost(@ModelAttribute("user") User newUser, Model model) {
-        User user = userService.findByUsername(newUser.getUsername());
-        user.setUsername(newUser.getUsername());
-        user.setFirstName(newUser.getFirstName());
-        user.setLastName(newUser.getLastName());
-        user.setEmail(newUser.getEmail());
-        user.setPhone(newUser.getPhone());
-
+    public String profilePost(@ModelAttribute("profileForm") ProfileForm profileForm, Principal principal, Model model) {
+        User user = userService.findByUsername(principal.getName());
         model.addAttribute("user", user);
 
-        userService.saveUser(user);
+        if (isBlank(profileForm.getFirstName()) || isBlank(profileForm.getLastName())
+                || isBlank(profileForm.getEmail()) || isBlank(profileForm.getPhone())) {
+            model.addAttribute("missingFields", true);
+            return "profile";
+        }
+
+        String newEmail = profileForm.getEmail().trim();
+        if (!newEmail.equals(user.getEmail()) && userService.checkEmailExists(newEmail)) {
+            model.addAttribute("emailExists", true);
+            return "profile";
+        }
+
+        user.setFirstName(profileForm.getFirstName().trim());
+        user.setLastName(profileForm.getLastName().trim());
+        user.setEmail(newEmail);
+        user.setPhone(profileForm.getPhone().trim());
+
+        model.addAttribute("user", userService.saveUser(user));
 
         return "profile";
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
 
