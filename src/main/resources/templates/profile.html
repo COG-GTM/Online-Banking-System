@@ -9,14 +9,12 @@
             <h2 class="title">My Profile</h2>
             <hr/>
             <form method="post" th:action="@{/user/profile}">
-                <input type="hidden" name="id" th:value="${user.userId}"/>
-
                 <div class="form-group">
                     <label for="firstName">First Name</label>
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-user fa" aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" th:value="${user.firstName}" id="firstName"
+                            <input type="text" class="form-control" th:value="${profile.firstName}" id="firstName"
                                    name="firstName" roleId="firstname" placeholder="Enter your first name"
                                    required="required"/>
                         </div>
@@ -28,7 +26,7 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-user fa" aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" th:value="${user.lastName}" id="lastName"
+                            <input type="text" class="form-control" th:value="${profile.lastName}" id="lastName"
                                    name="lastName" roleId="lastName" placeholder="Enter your last name"
                                    required="required"/>
                         </div>
@@ -40,7 +38,7 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-phone fa" aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" th:value="${user.phone}" id="phone" name="phone"
+                            <input type="text" class="form-control" th:value="${profile.phone}" id="phone" name="phone"
                                    roleId="phone" placeholder="xxx-xxx-xxxx" required="required"/>
                         </div>
                     </div>
@@ -53,7 +51,7 @@
                         <div class="input-group">
                                 <span class="input-group-addon"><i class="fa fa-envelope fa"
                                                                    aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" th:value="${user.email}" id="email" name="email"
+                            <input type="text" class="form-control" th:value="${profile.email}" id="email" name="email"
                                    roleId="email" placeholder="Enter your Email" required="required"/>
                         </div>
                     </div>
@@ -65,7 +63,7 @@
                     <div class="cols-sm-10">
                         <div class="input-group">
                             <span class="input-group-addon"><i class="fa fa-users fa" aria-hidden="true"></i></span>
-                            <input type="text" class="form-control" th:value="${user.username}" id="username"
+                            <input type="text" class="form-control" th:value="${profile.username}" id="username"
                                    name="username" roleId="username" placeholder="Enter your Username"
                                    required="required"/>
                         </div>
@@ -92,8 +90,8 @@
                     </tr>
 
                     <tr>
-                        <td data-th-text="${user.primaryAccount.accountNumber}">...</td>
-                        <td data-th-text="${user.savingsAccount.accountNumber}">...</td>
+                        <td data-th-text="${profile.primaryAccountNumber}">...</td>
+                        <td data-th-text="${profile.savingsAccountNumber}">...</td>
                     </tr>
                 </table>
             </div>

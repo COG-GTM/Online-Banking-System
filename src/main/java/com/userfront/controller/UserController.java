@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.userfront.domain.User;
+import com.userfront.dto.ProfileView;
 import com.userfront.service.UserService;
 
 @Controller
@@ -23,13 +24,13 @@ public class UserController {
     public String profile(Principal principal, Model model) {
         User user = userService.findByUsername(principal.getName());
 
-        model.addAttribute("user", user);
+        model.addAttribute("profile", ProfileView.from(user));
 
         return "profile";
     }
 
     @RequestMapping(value = "/profile", method = RequestMethod.POST)
-    public String profilePost(@ModelAttribute("user") User newUser, Model model) {
+    public String profilePost(@ModelAttribute("profileForm") User newUser, Model model) {
         User user = userService.findByUsername(newUser.getUsername());
         user.setUsername(newUser.getUsername());
         user.setFirstName(newUser.getFirstName());
@@ -37,9 +38,9 @@ public class UserController {
         user.setEmail(newUser.getEmail());
         user.setPhone(newUser.getPhone());
 
-        model.addAttribute("user", user);
-
         userService.saveUser(user);
+
+        model.addAttribute("profile", ProfileView.from(user));
 
         return "profile";
     }
