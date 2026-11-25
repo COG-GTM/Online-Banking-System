@@ -100,7 +100,7 @@
             item.querySelector('.legend-label').textContent = s.label;
             legend.appendChild(item);
         });
-        el('text', { x: 100, y: 96, 'text-anchor': 'middle', class: 'donut-total' }, svg).textContent = money(total).replace(/\.\d\d$/, '');
+        el('text', { x: 100, y: 96, 'text-anchor': 'middle', class: 'donut-total' }, svg).textContent = money(total);
         el('text', { x: 100, y: 116, 'text-anchor': 'middle', class: 'donut-caption' }, svg).textContent = 'total moved';
     }
 
