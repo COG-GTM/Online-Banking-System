@@ -135,7 +135,7 @@
             bar.textContent = pct + '%';
             if (savings >= goal) {
                 message.textContent = 'Goal reached! You have ' + money(savings) + ' saved against a ' + money(goal) + ' goal.';
-                message.className = 'goal-message text-success';
+                message.className = 'goal-message text-primary';
             } else {
                 message.textContent = money(goal - savings) + ' to go: ' + money(savings) + ' of ' + money(goal) + ' saved.';
                 message.className = 'goal-message';
