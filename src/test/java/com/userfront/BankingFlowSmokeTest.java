@@ -1,7 +1,9 @@
 package com.userfront;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -105,6 +107,11 @@ class BankingFlowSmokeTest {
         mockMvc.perform(get("/account/savingsAccount").session(session))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("savingsTransactionList", hasSize(1)));
+
+        mockMvc.perform(get("/insights").session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("insights"))
+                .andExpect(model().attribute("insights", hasProperty("transactionCount", is(3))));
 
         User after = userDao.findByUsername("sampleuser");
         assertThat(after.getPrimaryAccount().getAccountBalance()).isEqualByComparingTo(new BigDecimal("300"));

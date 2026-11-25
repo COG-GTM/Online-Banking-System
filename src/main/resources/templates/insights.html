@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<head th:replace="common/header :: common-header"/>
+<body>
+<head th:replace="common/header :: navbar"/>
+<div class="container main insights">
+    <div class="row">
+        <div class="col-md-8">
+            <h2 class="insights-title"><i class="fa fa-line-chart"></i> Financial Insights</h2>
+            <p class="insights-subtitle">Hi <span th:text="${user.firstName}">there</span>, here is how your money is moving.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3 col-sm-6">
+            <div class="kpi kpi-networth" id="kpiNetWorth">
+                <div class="kpi-label">Net worth</div>
+                <div class="kpi-value">$<span th:text="${#numbers.formatDecimal(insights.netWorth, 1, 'COMMA', 2, 'POINT')}">0.00</span></div>
+                <div class="kpi-foot">Primary + Savings</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="kpi kpi-in" id="kpiMoneyIn">
+                <div class="kpi-label">Money in</div>
+                <div class="kpi-value">$<span th:text="${#numbers.formatDecimal(insights.moneyIn, 1, 'COMMA', 2, 'POINT')}">0.00</span></div>
+                <div class="kpi-foot">All deposits</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="kpi kpi-out" id="kpiMoneyOut">
+                <div class="kpi-label">Money out</div>
+                <div class="kpi-value">$<span th:text="${#numbers.formatDecimal(insights.moneyOut, 1, 'COMMA', 2, 'POINT')}">0.00</span></div>
+                <div class="kpi-foot">Withdrawals + recipient transfers</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="kpi kpi-savings" id="kpiSavingsShare">
+                <div class="kpi-label">Held in savings</div>
+                <div class="kpi-value"><span th:text="${insights.savingsShare}">0</span>%</div>
+                <div class="kpi-foot"><span th:text="${insights.transactionCount}">0</span> transactions analysed</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="panel panel-default insight-card">
+                <div class="panel-heading"><strong>Net worth over time</strong></div>
+                <div class="panel-body">
+                    <div id="trendChart" class="chart"></div>
+                    <div id="trendTooltip" class="chart-tooltip"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="panel panel-default insight-card">
+                <div class="panel-heading"><strong>Where activity goes</strong></div>
+                <div class="panel-body">
+                    <div id="donutChart" class="chart donut"></div>
+                    <ul id="donutLegend" class="legend"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-default insight-card">
+                <div class="panel-heading"><strong>Top recipients</strong></div>
+                <div class="panel-body" id="topRecipients">
+                    <p class="text-muted" th:if="${#lists.isEmpty(insights.topRecipients)}">No transfers to recipients yet.</p>
+                    <div class="recipient-row" th:each="r : ${insights.topRecipients}">
+                        <div class="recipient-head">
+                            <span class="recipient-name" th:text="${r.label}">Name</span>
+                            <span class="recipient-amount">$<span th:text="${#numbers.formatDecimal(r.amount, 1, 'COMMA', 2, 'POINT')}">0</span></span>
+                        </div>
+                        <div class="bar"><div class="bar-fill" th:attr="data-width=${r.percent}"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="panel panel-default insight-card">
+                <div class="panel-heading"><strong>Savings goal</strong></div>
+                <div class="panel-body">
+                    <form id="goalForm" class="form-inline goal-form">
+                        <div class="input-group">
+                            <span class="input-group-addon">$</span>
+                            <input type="number" min="1" step="1" class="form-control" id="goalInput" required="required" placeholder="e.g. 20000" aria-label="Savings goal amount"/>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="goalSave">Set goal</button>
+                        <button type="button" class="btn btn-link" id="goalClear">Clear</button>
+                    </form>
+                    <div id="goalProgress" class="goal-progress">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped active" id="goalBar" role="progressbar" style="width: 0%">0%</div>
+                        </div>
+                        <p id="goalMessage" class="goal-message text-muted">Set a target to track your savings balance against it.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="common/header :: body-bottom-scripts"/>
+<script th:inline="javascript">
+    window.INSIGHTS = /*[[${insights}]]*/ {};
+    window.INSIGHTS_USER = /*[[${user.username}]]*/ 'user';
+</script>
+<script src="/js/insights.js"></script>
+</body>
+</html>
