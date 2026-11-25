@@ -100,7 +100,10 @@
             item.querySelector('.legend-label').textContent = s.label;
             legend.appendChild(item);
         });
-        el('text', { x: 100, y: 96, 'text-anchor': 'middle', class: 'donut-total' }, svg).textContent = money(total);
+        var totalLabel = money(total);
+        var totalText = el('text', { x: 100, y: 96, 'text-anchor': 'middle', class: 'donut-total' }, svg);
+        totalText.textContent = totalLabel;
+        if (totalLabel.length > 9) { totalText.style.fontSize = Math.max(11, Math.floor(180 / totalLabel.length)) + 'px'; }
         el('text', { x: 100, y: 116, 'text-anchor': 'middle', class: 'donut-caption' }, svg).textContent = 'total moved';
     }
 
