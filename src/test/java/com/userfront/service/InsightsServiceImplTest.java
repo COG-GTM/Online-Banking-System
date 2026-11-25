@@ -72,6 +72,24 @@ class InsightsServiceImplTest {
         assertThat(insights.getTopRecipients()).isEmpty();
     }
 
+    @Test
+    void keepsPercentagesInRangeForOverdraftsAndNegativeAmounts() {
+        PrimaryAccount primary = new PrimaryAccount();
+        primary.setAccountBalance(new BigDecimal("-50"));
+        List<PrimaryTransaction> primaryTx = new ArrayList<>();
+        primaryTx.add(new PrimaryTransaction(at(1), "Deposit to Primary Account", "Account", "Finished", 300, null, primary));
+        primaryTx.add(new PrimaryTransaction(at(2), "Withdraw from Primary Account", "Account", "Finished", -100, null, primary));
+        primary.setPrimaryTransactionList(primaryTx);
+        SavingsAccount savings = new SavingsAccount();
+        savings.setAccountBalance(new BigDecimal("100"));
+
+        Insights insights = service.buildInsights(primary, savings);
+
+        assertThat(insights.getSavingsShare()).isEqualTo(100);
+        assertThat(insights.getBreakdown()).hasSize(1);
+        assertThat(insights.getBreakdown().get(0).getPercent()).isEqualTo(100);
+    }
+
     private static Date at(int minute) {
         return new Date(1_700_000_000_000L + minute * 60_000L);
     }
