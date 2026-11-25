@@ -116,7 +116,7 @@ public class InsightsServiceImpl implements InsightsService {
         insights.setInternalTransfers(totals.get(Kind.INTERNAL));
         insights.setTrend(trend(flows, netWorth.subtract(netChange)));
 
-        BigDecimal activity = totals.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal activity = totals.values().stream().filter(t -> t.signum() > 0).reduce(BigDecimal.ZERO, BigDecimal::add);
         List<Insights.Slice> breakdown = new ArrayList<>();
         addSlice(breakdown, "Deposits", totals.get(Kind.DEPOSIT), activity);
         addSlice(breakdown, "Withdrawals", totals.get(Kind.WITHDRAWAL), activity);
