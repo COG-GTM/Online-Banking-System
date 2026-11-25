@@ -94,7 +94,8 @@ public class InsightsServiceImpl implements InsightsService {
         insights.setSavingsBalance(savingsBalance);
         insights.setNetWorth(netWorth);
         insights.setTransactionCount(flows.size());
-        insights.setSavingsShare(percent(savingsBalance, netWorth));
+        BigDecimal positiveSavings = savingsBalance.max(BigDecimal.ZERO);
+        insights.setSavingsShare(percent(positiveSavings, positiveSavings.add(primaryBalance.max(BigDecimal.ZERO))));
 
         Map<Kind, BigDecimal> totals = new EnumMap<>(Kind.class);
         for (Kind kind : Kind.values()) {
