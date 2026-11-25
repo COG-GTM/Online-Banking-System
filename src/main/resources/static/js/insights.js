@@ -130,7 +130,7 @@
                 return;
             }
             input.value = goal;
-            var pct = Math.min(100, Math.floor(savings / goal * 100));
+            var pct = savings >= goal ? 100 : Math.max(0, Math.min(99, Math.round(savings / goal * 100)));
             bar.style.width = pct + '%';
             bar.textContent = pct + '%';
             if (savings >= goal) {
